@@ -10,53 +10,41 @@
 
 ### Model
 
-Cytotoxic killing is represented as a continuous-time stochastic process in which each killer cell generates target-contact events and, at each contact, makes a kill vs non-kill decision.
+Cytotoxic killing is represented as a continuous-time stochastic process. Each killer cell generates target-contact events, and each contact results in either a kill or a non-kill outcome.
 
-**State (per killer cell $i$)**
+**State (per killer cell $i$)**  
 - $x_i$: cumulative number of non-lethal contacts  
 - $y_i$: cumulative number of lethal contacts  
-- $K_i$: killing capacity (maximum number of kills available); $K^{\mathrm{rem}}_i$ decreases by 1 after each kill  
+- $K_i$: killing capacity (maximum number of kills available); remaining capacity $K_i^{\mathrm{rem}}$ decreases by 1 after each kill  
 
-**Event generation (global Gillespie step)**
-- Each alive killer has encounter rate $\lambda_i = r(x_i, y_i)$ (default: constant rate matrix).
-- Next event time:
-  $$
-  \Delta t \sim \mathrm{Exp}\!\left(\sum_i \lambda_i\right).
-  $$
-- Killer selection:
-  $$
-  \Pr(i\ \text{chosen}) = \frac{\lambda_i}{\sum_j \lambda_j}.
-  $$
+**Event generation (global Gillespie step)**  
+- Each alive killer has an encounter rate $\lambda_i = r(x_i, y_i)$ (default: constant rate matrix).  
+- Next event time is sampled as $\Delta t \sim \mathrm{Exp}\!\left(\sum_i \lambda_i\right)$.  
+- The killer responsible for the next event is chosen with probability $\Pr(i\ \text{chosen}) = \lambda_i / \sum_j \lambda_j$.  
 
-**Target depletion (finite target pool)**
-- Initial target count $T_0$ is set either explicitly or as a multiple of killers (default: $T_0 = 4\,N_{\mathrm{killers}}$).
-- Remaining targets $T$ decrease by 1 after each successful kill.
-- Encounter rates are scaled by
-  $$
-  f(T) = \max\!\left(\frac{T}{T_0},\ f_{\min}\right), \qquad \lambda_i \leftarrow \lambda_i\, f(T),
-  $$
-  where `f_min` corresponds to `target_rate_floor`.
+**Target depletion (finite target pool)**  
+- The initial target count is $T_0$, set either explicitly or as a multiple of killers (default: $T_0 = 4\,N_{\mathrm{killers}}$).  
+- Remaining targets $T$ decrease by 1 after each successful kill.  
+- Encounter rates are scaled by a depletion factor $f(T) = \max\!\left(T/T_0,\ f_{\min}\right)$, implemented as $\lambda_i \leftarrow \lambda_i\, f(T)$, where `f_min` corresponds to `target_rate_floor`.  
 
-**Decision rule at each contact**
-- Deterministic mode: $p_{\mathrm{kill}}(x_i,y_i)=1$ while $K^{\mathrm{rem}}_i>0$; otherwise $p_{\mathrm{kill}}=0$.
-- Stochastic mode: $p_{\mathrm{kill}}(x_i,y_i)=p(x_i,y_i)$ from a probability matrix:
-  - Constant: $p(x,y)=p_0$.
-  - History-dependent (logistic):
-    $$
-    \mathrm{logit}\,p(x,y)=\mathrm{logit}(p_0)+\alpha x+\beta y,\qquad p(x,y)=\sigma(\mathrm{logit}\,p(x,y)),
-    $$
-    where $\sigma(\cdot)$ is the sigmoid. This guarantees $p\in(0,1)$ (with optional numerical clipping).
+**Decision rule at each contact**  
+- Deterministic mode: $p_{\mathrm{kill}}(x_i,y_i)=1$ while $K_i^{\mathrm{rem}}>0$; otherwise $p_{\mathrm{kill}}=0$.  
+- Stochastic mode: $p_{\mathrm{kill}}(x_i,y_i)=p(x_i,y_i)$ from a probability matrix:  
+  - Constant: $p(x,y)=p_0$.  
+  - History-dependent (logistic): $\mathrm{logit}\,p(x,y)=\mathrm{logit}(p_0)+\alpha x+\beta y$, with $p(x,y)=\sigma(\mathrm{logit}\,p(x,y))$, where $\sigma(\cdot)$ is the sigmoid (ensuring $p\in(0,1)$ up to numerical clipping).  
 
-**Killing capacity $K_i$ generation**
-- Homogeneous: $K_i = K_0$ for all killers.
-- Heterogeneous (continuous): $K_i$ sampled from Normal / Lognormal / Gamma, then rounded to integers.
-- Heterogeneous (discrete mixture): $K_i$ sampled from a mixture over communities with specified proportions and community-specific capacities.
-- Optional clipping to $[K_{\min}, K_{\max}]$.
+**Killing capacity $K_i$ generation**  
+- Homogeneous: $K_i = K_0$ for all killers.  
+- Heterogeneous (continuous): $K_i$ sampled from Normal / Lognormal / Gamma distributions and rounded to integers.  
+- Heterogeneous (discrete mixture): $K_i$ sampled from a mixture of communities with specified proportions and community-specific capacities.  
+- Optional clipping to $[K_{\min}, K_{\max}]$.  
 
-**Outputs**
-- Per-killer decision sequences (0 = non-lethal, 1 = lethal) and corresponding event times
-- Final $(x_i, y_i)$, capacities $K_i$, remaining capacities $K^{\mathrm{rem}}_i$
-- Target trajectory $T(t)$ over event times
+**Outputs**  
+- Per-killer decision sequences (0 = non-lethal, 1 = lethal) and corresponding event times  
+- Final $(x_i, y_i)$, capacities $K_i$, remaining capacities $K_i^{\mathrm{rem}}$  
+- Target trajectory $T(t)$ evaluated at event times  
+
+
 
 ---
 **Description**

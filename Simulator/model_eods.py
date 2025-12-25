@@ -302,7 +302,15 @@ def _fmt_float(x, nd=2):
     return f"{float(x):.{nd}f}"
 
 
-def scenario_label(sc, n_killers, n_targets, rate0):
+def scenario_label(
+    sc,
+    n_killers: int | None = None,
+    n_targets: int | None = None,
+    rate0: float | None = None,
+    *,
+    show_counts: bool = True,
+    show_rate: bool = True,
+):
     cap_mode = sc["capacity_mode"]
     kw = sc.get("capacity_kwargs", {}) or {}
     K0 = kw.get("K0", None)
@@ -331,14 +339,28 @@ def scenario_label(sc, n_killers, n_targets, rate0):
         cap_bits.append(f"max={int(max_K)}")
 
     p_bits = [f"p:{sc['p_mode']}"]
-    if sc["p_mode"] == "stochastic":
+    if sc["p_mode"] == "deterministic":
+        p_bits.append("p=1")
+    elif sc["p_mode"] == "stochastic":
         p_bits.append(f"{sc['p_stochastic_mode']}")
         p_bits.append(f"p0={_fmt_float(sc['p0'],2)}")
         p_bits.append(f"a={_fmt_float(sc['alpha'],2)}")
         p_bits.append(f"b={_fmt_float(sc['beta'],2)}")
 
     top = " | ".join(p_bits)
-    bottom = f"{' , '.join(cap_bits)} | Nkill={int(n_killers)} Ntarg={int(n_targets)} r0={_fmt_float(rate0,2)}"
+
+    bottom_parts = [" , ".join(cap_bits)]
+    if show_counts:
+        if n_killers is not None:
+            bottom_parts.append(f"Nkill={int(n_killers)}")
+        if n_targets is not None:
+            bottom_parts.append(f"Ntarg={int(n_targets)}")
+    if show_rate and (rate0 is not None):
+        bottom_parts.append(f"r0={_fmt_float(rate0,2)}")
+
+    bottom = " | ".join(bottom_parts).strip()
+    if not bottom:
+        return top
     return top + "\n" + bottom
 
 
