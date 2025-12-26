@@ -29,12 +29,110 @@ __all__ = [
     "decision_map",
     "plot_targets_remaining",
     "plot_targets_remaining_normalised",
+    "plot_killing_capacity_dynamics",
+    "plot_killing_capacity_all_cells",
     "heatmap_contacts_vs_kills",
     "_pick_colors",
     "_parse_bool",
     "_parse_float_list",
     "_parse_int_list",
 ]
+
+
+def _capacity_mean_std_trace(out, *, normalise: bool):
+    capacities = np.asarray(out.get("capacities", []), dtype=float)
+    if capacities.size == 0:
+        raise ValueError("out['capacities'] must be present to plot capacity dynamics")
+    decisions_list = out.get("decisions_list", None)
+    times_list = out.get("times_list", None)
+    if decisions_list is None or times_list is None:
+        raise ValueError("out must include 'decisions_list' and 'times_list' to plot capacity dynamics")
+    if len(decisions_list) != capacities.size or len(times_list) != capacities.size:
+        raise ValueError("Length mismatch: decisions_list/times_list must match len(capacities)")
+
+    n_killers = int(capacities.size)
+
+    # Track either raw remaining capacity (K_rem) or per-cell remaining fraction (K_rem / K0).
+    K_rem = capacities.astype(float, copy=True)
+    if normalise:
+        denom = np.where(capacities > 0, capacities, np.nan)
+        values = np.where(capacities > 0, K_rem / denom, 0.0)
+    else:
+        values = K_rem
+
+    sumV = float(np.sum(values))
+    sumV2 = float(np.sum(values * values))
+
+    # Flatten events (time, killer_idx, lethal_flag)
+    t_all = []
+    i_all = []
+    d_all = []
+    for i in range(n_killers):
+        ts = np.asarray(times_list[i], dtype=float)
+        ds = np.asarray(decisions_list[i], dtype=int)
+        if ts.size != ds.size:
+            raise ValueError("times_list[i] and decisions_list[i] must have the same length")
+        if ts.size == 0:
+            continue
+        t_all.append(ts)
+        i_all.append(np.full(ts.shape, i, dtype=int))
+        d_all.append(ds)
+
+    if t_all:
+        t_all = np.concatenate(t_all)
+        i_all = np.concatenate(i_all)
+        d_all = np.concatenate(d_all)
+        order = np.argsort(t_all, kind="mergesort")
+        t_all = t_all[order]
+        i_all = i_all[order]
+        d_all = d_all[order]
+    else:
+        t_all = np.array([], dtype=float)
+        i_all = np.array([], dtype=int)
+        d_all = np.array([], dtype=int)
+
+    def _mean_std_from_sums(sumV_, sumV2_):
+        mean = sumV_ / n_killers
+        var = max(0.0, (sumV2_ / n_killers) - mean * mean)
+        return mean, float(np.sqrt(var))
+
+    times = [0.0]
+    mean0, std0 = _mean_std_from_sums(sumV, sumV2)
+    means = [mean0]
+    stds = [std0]
+
+    for t, i, d in zip(t_all, i_all, d_all):
+        if int(d) == 1:
+            ii = int(i)
+            oldK = float(K_rem[ii])
+            newK = oldK - 1.0
+            K_rem[ii] = newK
+
+            oldV = float(values[ii])
+            if normalise:
+                cap = float(capacities[ii])
+                newV = (newK / cap) if cap > 0 else 0.0
+            else:
+                newV = newK
+            values[ii] = newV
+
+            sumV += (newV - oldV)
+            sumV2 += (newV * newV) - (oldV * oldV)
+
+        m, s = _mean_std_from_sums(sumV, sumV2)
+        times.append(float(t))
+        means.append(m)
+        stds.append(s)
+
+    t_end = out.get("t_end", None)
+    if t_end is not None and len(times) > 0:
+        t_end = float(t_end)
+        if t_end > float(times[-1]):
+            times.append(t_end)
+            means.append(float(means[-1]))
+            stds.append(float(stds[-1]))
+
+    return np.asarray(times, dtype=float), np.asarray(means, dtype=float), np.asarray(stds, dtype=float)
 
 
 def _path_from_decisions(decisions):
@@ -124,7 +222,6 @@ def scenario_label(
 
     p_bits = [f"p:{sc['p_mode']}"]
     if sc["p_mode"] == "deterministic":
-        # Deterministic mode uses p_kill_matrix = 1 everywhere (until capacity runs out).
         p_bits.append("p=1")
     elif sc["p_mode"] == "stochastic":
         p_bits.append(f"{sc['p_stochastic_mode']}")
@@ -214,7 +311,7 @@ def decision_map(
 ):
     plt.figure(figsize=figsize, dpi=dpi)
 
-    # Default axis limits: use max_event if provided (so axes match simulation grid).
+    # Axis defaults
     if x_max is None and max_event is not None:
         x_max = int(max_event) - 1
     if y_max is None and max_event is not None:
@@ -241,7 +338,7 @@ def decision_map(
     ax.xaxis.set_major_locator(MultipleLocator(1))
     ax.yaxis.set_major_locator(MultipleLocator(1))
 
-    # Axis limits (useful when jitter is on).
+    # Axis limits
     pad = 0.5
     if x_max is not None:
         ax.set_xlim(-pad, float(x_max) + pad)
@@ -348,6 +445,142 @@ def plot_targets_remaining_normalised(
         plt.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
 
 
+def plot_killing_capacity_dynamics(
+    outs,
+    labels,
+    colors,
+    figsize=(9.2, 4.6),
+    dpi=300,
+    title: str | None = None,
+    xlabel: str = "Time",
+    ylabel: str | None = None,
+    normalise: bool = True,
+    show_legend: bool = True,
+    legend_loc: str = "upper right",
+    legend_kwargs: dict | None = None,
+    save_png=False,
+    png_path="killing_capacity_dynamics.png",
+    save_pdf=False,
+    pdf_path="killing_capacity_dynamics.pdf",
+):
+    plt.figure(figsize=figsize, dpi=dpi)
+    ax = plt.gca()
+
+    if ylabel is None:
+        ylabel = "Remaining capacity fraction (mean ± 1σ)" if normalise else "Remaining killing capacity (mean ± 1σ)"
+
+    for out, label, color in zip(outs, labels, colors):
+        t, mean, std = _capacity_mean_std_trace(out, normalise=normalise)
+        ax.step(t, mean, where="post", label=label, color=color, lw=2.0)
+
+        lo = mean - std
+        hi = mean + std
+        try:
+            ax.fill_between(t, lo, hi, step="post", color=color, alpha=0.18, linewidth=0)
+        except TypeError:
+            ax.fill_between(t, lo, hi, color=color, alpha=0.18, linewidth=0)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.grid(True, alpha=0.25, linestyle="--")
+    _apply_legend(ax, loc=legend_loc, show=show_legend, legend_kwargs=legend_kwargs)
+    plt.tight_layout()
+
+    if save_png:
+        plt.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
+    if save_pdf:
+        plt.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
+
+
+def plot_killing_capacity_all_cells(
+    out,
+    *,
+    color=None,
+    normalise: bool = True,
+    figsize=(9.2, 4.6),
+    dpi=300,
+    title: str | None = None,
+    xlabel: str = "Time",
+    ylabel: str | None = None,
+    alpha: float = 0.06,
+    lw: float = 1.0,
+    save_png=False,
+    png_path="killing_capacity_all_cells.png",
+    save_pdf=False,
+    pdf_path="killing_capacity_all_cells.pdf",
+):
+    capacities = np.asarray(out.get("capacities", []), dtype=float)
+    if capacities.size == 0:
+        raise ValueError("out['capacities'] must be present to plot capacity dynamics")
+    decisions_list = out.get("decisions_list", None)
+    times_list = out.get("times_list", None)
+    if decisions_list is None or times_list is None:
+        raise ValueError("out must include 'decisions_list' and 'times_list' to plot capacity dynamics")
+    if len(decisions_list) != capacities.size or len(times_list) != capacities.size:
+        raise ValueError("Length mismatch: decisions_list/times_list must match len(capacities)")
+
+    t_end = float(out.get("t_end", 0.0))
+
+    plt.figure(figsize=figsize, dpi=dpi)
+    ax = plt.gca()
+
+    if ylabel is None:
+        ylabel = "Remaining capacity fraction" if normalise else "Remaining killing capacity"
+    line_color = color if color is not None else (0.2, 0.5, 0.8, 1.0)
+
+    n_killers = int(capacities.size)
+    for i in range(n_killers):
+        cap = float(capacities[i])
+        ts = np.asarray(times_list[i], dtype=float)
+        ds = np.asarray(decisions_list[i], dtype=int)
+        if ts.size != ds.size:
+            raise ValueError("times_list[i] and decisions_list[i] must have the same length")
+
+        if normalise:
+            if cap <= 0:
+                y0 = 0.0
+                step = 0.0
+            else:
+                y0 = 1.0
+                step = 1.0 / cap
+        else:
+            y0 = cap
+            step = 1.0
+
+        # Build per-cell step trajectory: decreases only on lethal events.
+        t_path = [0.0]
+        y_path = [y0]
+        y = float(y0)
+        if ts.size:
+            kill_times = ts[ds == 1]
+            for tk in kill_times:
+                t_path.append(float(tk))
+                y_path.append(y)
+                y = y - step
+                t_path.append(float(tk))
+                y_path.append(y)
+
+        if t_end > float(t_path[-1]):
+            t_path.append(t_end)
+            y_path.append(y)
+
+        ax.plot(t_path, y_path, color=line_color, alpha=float(alpha), lw=float(lw))
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.grid(True, alpha=0.25, linestyle="--")
+    plt.tight_layout()
+
+    if save_png:
+        plt.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
+    if save_pdf:
+        plt.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
+
+
 def heatmap_contacts_vs_kills(
     out,
     *,
@@ -401,8 +634,7 @@ def heatmap_contacts_vs_kills(
     x_max = max(0, int(x_max))
     y_max = max(0, int(y_max))
 
-    # Optionally expand the smaller axis so both x/y share the same range.
-    # This keeps the heatmap square in data coordinates (useful when comparing marginals).
+    # Range
     if square_range:
         m = max(x_max, y_max)
         x_max = m
@@ -431,7 +663,7 @@ def heatmap_contacts_vs_kills(
         if total > 0:
             H = H / total
 
-    # Make ALL zero cells fully transparent.
+    # Heatmap
     positives = H[H > 0]
     if positives.size:
         vmin = float(np.min(positives))
@@ -445,8 +677,7 @@ def heatmap_contacts_vs_kills(
     H_plot = np.ma.masked_where(H == 0, H)
 
     fig = plt.figure(figsize=figsize, dpi=dpi)
-    # Layout columns: [colorbar | blank gap | main heatmap | right marginal]
-    # The blank gap keeps things visually clean without letting Matplotlib resize 8ax_main.
+    # Layout
     gs = gridspec.GridSpec(
         2,
         4,
@@ -456,14 +687,10 @@ def heatmap_contacts_vs_kills(
         hspace=0.08,
     )
 
-    # Reserve a dedicated column for the left colorbar.
-    # This prevents Matplotlib from shrinking ax_main (which would desynchronise ax_top vs ax_main widths).
     ax_cbar = fig.add_subplot(gs[1, 0])
     ax_gap = fig.add_subplot(gs[1, 1])
     ax_gap.axis("off")
 
-    # Do NOT share axes here: Matplotlib forbids adjustable='datalim' when axes are shared.
-    # We align marginals by explicitly syncing limits instead.
     ax_top = fig.add_subplot(gs[0, 2])
     ax_main = fig.add_subplot(gs[1, 2])
     ax_right = fig.add_subplot(gs[1, 3])
@@ -475,7 +702,7 @@ def heatmap_contacts_vs_kills(
     ax_corner = fig.add_subplot(gs[0, 3])
     ax_corner.axis("off")
 
-    # Colormap (optionally truncated to avoid full spectrum).
+    # Colormap
     cmap_min = float(cmap_min)
     cmap_max = float(cmap_max)
     if not (0.0 <= cmap_min <= 1.0 and 0.0 <= cmap_max <= 1.0 and cmap_min <= cmap_max):
@@ -494,10 +721,8 @@ def heatmap_contacts_vs_kills(
     try:
         cmap_obj = cmap_obj.copy()
     except Exception:
-        # Older Matplotlib: fallback without copying.
         pass
     try:
-        # 'bad' covers masked values; 'under' is a safety net for any values < vmin.
         cmap_obj.set_bad(color=(0, 0, 0, 0))
         cmap_obj.set_under(color=(0, 0, 0, 0))
     except Exception:
@@ -513,7 +738,7 @@ def heatmap_contacts_vs_kills(
         interpolation="nearest",
     )
 
-    # Colorbar on the left, in a dedicated axis (so the main panel stays aligned with the top marginal).
+    # Colorbar
     cbar = fig.colorbar(im, cax=ax_cbar)
     try:
         cbar.ax.yaxis.set_label_position("left")
@@ -528,7 +753,6 @@ def heatmap_contacts_vs_kills(
             cbar_label = "Frequency" if mode == "frequency" else "Count"
 
     if cbar_label_inside:
-        # Draw label inside the colorbar axis (avoids outside overlap).
         cbar.set_label("")
         cbar.ax.text(
             0.5,
@@ -547,7 +771,7 @@ def heatmap_contacts_vs_kills(
 
     ax_main.set_xlabel(xlabel)
     ax_main.set_ylabel(ylabel)
-    # Force integer ticks starting at 0 so we never display negative labels.
+    # Axes
     ax_main.set_xticks(np.arange(0, int(x_max) + 1, 1))
     ax_main.set_yticks(np.arange(0, int(y_max) + 1, 1))
     ax_main.grid(True, alpha=0.15, linestyle="--")
@@ -555,19 +779,46 @@ def heatmap_contacts_vs_kills(
     if title:
         ax_top.set_title(title)
 
-    # Marginals (match trajectory colour by default).
+    # Marginals
     marginal_color = color if color is not None else "0.2"
-    ax_top.hist(x_int, bins=x_edges, color=marginal_color, alpha=0.35, edgecolor="none", linewidth=0)
-    ax_right.hist(y_int, bins=y_edges, orientation="horizontal", color=marginal_color, alpha=0.35, edgecolor="none", linewidth=0)
+    if density:
+        marginal_kind_label = "Density"
+        marginal_hist_kwargs = dict(density=True)
+    elif mode == "frequency":
+        marginal_kind_label = "Frequency"
+        w = np.ones_like(x_int, dtype=float)
+        w = w / float(np.sum(w))
+        marginal_hist_kwargs = dict(weights=w, density=False)
+    else:
+        marginal_kind_label = "Count"
+        marginal_hist_kwargs = dict(density=False)
 
-    # Keep marginals tightly aligned to the heatmap extents (avoid autoscale padding).
-    # Also ensure square bins without resizing the axes box (which would desynchronise ax_top vs ax_main).
+    ax_top.hist(
+        x_int,
+        bins=x_edges,
+        color=marginal_color,
+        alpha=0.35,
+        edgecolor="none",
+        linewidth=0,
+        **marginal_hist_kwargs,
+    )
+    ax_right.hist(
+        y_int,
+        bins=y_edges,
+        orientation="horizontal",
+        color=marginal_color,
+        alpha=0.35,
+        edgecolor="none",
+        linewidth=0,
+        **marginal_hist_kwargs,
+    )
+
+    # Alignment
     xlim0 = (-0.5, float(x_max) + 0.5)
     ylim0 = (-0.5, float(y_max) + 0.5)
     ax_main.set_xlim(*xlim0)
     ax_main.set_ylim(*ylim0)
     ax_main.set_aspect("equal", adjustable="datalim")
-    # Apply aspect adjustment now, then sync the resulting limits to the marginal axes.
     try:
         ax_main.apply_aspect()
     except Exception:
@@ -607,21 +858,20 @@ def heatmap_contacts_vs_kills(
             transform=ax_right.transAxes,
             ha="left",
             va="top",
-            rotation=270,
+            rotation=0,
             fontsize=10,
         )
 
-    # Clean marginal axes
+    # Styling
     plt.setp(ax_top.get_xticklabels(), visible=False)
-    ax_top.set_ylabel("Count")
+    ax_top.set_ylabel(marginal_kind_label)
     ax_top.grid(True, alpha=0.15, linestyle="--")
 
     plt.setp(ax_right.get_yticklabels(), visible=False)
-    ax_right.set_xlabel("Count")
+    ax_right.set_xlabel(marginal_kind_label)
     ax_right.grid(True, alpha=0.15, linestyle="--")
 
-    # (Limits already set above to keep everything aligned.)
-    # Avoid tight_layout warnings for this multi-axes layout; GridSpec spacing controls layout.
+    # Save
 
     if save_png:
         plt.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)

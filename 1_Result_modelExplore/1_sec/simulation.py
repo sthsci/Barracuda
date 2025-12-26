@@ -26,17 +26,15 @@ def run_simulation():
 	target_rate_floor = 0.0
 
 	# Kill probability settings
-	p_mode = "deterministic"  # "deterministic" or "stochastic"
-	p_stochastic_mode = "constant"  # used only if p_mode == "stochastic"
+	p_mode = "deterministic"
+	p_stochastic_mode = "constant"
 	p0 = 0.30
 	alpha = 0.25
 	beta = 0.15
 
 	# Capacity settings
-	capacity_mode = "homogeneous"  # or "discrete", "gamma", ...
+	capacity_mode = "homogeneous"
 	capacity_kwargs = {"K0": 10}
-	# capacity_mode = "discrete"
-	# capacity_kwargs = {"proportions": [0.5, 0.3, 0.2], "community_K": [10, 5, 1], "min_K": 0}
 
 	rmat = eods.rate_matrix(mode="constant", rate0=rate0, max_event=max_event)
 
@@ -73,9 +71,6 @@ def run_simulation():
 		"capacity_mode": capacity_mode,
 		"capacity_kwargs": dict(capacity_kwargs),
 	}
-	# Toggle what appears in the legend label:
-	# - show_counts: show/hide Nkill and Ntarg
-	# - show_rate: show/hide r0
 	label = vis.scenario_label(
 		sc,
 		n_killers=n_killers,
@@ -115,6 +110,27 @@ def run_simulation():
 		dpi=300,
 	)
 
+	vis.plot_killing_capacity_dynamics(
+		outs=[out],
+		labels=[label],
+		colors=[color],
+		normalise=True,
+		save_png=True,
+		png_path=str(outdir / "killing_capacity_dynamics_mean_std.png"),
+		save_pdf=False,
+		dpi=300,
+	)
+
+	vis.plot_killing_capacity_all_cells(
+		out,
+		color=color,
+		normalise=True,
+		save_png=True,
+		png_path=str(outdir / "killing_capacity_dynamics_all_cells.png"),
+		save_pdf=False,
+		dpi=300,
+	)
+
 	vis.heatmap_contacts_vs_kills(
 		out,
 		use_total_contacts=True,
@@ -125,10 +141,23 @@ def run_simulation():
 		dpi=300,
 	)
 
+	vis.heatmap_contacts_vs_kills(
+		out,
+		use_total_contacts=False,
+		color=color,
+		save_png=True,
+		png_path=str(outdir / "nonlethal_vs_lethal_heatmap.png"),
+		save_pdf=False,
+		dpi=300,
+	)
+
 	print("Saved:", str(outdir / "trajectories.png"))
 	print("Saved:", str(outdir / "targets_remaining.png"))
 	print("Saved:", str(outdir / "targets_remaining_normalised.png"))
+	print("Saved:", str(outdir / "killing_capacity_dynamics_mean_std.png"))
+	print("Saved:", str(outdir / "killing_capacity_dynamics_all_cells.png"))
 	print("Saved:", str(outdir / "contacts_vs_kills_heatmap.png"))
+	print("Saved:", str(outdir / "nonlethal_vs_lethal_heatmap.png"))
 
 
 if __name__ == "__main__":
