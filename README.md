@@ -164,11 +164,13 @@ Y(t)=\min\{C(t),K\},\qquad X(t)=\max\{C(t)-K,0\}.
 $$
 
 Conditional on $T(\cdot)$ and $K$, the distribution follows immediately from the Poisson law for $C(t)$:
-- For $k=0,1,\dots,K-1$,
+
+For $k=0,1,\dots,K-1$,
 $$
 P\big(Y(t)=k\mid T(\cdot),K\big)=P\big(C(t)=k\mid T(\cdot)\big)=e^{-\Lambda_i(t)}\,\frac{\Lambda_i(t)^k}{k!}.
 $$
-- The point mass at capacity $K$ is the upper tail:
+
+The point mass at capacity $K$ is the upper tail:
 $$
 P\big(Y(t)=K\mid T(\cdot),K\big)=P\big(C(t)\ge K\mid T(\cdot)\big)=1-\sum_{j=0}^{K-1}e^{-\Lambda_i(t)}\,\frac{\Lambda_i(t)^j}{j!}.
 $$
@@ -207,11 +209,13 @@ $$
 3. Enforce capacity by truncation: $Y(t)=\min\{\widetilde{Y}(t),K\}$.
 
 Hence for fixed $n$ and $K$:
-- For $k=0,1,\dots,K-1$,
+
+For $k=0,1,\dots,K-1$,
 $$
 P\big(Y(t)=k\mid C(t)=n,K\big)=\binom{n}{k}p^k(1-p)^{n-k}.
 $$
-- For $k=K$,
+
+For $k=K$,
 $$
 P\big(Y(t)=K\mid C(t)=n,K\big)=P\big(\widetilde{Y}(t)\ge K\mid C(t)=n\big)=\sum_{j=K}^{n}\binom{n}{j}p^j(1-p)^{n-j}.
 $$
@@ -224,12 +228,14 @@ $$
 p(x,y)=\sigma\big(\mathrm{logit}(p_0)+\alpha x+\beta y\big),\qquad \sigma(z)=\frac{1}{1+e^{-z}}.
 $$
 Let $q_{x,y}(t)=P\big(X(t)=x,\,Y(t)=y\mid T(\cdot)\big)$. Conditional on $T(\cdot)$ (equivalently on $\lambda_i(\cdot)$), $(X(t),Y(t))$ is a continuous-time Markov jump process on the lattice with transitions driven by contacts:
-- If $y<K$,
+
+If $y<K$,
 $$
 (x,y)\to(x+1,y)\ \text{at rate }\ \lambda_i(t)\,(1-p(x,y)),\qquad
 (x,y)\to(x,y+1)\ \text{at rate }\ \lambda_i(t)\,p(x,y).
 $$
-- If $y=K$ (capacity exhausted), only non-lethal contacts occur:
+
+If $y=K$ (capacity exhausted), only non-lethal contacts occur:
 $$
 (x,K)\to(x+1,K)\ \text{at rate }\ \lambda_i(t).
 $$
@@ -254,7 +260,7 @@ P\big(C(t)=x+K\mid T(\cdot)\big), & y=K,\ x\ge 0,\\
 \end{cases}
 $$
 
-**Constant $0<p<1$ without effective capacity limit.** Conditional on $\lambda(\cdot)$, independent thinning gives a product-form joint distribution:
+**Constant $0<p<1$ without effective capacity limit.** Conditional on $T(\cdot)$, independent thinning gives a product-form joint distribution:
 $$
 P\big(X(t)=x,\,Y(t)=y\mid T(\cdot)\big)=e^{-\Lambda_i(t)}\,\frac{((1-p)\Lambda_i(t))^x}{x!}\,\frac{(p\Lambda_i(t))^y}{y!},\qquad x,y\in\mathbb{Z}_{\ge 0}.
 $$
@@ -299,65 +305,57 @@ The transient dynamics become coupled to the distribution of remaining capacitie
 
 This section summarises what is **exactly specified by the simulator** versus what admits **closed-form solutions** under additional tractable assumptions.
 
-**Exact simulator-level statements (hold for all modes).**
-- For each killer $i$, the contact counting process $N_i(t)$ is defined via the conditional intensity
+**Exact simulator-level statements (hold for all modes).** For each killer $i$, the contact counting process $N_i(t)$ is defined via the conditional intensity
+
 $$
 \lambda_i(t)=r\big(x_i(t),y_i(t)\big)\,f\big(T(t)\big),\qquad f(T)=\max\left(\frac{T}{T_0},f_{\min}\right),
 $$
-and the cumulative intensity $\Lambda_i(t)=\int_0^t \lambda_i(u)\,du$.
-- Because $\lambda_i(t)$ depends on the same history that $N_i$ generates (through $(x_i,y_i)$ and the shared target pool $T$), unconditional closed forms are generally unavailable for state-dependent $r(x,y)$ and/or history-dependent kill decisions $p(x,y)$.
 
-**Section 1 (contacts per killer).**
-- If $r(x,y)\equiv r_0$ (default constant-rate matrix), then conditional on the realised target trajectory $T(\cdot)$,
+and the cumulative intensity $\Lambda_i(t)=\int_0^t \lambda_i(u)\,du$. Because $\lambda_i(t)$ depends on the same history that $N_i$ generates (through $(x_i,y_i)$ and the shared target pool $T$), unconditional closed forms are generally unavailable for state-dependent $r(x,y)$ and/or history-dependent kill decisions $p(x,y)$.
+
+**Section 1 (contacts per killer).** If $r(x,y)\equiv r_0$ (default constant-rate matrix), then conditional on the realised target trajectory $T(\cdot)$,
 $$
 N_i(t)\mid T(\cdot)\sim \mathrm{Poisson}\big(\Lambda_i(t)\big),\qquad \Lambda_i(t)=\int_0^t r_0\,f\big(T(u)\big)\,du.
 $$
-- Unconditionally, $N_i(t)$ is a Poisson mixture (Cox process):
+
+Unconditionally, $N_i(t)$ is a Poisson mixture (Cox process):
+
 $$
 P\big(N_i(t)=k\big)=\mathbb{E}\left[e^{-\Lambda_i(t)}\,\frac{\Lambda_i(t)^k}{k!}\right],\qquad
 \mathbb{E}[N_i(t)]=\mathbb{E}[\Lambda_i(t)],\quad \mathrm{Var}(N_i(t))=\mathbb{E}[\Lambda_i(t)]+\mathrm{Var}(\Lambda_i(t)).
 $$
-- A mean-field “closed loop” approximation substitutes a deterministic $T(t)$ into $\Lambda_i(t)$, giving an explicit approximate Poisson law for $N_i(t)$ (with a piecewise expression when $f_{\min}>0$).
 
-**Section 2 (kills per killer).**
-- Let $C(t)=N_i(t)$, $Y(t)$ be kills, $X(t)$ non-lethal contacts, with $C(t)=X(t)+Y(t)$ and $0\le Y(t)\le K$.
-- Deterministic killing ($p\equiv 1$ until capacity):
+A mean-field “closed loop” approximation substitutes a deterministic $T(t)$ into $\Lambda_i(t)$, giving an explicit approximate Poisson law for $N_i(t)$ (with a piecewise expression when $f_{\min}>0$).
+
+**Section 2 (kills per killer).** Let $C(t)=N_i(t)$, $Y(t)$ be kills, $X(t)$ non-lethal contacts, with $C(t)=X(t)+Y(t)$ and $0\le Y(t)\le K$. Deterministic killing ($p\equiv 1$ until capacity):
+
 $$
 Y(t)=\min\{C(t),K\},\qquad X(t)=\max\{C(t)-K,0\}.
 $$
-Given $T(\cdot)$ and $K$, this yields explicit point masses for $Y(t)$ via the Poisson distribution of $C(t)$.
-- Constant stochastic killing ($0<p<1$): without an effective capacity limit, independent thinning gives (conditional on $T(\cdot)$)
+
+Given $T(\cdot)$ and $K$, this yields explicit point masses for $Y(t)$ via the Poisson distribution of $C(t)$. Constant stochastic killing ($0<p<1$): without an effective capacity limit, independent thinning gives (conditional on $T(\cdot)$)
+
 $$
 Y(t)\sim\mathrm{Poisson}\big(p\Lambda_i(t)\big),\qquad X(t)\sim\mathrm{Poisson}\big((1-p)\Lambda_i(t)\big),\qquad X\perp Y\mid T(\cdot).
 $$
-With finite $K$, a Binomial-with-truncation representation is available, but $Y(t)$ is no longer Poisson even conditional on $T(\cdot)$.
-- History-dependent killing (logistic; $p(x,y)$): $(X(t),Y(t))$ is an exact Markov jump process given $T(\cdot)$, but closed forms are not expected; numerical forward-equation or simulation approaches are natural.
 
-**Section 3 (joint $(X,Y)$ distribution).**
-- Deterministic $p\equiv 1$ with capacity yields a degenerate joint law supported on $(x=0,0\le y<K)$ and $(y=K,x\ge 0)$.
-- Constant $0<p<1$ without effective capacity limit yields a product-form joint distribution conditional on $T(\cdot)$ (independent thinning of contacts), and a Cox-mixture version unconditionally.
+With finite $K$, a Binomial-with-truncation representation is available, but $Y(t)$ is no longer Poisson even conditional on $T(\cdot)$. History-dependent killing (logistic; $p(x,y)$): $(X(t),Y(t))$ is an exact Markov jump process given $T(\cdot)$, but closed forms are not expected; numerical forward-equation or simulation approaches are natural.
 
-**Section 4 (target depletion).**
-- In the default constant-rate mean-field regime (homogeneous $r_0$, no capacity limit, constant $p$), the target pool is a pure-death process
+**Section 3 (joint $(X,Y)$ distribution).** Deterministic $p\equiv 1$ with capacity yields a degenerate joint law supported on $(x=0,0\le y<K)$ and $(y=K,x\ge 0)$. Constant $0<p<1$ without effective capacity limit yields a product-form joint distribution conditional on $T(\cdot)$ (independent thinning of contacts), and a Cox-mixture version unconditionally.
+
+**Section 4 (target depletion).** In the default constant-rate mean-field regime (homogeneous $r_0$, no capacity limit, constant $p$), the target pool is a pure-death process
+
 $$
 T\to T-1\quad\text{at rate}\quad \mu(T)=p\,N_K\,r_0\,f(T).
 $$
-- If $f_{\min}=0$, this reduces to a linear death process with the Binomial closed form
+
+If $f_{\min}=0$, this reduces to a linear death process with the Binomial closed form
+
 $$
 T(t)\sim \mathrm{Binomial}\big(T_0,e^{-\gamma t}\big),\qquad \gamma=\frac{p\,N_K\,r_0}{T_0}.
 $$
-- With $f_{\min}>0$, the death rates are piecewise (linear above the floor, constant below), so the simple Binomial form no longer holds, but the finite-state distribution remains computable from forward equations.
-- With capacity limitation, total kills satisfy $Y_{\mathrm{tot}}(t)\le K_{\mathrm{tot}}$ and depletion saturates at $T(\infty)=T_0-\min\{T_0,K_{\mathrm{tot}}\}$.
 
+With $f_{\min}>0$, the death rates are piecewise (linear above the floor, constant below), so the simple Binomial form no longer holds, but the finite-state distribution remains computable from forward equations. With capacity limitation, total kills satisfy $Y_{\mathrm{tot}}(t)\le K_{\mathrm{tot}}$ and depletion saturates at $T(\infty)=T_0-\min\{T_0,K_{\mathrm{tot}}\}$.
 
-
-
-<br>
-<br>
-
----
-
-
-**```Section_1``` -  The model behaviour** 
 
 
