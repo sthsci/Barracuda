@@ -244,6 +244,7 @@ def sim_traj_global(
         "y": y,
         "capacities": capacities,
         "K_remaining": K_rem,
+        "max_time": float(max_time),
         "t_end": t,
         "n_targets_init": n_targets,
         "targets_remaining": T,

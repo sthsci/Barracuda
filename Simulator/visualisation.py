@@ -29,6 +29,10 @@ __all__ = [
     "decision_map",
     "plot_targets_remaining",
     "plot_targets_remaining_normalised",
+    "plot_contacts_per_killer_dynamics",
+    "plot_contacts_per_killer_all_cells",
+    "plot_kills_per_killer_dynamics",
+    "plot_kills_per_killer_all_cells",
     "plot_killing_capacity_dynamics",
     "plot_killing_capacity_all_cells",
     "heatmap_contacts_vs_kills",
@@ -37,6 +41,43 @@ __all__ = [
     "_parse_float_list",
     "_parse_int_list",
 ]
+
+
+def _time_horizon(out) -> float | None:
+    """Preferred x-axis horizon for longitudinal plots.
+
+    Uses the simulation setting (max_time) when available; otherwise falls back to the
+    realised end time (t_end).
+    """
+    max_time = out.get("max_time", None)
+    if max_time is not None:
+        try:
+            return float(max_time)
+        except Exception:
+            pass
+    t_end = out.get("t_end", None)
+    if t_end is not None:
+        try:
+            return float(t_end)
+        except Exception:
+            pass
+    ts = out.get("targets_times", None)
+    if ts is not None:
+        ts = np.asarray(ts, dtype=float)
+        if ts.size:
+            return float(np.max(ts))
+    return None
+
+
+def _max_time_horizon(outs) -> float | None:
+    horizons = []
+    for out in outs:
+        h = _time_horizon(out)
+        if h is not None and np.isfinite(h):
+            horizons.append(float(h))
+    if not horizons:
+        return None
+    return float(max(horizons))
 
 
 def _capacity_mean_std_trace(out, *, normalise: bool):
@@ -124,11 +165,104 @@ def _capacity_mean_std_trace(out, *, normalise: bool):
         means.append(m)
         stds.append(s)
 
-    t_end = out.get("t_end", None)
-    if t_end is not None and len(times) > 0:
-        t_end = float(t_end)
-        if t_end > float(times[-1]):
-            times.append(t_end)
+    horizon = _time_horizon(out)
+    if horizon is not None and len(times) > 0:
+        horizon = float(horizon)
+        if horizon > float(times[-1]):
+            times.append(horizon)
+            means.append(float(means[-1]))
+            stds.append(float(stds[-1]))
+
+    return np.asarray(times, dtype=float), np.asarray(means, dtype=float), np.asarray(stds, dtype=float)
+
+
+def _events_global_time_order(out):
+    decisions_list = out.get("decisions_list", None)
+    times_list = out.get("times_list", None)
+    if decisions_list is None or times_list is None:
+        raise ValueError("out must include 'decisions_list' and 'times_list'")
+    if len(decisions_list) != len(times_list):
+        raise ValueError("Length mismatch: decisions_list and times_list")
+
+    n_killers = int(len(decisions_list))
+    t_all = []
+    i_all = []
+    d_all = []
+    for i in range(n_killers):
+        ts = np.asarray(times_list[i], dtype=float)
+        ds = np.asarray(decisions_list[i], dtype=int)
+        if ts.size != ds.size:
+            raise ValueError("times_list[i] and decisions_list[i] must have the same length")
+        if ts.size == 0:
+            continue
+        t_all.append(ts)
+        i_all.append(np.full(ts.shape, i, dtype=int))
+        d_all.append(ds)
+
+    if not t_all:
+        return (
+            np.array([], dtype=float),
+            np.array([], dtype=int),
+            np.array([], dtype=int),
+            n_killers,
+        )
+
+    t_all = np.concatenate(t_all)
+    i_all = np.concatenate(i_all)
+    d_all = np.concatenate(d_all)
+    order = np.argsort(t_all, kind="mergesort")
+    return t_all[order], i_all[order], d_all[order], n_killers
+
+
+def _counts_mean_std_trace(out, *, kind: str):
+    """Return stepwise (time, mean, std) across killers for a per-killer cumulative count.
+
+    kind:
+      - 'contacts': increments by 1 on every event
+      - 'kills': increments by 1 only on lethal events (decision==1)
+    """
+    kind = str(kind).strip().lower()
+    if kind not in {"contacts", "kills"}:
+        raise ValueError("kind must be 'contacts' or 'kills'")
+
+    t_all, i_all, d_all, n_killers = _events_global_time_order(out)
+    if n_killers <= 0:
+        raise ValueError("Expected at least one killer")
+
+    values = np.zeros(n_killers, dtype=float)
+    sumV = 0.0
+    sumV2 = 0.0
+
+    def _mean_std_from_sums(sumV_, sumV2_):
+        mean = sumV_ / n_killers
+        var = max(0.0, (sumV2_ / n_killers) - mean * mean)
+        return mean, float(np.sqrt(var))
+
+    times = [0.0]
+    m0, s0 = _mean_std_from_sums(sumV, sumV2)
+    means = [m0]
+    stds = [s0]
+
+    for t, i, d in zip(t_all, i_all, d_all):
+        ii = int(i)
+        inc = 1.0 if (kind == "contacts" or int(d) == 1) else 0.0
+        if inc != 0.0:
+            oldV = float(values[ii])
+            newV = oldV + inc
+            values[ii] = newV
+            sumV += (newV - oldV)
+            sumV2 += (newV * newV) - (oldV * oldV)
+
+        m, s = _mean_std_from_sums(sumV, sumV2)
+        times.append(float(t))
+        means.append(m)
+        stds.append(s)
+
+    horizon = _time_horizon(out)
+    if horizon is not None and len(times) > 0:
+        horizon = float(horizon)
+        if horizon > float(times[-1]):
+            times.append(horizon)
             means.append(float(means[-1]))
             stds.append(float(stds[-1]))
 
@@ -374,19 +508,22 @@ def plot_targets_remaining(
     plt.figure(figsize=figsize, dpi=dpi)
 
     for out, label, color in zip(outs, labels, colors):
-        plt.step(
-            out["targets_times"],
-            out["targets_trace"],
-            where="post",
-            label=label,
-            color=color,
-        )
+        t = np.asarray(out["targets_times"], dtype=float)
+        y = np.asarray(out["targets_trace"], dtype=float)
+        horizon = _time_horizon(out)
+        if horizon is not None and t.size and float(horizon) > float(t[-1]):
+            t = np.append(t, float(horizon))
+            y = np.append(y, float(y[-1]))
+        plt.step(t, y, where="post", label=label, color=color)
 
     ax = plt.gca()
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
     if title:
         ax.set_title(title)
+    max_h = _max_time_horizon(outs)
+    if max_h is not None:
+        ax.set_xlim(0.0, float(max_h))
     ax.grid(True, alpha=0.25, linestyle="--")
     _apply_legend(ax, loc=legend_loc, show=show_legend, legend_kwargs=legend_kwargs)
     plt.tight_layout()
@@ -407,7 +544,7 @@ def plot_targets_remaining_normalised(
     xlabel: str = "Time",
     ylabel: str = "Targets remaining (normalised)",
     show_legend: bool = True,
-    legend_loc: str = "upper left",
+    legend_loc: str = "upper right",
     legend_kwargs: dict | None = None,
     save_png=False,
     png_path="targets_remaining_normalised.png",
@@ -420,14 +557,13 @@ def plot_targets_remaining_normalised(
         n0 = float(out.get("n_targets_init", 0.0))
         if n0 <= 0:
             raise ValueError("n_targets_init must be present and > 0 to normalise targets_trace")
+        t = np.asarray(out["targets_times"], dtype=float)
         y = np.asarray(out["targets_trace"], dtype=float) / n0
-        plt.step(
-            out["targets_times"],
-            y,
-            where="post",
-            label=label,
-            color=color,
-        )
+        horizon = _time_horizon(out)
+        if horizon is not None and t.size and float(horizon) > float(t[-1]):
+            t = np.append(t, float(horizon))
+            y = np.append(y, float(y[-1]))
+        plt.step(t, y, where="post", label=label, color=color)
 
     ax = plt.gca()
     ax.set_xlabel(xlabel)
@@ -435,6 +571,9 @@ def plot_targets_remaining_normalised(
     if title:
         ax.set_title(title)
     ax.set_ylim(-0.02, 1.02)
+    max_h = _max_time_horizon(outs)
+    if max_h is not None:
+        ax.set_xlim(0.0, float(max_h))
     ax.grid(True, alpha=0.25, linestyle="--")
     _apply_legend(ax, loc=legend_loc, show=show_legend, legend_kwargs=legend_kwargs)
     plt.tight_layout()
@@ -484,6 +623,9 @@ def plot_killing_capacity_dynamics(
     ax.set_ylabel(ylabel)
     if title:
         ax.set_title(title)
+    max_h = _max_time_horizon(outs)
+    if max_h is not None:
+        ax.set_xlim(0.0, float(max_h))
     ax.grid(True, alpha=0.25, linestyle="--")
     _apply_legend(ax, loc=legend_loc, show=show_legend, legend_kwargs=legend_kwargs)
     plt.tight_layout()
@@ -492,6 +634,260 @@ def plot_killing_capacity_dynamics(
         plt.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
     if save_pdf:
         plt.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
+
+
+def plot_contacts_per_killer_dynamics(
+    outs,
+    labels,
+    colors,
+    figsize=(9.2, 4.6),
+    dpi=300,
+    title: str | None = None,
+    xlabel: str = "Time",
+    ylabel: str = "Contacts per killer cell (mean ± 1σ)",
+    show_legend: bool = True,
+    legend_loc: str = "upper left",
+    legend_kwargs: dict | None = None,
+    save_png=False,
+    png_path="contacts_per_killer_dynamics.png",
+    save_pdf=False,
+    pdf_path="contacts_per_killer_dynamics.pdf",
+):
+    """Time-series line plot: mean ± std of cumulative contacts per killer cell."""
+    plt.figure(figsize=figsize, dpi=dpi)
+    ax = plt.gca()
+
+    for out, label, color in zip(outs, labels, colors):
+        t, mean, std = _counts_mean_std_trace(out, kind="contacts")
+        ax.step(t, mean, where="post", label=label, color=color, lw=2.0)
+
+        lo = mean - std
+        hi = mean + std
+        try:
+            ax.fill_between(t, lo, hi, step="post", color=color, alpha=0.18, linewidth=0)
+        except TypeError:
+            ax.fill_between(t, lo, hi, color=color, alpha=0.18, linewidth=0)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    max_h = _max_time_horizon(outs)
+    if max_h is not None:
+        ax.set_xlim(0.0, float(max_h))
+    ax.grid(True, alpha=0.25, linestyle="--")
+    _apply_legend(ax, loc=legend_loc, show=show_legend, legend_kwargs=legend_kwargs)
+    plt.tight_layout()
+
+    if save_png:
+        plt.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
+    if save_pdf:
+        plt.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
+
+
+def plot_contacts_per_killer_all_cells(
+    out,
+    *,
+    ax=None,
+    color=None,
+    figsize=(9.2, 4.6),
+    dpi=300,
+    title: str | None = None,
+    xlabel: str = "Time",
+    ylabel: str = "Contacts per killer cell",
+    alpha: float = 0.06,
+    lw: float = 1.0,
+    save_png=False,
+    png_path="contacts_per_killer_all_cells.png",
+    save_pdf=False,
+    pdf_path="contacts_per_killer_all_cells.pdf",
+):
+    """Spaghetti plot: per-cell cumulative contacts trajectories."""
+    decisions_list = out.get("decisions_list", None)
+    times_list = out.get("times_list", None)
+    if decisions_list is None or times_list is None:
+        raise ValueError("out must include 'decisions_list' and 'times_list'")
+    if len(decisions_list) != len(times_list):
+        raise ValueError("Length mismatch: decisions_list and times_list")
+
+    t_end = float(_time_horizon(out) or 0.0)
+
+    fig = None
+    if ax is None:
+        fig = plt.figure(figsize=figsize, dpi=dpi)
+        ax = plt.gca()
+    else:
+        fig = ax.figure
+
+    line_color = color if color is not None else (0.2, 0.5, 0.8, 1.0)
+
+    n_killers = int(len(times_list))
+    for i in range(n_killers):
+        ts = np.asarray(times_list[i], dtype=float)
+        if ts.size == 0:
+            # constant zero line
+            ax.plot([0.0, t_end], [0.0, 0.0], color=line_color, alpha=float(alpha), lw=float(lw))
+            continue
+
+        # cumulative contacts increments at every event
+        t_path = [0.0]
+        y_path = [0.0]
+        c = 0.0
+        for tk in ts:
+            t_path.append(float(tk))
+            y_path.append(c)
+            c += 1.0
+            t_path.append(float(tk))
+            y_path.append(c)
+
+        if t_end > float(t_path[-1]):
+            t_path.append(t_end)
+            y_path.append(c)
+
+        ax.plot(t_path, y_path, color=line_color, alpha=float(alpha), lw=float(lw))
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.grid(True, alpha=0.25, linestyle="--")
+    if t_end > 0:
+        x0, x1 = ax.get_xlim()
+        ax.set_xlim(0.0, max(float(x1), float(t_end)))
+    if fig is not None:
+        fig.tight_layout()
+
+    if save_png:
+        fig.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
+    if save_pdf:
+        fig.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
+
+
+def plot_kills_per_killer_dynamics(
+    outs,
+    labels,
+    colors,
+    figsize=(9.2, 4.6),
+    dpi=300,
+    title: str | None = None,
+    xlabel: str = "Time",
+    ylabel: str = "Kills per killer cell (mean ± 1σ)",
+    show_legend: bool = True,
+    legend_loc: str = "upper left",
+    legend_kwargs: dict | None = None,
+    save_png=False,
+    png_path="kills_per_killer_dynamics.png",
+    save_pdf=False,
+    pdf_path="kills_per_killer_dynamics.pdf",
+):
+    """Time-series line plot: mean ± std of cumulative kills per killer cell."""
+    plt.figure(figsize=figsize, dpi=dpi)
+    ax = plt.gca()
+
+    for out, label, color in zip(outs, labels, colors):
+        t, mean, std = _counts_mean_std_trace(out, kind="kills")
+        ax.step(t, mean, where="post", label=label, color=color, lw=2.0)
+
+        lo = mean - std
+        hi = mean + std
+        try:
+            ax.fill_between(t, lo, hi, step="post", color=color, alpha=0.18, linewidth=0)
+        except TypeError:
+            ax.fill_between(t, lo, hi, color=color, alpha=0.18, linewidth=0)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    max_h = _max_time_horizon(outs)
+    if max_h is not None:
+        ax.set_xlim(0.0, float(max_h))
+    ax.grid(True, alpha=0.25, linestyle="--")
+    _apply_legend(ax, loc=legend_loc, show=show_legend, legend_kwargs=legend_kwargs)
+    plt.tight_layout()
+
+    if save_png:
+        plt.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
+    if save_pdf:
+        plt.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
+
+
+def plot_kills_per_killer_all_cells(
+    out,
+    *,
+    ax=None,
+    color=None,
+    figsize=(9.2, 4.6),
+    dpi=300,
+    title: str | None = None,
+    xlabel: str = "Time",
+    ylabel: str = "Kills per killer cell",
+    alpha: float = 0.06,
+    lw: float = 1.0,
+    save_png=False,
+    png_path="kills_per_killer_all_cells.png",
+    save_pdf=False,
+    pdf_path="kills_per_killer_all_cells.pdf",
+):
+    """Spaghetti plot: per-cell cumulative kill trajectories."""
+    decisions_list = out.get("decisions_list", None)
+    times_list = out.get("times_list", None)
+    if decisions_list is None or times_list is None:
+        raise ValueError("out must include 'decisions_list' and 'times_list'")
+    if len(decisions_list) != len(times_list):
+        raise ValueError("Length mismatch: decisions_list and times_list")
+
+    t_end = float(_time_horizon(out) or 0.0)
+
+    fig = None
+    if ax is None:
+        fig = plt.figure(figsize=figsize, dpi=dpi)
+        ax = plt.gca()
+    else:
+        fig = ax.figure
+
+    line_color = color if color is not None else (0.2, 0.5, 0.8, 1.0)
+
+    n_killers = int(len(times_list))
+    for i in range(n_killers):
+        ts = np.asarray(times_list[i], dtype=float)
+        ds = np.asarray(decisions_list[i], dtype=int)
+        if ts.size != ds.size:
+            raise ValueError("times_list[i] and decisions_list[i] must have the same length")
+
+        t_path = [0.0]
+        y_path = [0.0]
+        k = 0.0
+        if ts.size:
+            for tk, d in zip(ts, ds):
+                t_path.append(float(tk))
+                y_path.append(k)
+                if int(d) == 1:
+                    k += 1.0
+                t_path.append(float(tk))
+                y_path.append(k)
+
+        if t_end > float(t_path[-1]):
+            t_path.append(t_end)
+            y_path.append(k)
+
+        ax.plot(t_path, y_path, color=line_color, alpha=float(alpha), lw=float(lw))
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(ylabel)
+    if title:
+        ax.set_title(title)
+    ax.grid(True, alpha=0.25, linestyle="--")
+    if t_end > 0:
+        x0, x1 = ax.get_xlim()
+        ax.set_xlim(0.0, max(float(x1), float(t_end)))
+    if fig is not None:
+        fig.tight_layout()
+
+    if save_png:
+        fig.savefig(png_path, dpi=dpi, bbox_inches="tight", transparent=True)
+    if save_pdf:
+        fig.savefig(pdf_path, dpi=dpi, bbox_inches="tight", transparent=True)
 
 
 def plot_killing_capacity_all_cells(
@@ -521,7 +917,7 @@ def plot_killing_capacity_all_cells(
     if len(decisions_list) != capacities.size or len(times_list) != capacities.size:
         raise ValueError("Length mismatch: decisions_list/times_list must match len(capacities)")
 
-    t_end = float(out.get("t_end", 0.0))
+    t_end = float(_time_horizon(out) or 0.0)
 
     plt.figure(figsize=figsize, dpi=dpi)
     ax = plt.gca()
@@ -573,6 +969,8 @@ def plot_killing_capacity_all_cells(
     if title:
         ax.set_title(title)
     ax.grid(True, alpha=0.25, linestyle="--")
+    if t_end > 0:
+        ax.set_xlim(0.0, float(t_end))
     plt.tight_layout()
 
     if save_png:
@@ -586,6 +984,7 @@ def heatmap_contacts_vs_kills(
     *,
     use_total_contacts: bool = True,
     color=None,
+    match_heatmap_to_marginals: bool = False,
     mode: str = "frequency",
     bins_x: int | None = None,
     bins_y: int | None = None,
@@ -708,7 +1107,17 @@ def heatmap_contacts_vs_kills(
     if not (0.0 <= cmap_min <= 1.0 and 0.0 <= cmap_max <= 1.0 and cmap_min <= cmap_max):
         raise ValueError("cmap_min/cmap_max must satisfy 0<=cmap_min<=cmap_max<=1")
 
-    base_cmap = plt.get_cmap(cmap)
+    def _make_sequential_from_color(c):
+        r, g, b, a = mcolors.to_rgba(c)
+        # Light background tint -> full color (alpha kept at 1 for readability)
+        light = (0.92 + 0.08 * r, 0.92 + 0.08 * g, 0.92 + 0.08 * b, 1.0)
+        dark = (r, g, b, 1.0)
+        return mcolors.LinearSegmentedColormap.from_list("marginal_seq", [light, dark])
+
+    if match_heatmap_to_marginals and (color is not None):
+        base_cmap = _make_sequential_from_color(color)
+    else:
+        base_cmap = plt.get_cmap(cmap)
     if (cmap_min, cmap_max) != (0.0, 1.0):
         xs = np.linspace(cmap_min, cmap_max, 256)
         cmap_obj = mcolors.LinearSegmentedColormap.from_list(
