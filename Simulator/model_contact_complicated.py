@@ -336,6 +336,9 @@ def simulate_population(
     raise ValueError("sim_mode must be 'global' or 'individual'")
 
 
+
+
+
 # -----------------------------
 # Filtering: mimic incomplete experimental observation
 # -----------------------------
@@ -345,21 +348,19 @@ def filter_cell_times(times, T, rng, drop_start_max=0, drop_end_max=0, max_censo
     if times.size and (np.any(times < 0) or np.any(times > T)):
         raise ValueError("times must lie within [0, T]")
 
+    if int(drop_end_max) != 0:
+        raise ValueError("Option A requires drop_end_max=0 (no end-event dropping).")
+
     K = int(times.size)
     m = int(rng.integers(0, min(int(drop_start_max), K) + 1)) if drop_start_max else 0
-    r = int(rng.integers(0, min(int(drop_end_max), K - m) + 1)) if drop_end_max else 0
+    r = 0
 
     start_time = float(times[m - 1]) if m > 0 else 0.0
-    kept = times[m: K - r] if (K - r) >= m else np.array([], dtype=float)
+    kept = times[m:] if K >= m else np.array([], dtype=float)
 
     last_kept = float(kept[-1]) if kept.size else start_time
 
-    if r > 0:
-        next_hidden = float(times[K - r])
-        end_limit = min(next_hidden, T)
-    else:
-        end_limit = T
-
+    end_limit = T
     slack = max(end_limit - last_kept, 0.0)
     cap = slack if max_censor_extra is None else min(float(max_censor_extra), slack)
     censor_extra = float(rng.uniform(0.0, cap)) if cap > 0 else 0.0
@@ -393,7 +394,15 @@ def filter_cell_times(times, T, rng, drop_start_max=0, drop_end_max=0, max_censo
     return times_obs.astype(float), dt.astype(float), meta
 
 
-def filter_dataset_in_memory(times_list, T, seed=0, drop_start_max=0, drop_end_max=0, max_censor_extra=None):
+
+def filter_dataset_in_memory(
+    times_list,
+    T, 
+    seed=0,
+    drop_start_max=0,
+    drop_end_max=0,
+    max_censor_extra=None
+    ):
     times_list = _ensure_object_list(times_list)
     T = float(T)
     n_cells = len(times_list)
@@ -797,7 +806,7 @@ def _build_parser():
     demo.add_argument("--drop_start_max", type=int, default=2)
     demo.add_argument("--drop_end_max", type=int, default=2)
     demo.add_argument("--max_censor_extra", type=float, default=None)
-    demo.add_argument("--cmap", type=str, default="YlGnBu")
+    demo.add_argument("--cmap", type=str, default="inferno") #YlGnBu
 
     return p
 
