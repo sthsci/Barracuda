@@ -21,17 +21,6 @@ plt.rcParams.update({
     "axes.labelsize": 12,
 })
 
-DistMode = Literal["homogeneous", "discrete", "gamma", "lognormal", "halfnormal"]
-
-
-def _normalise_weights(w: np.ndarray, tol: float = 1e-12) -> np.ndarray:
-    s = float(np.sum(w))
-    if not np.isfinite(s) or s <= 0:
-        raise ValueError("weights must sum to a positive finite number")
-    w = w / s
-    if not np.isclose(float(np.sum(w)), 1.0, atol=tol, rtol=0.0):
-        w = w / float(np.sum(w))
-    return w
 
 
 def _gamma_shape_rate_from_mean_sd(mean: float, sd: float) -> Tuple[float, float]:
@@ -84,69 +73,115 @@ def _halfnormal_sigma_from_mean_sd(mean: float, sd: float, tol: float = 1e-2) ->
     sigma = mean / float(np.sqrt(2.0 / np.pi)) if mean > 0 else sd / float(np.sqrt(1.0 - 2.0 / np.pi))
     return float(sigma)
 
+DistMode = Literal["gamma", "lognormal", "truncnorm"]
+Mode = Literal["homogeneous", "heterogeneous"]
 
-def sample_rates_simple(
+
+def _sample_truncnorm_positive(
+    rng: np.random.Generator,
+    mean: float,
+    sd: float,
+    size: int,
+    *,
+    max_rounds: int = 50,
+) -> np.ndarray:
+    mean = float(mean)
+    sd = float(sd)
+    size = int(size)
+    if size < 0:
+        raise ValueError("size must be >= 0")
+    if size == 0:
+        return np.array([], dtype=float)
+    if sd < 0:
+        raise ValueError("truncnorm sd must be >= 0")
+    if sd == 0:
+        if mean <= 0:
+            raise ValueError("truncnorm with sd=0 requires mean > 0 for positive support")
+        return np.full(size, mean, dtype=float)
+
+    out = np.empty(size, dtype=float)
+    filled = 0
+
+    for _ in range(int(max_rounds)):
+        need = size - filled
+        if need <= 0:
+            break
+        draw_n = int(max(need, 32))
+        if mean < 0:
+            draw_n = int(draw_n * 5)
+        samples = rng.normal(loc=mean, scale=sd, size=draw_n).astype(float)
+        samples = samples[samples > 0]
+        if samples.size == 0:
+            continue
+        take = min(need, int(samples.size))
+        out[filled : filled + take] = samples[:take]
+        filled += take
+
+    if filled != size:
+        raise RuntimeError(
+            "Failed to sample enough positive values for truncnorm; "
+            "try increasing mean relative to sd (or use gamma/lognormal)."
+        )
+    return out
+
+def sample_lambda(
     n_cells: int,
-    mode: DistMode,
+    mode: Mode = "homogeneous",
     seed: Optional[int] = None,
     *,
     lambda0: Optional[float] = None,
-    weights: Optional[Dict[float, float]] = None,
+    p0: Optional[float] = None,
     mean: Optional[float] = None,
     sd: Optional[float] = None,
+    Dist_mode: DistMode = "gamma"
 ) -> np.ndarray:
     rng = np.random.default_rng(seed)
     n_cells = int(n_cells)
     if n_cells <= 0:
         raise ValueError("n_cells must be positive")
 
-    mode = str(mode).lower()
-
-    if mode == "homogeneous":
+    mode_s = str(mode).strip().lower()
+    dist_mode_s = str(Dist_mode).strip().lower()
+    
+    if mode_s not in {"homogeneous", "heterogeneous", "gamma", "lognormal", "truncnorm"}:
+        raise ValueError(
+            "mode must be one of: homogeneous, heterogeneous, gamma, lognormal, truncnorm"
+        )
+    
+    if mode_s == "homogeneous":
         if lambda0 is None:
             raise ValueError("homogeneous requires lambda0")
         lam = np.full(n_cells, float(lambda0), dtype=float)
-
-    elif mode == "discrete":
-        if not weights:
-            raise ValueError("discrete requires weights={rate: proportion, ...}")
-        rates = np.asarray(list(weights.keys()), dtype=float)
-        probs = np.asarray(list(weights.values()), dtype=float)
-        if np.any(~np.isfinite(rates)) or np.any(rates < 0):
-            raise ValueError("all discrete rates must be finite and >= 0")
-        if np.any(~np.isfinite(probs)) or np.any(probs < 0):
-            raise ValueError("all proportions must be finite and >= 0")
-        probs = _normalise_weights(probs)
-        lam = rng.choice(rates, size=n_cells, replace=True, p=probs).astype(float)
-
-    elif mode in {"gamma", "lognormal", "halfnormal"}:
-        if mean is None or sd is None:
-            raise ValueError(f"{mode} requires mean and sd")
-        mean_f, sd_f = float(mean), float(sd)
-        if sd_f == 0:
-            if mean_f < 0:
-                raise ValueError("mean must be >= 0 when sd == 0")
-            lam = np.full(n_cells, mean_f, dtype=float)
-        else:
-            if mode == "gamma":
-                shape, rate = _gamma_shape_rate_from_mean_sd(mean_f, sd_f)
-                lam = rng.gamma(shape=shape, scale=1.0 / rate, size=n_cells).astype(float)
-            elif mode == "lognormal":
-                mu, sigma = _lognormal_mu_sigma_from_mean_sd(mean_f, sd_f)
-                lam = rng.lognormal(mean=mu, sigma=sigma, size=n_cells).astype(float)
-            else:
-                sigma = _halfnormal_sigma_from_mean_sd(mean_f, sd_f)
-                lam = np.abs(rng.normal(loc=0.0, scale=sigma, size=n_cells)).astype(float)
-
+    
     else:
-        raise ValueError("mode must be one of: homogeneous, discrete, gamma, lognormal, halfnormal")
+        # Heterogeneous families.
+        if mode_s != "heterogeneous":
+            dist_mode_s = mode_s
 
-    if np.any(~np.isfinite(lam)) or np.any(lam < 0):
-        raise RuntimeError("sampled rates must be finite and >= 0")
+        if mean is None or sd is None:
+            raise ValueError("heterogeneous sampling requires mean and sd")
+        mean, sd = float(mean), float(sd)
+
+        if dist_mode_s == "gamma":
+            if sd == 0:
+                lam = np.full(n_cells, mean, dtype=float)
+            else:
+                shape, rate = _gamma_shape_rate_from_mean_sd(mean, sd)
+                lam = rng.gamma(shape=shape, scale=1.0 / rate, size=n_cells).astype(float)
+        
+        elif dist_mode_s == "lognormal":
+            mu, sigma = _lognormal_mu_sigma_from_mean_sd(mean, sd)
+            lam = rng.lognormal(mean=mu, sigma=sigma, size=n_cells).astype(float)
+        
+        elif dist_mode_s == "truncnorm":
+            lam = _sample_truncnorm_positive(rng=rng, mean=mean, sd=sd, size=n_cells)
+        
+        else:
+            raise ValueError("Dist_mode must be one of: gamma, lognormal, truncnorm")
     return lam
 
 
-def simulate_poisson_process_times(rate: float, T: float, rng: np.random.Generator) -> np.ndarray:
+def process_times(rate: float, T: float, rng: np.random.Generator) -> np.ndarray:
     rate = float(rate)
     T = float(T)
     if T < 0:
@@ -166,63 +201,90 @@ def simulate_poisson_process_times(rate: float, T: float, rng: np.random.Generat
         ts.append(t)
     return np.asarray(ts, dtype=float)
 
+def simulate_SingleCell(
+    lambda_rate: float,
+    T: float,
+    seed: Optional[int] = None,
+) -> dict[str, Any]:
+    rng = np.random.default_rng(seed)
 
-def simulate_population_simple(
+    times = process_times(rate=lambda_rate, T=T, rng=rng)
+    
+    dt = np.diff(times) if times.size >= 2 else np.array([], dtype=float)
+    
+    n_contacts = int(times.size)
+    
+    return {
+        "times": times,
+        "dt": dt,
+        "n_contacts": n_contacts,
+    }
+
+
+def simulate_Population(
     n_cells: int,
     T: float,
     *,
     rates: Optional[np.ndarray] = None,
-    mode: DistMode = "homogeneous",
+    mode: Mode = "homogeneous",
     seed: Optional[int] = None,
     lambda0: Optional[float] = None,
-    weights: Optional[Dict[float, float]] = None,
     mean: Optional[float] = None,
     sd: Optional[float] = None,
-) -> Dict[str, Any]:
+    Dist_mode: DistMode = "gamma",
+) -> dict[str, Any]:
     n_cells = int(n_cells)
     T = float(T)
     if n_cells <= 0:
         raise ValueError("n_cells must be positive")
     if T < 0:
         raise ValueError("T must be >= 0")
-
+    
     rng = np.random.default_rng(seed)
+    
+    # Sample or validate rates
     if rates is None:
-        rates = sample_rates_simple(
+        rates = sample_lambda(
             n_cells=n_cells,
             mode=mode,
             seed=seed,
             lambda0=lambda0,
-            weights=weights,
             mean=mean,
             sd=sd,
+            Dist_mode=Dist_mode,
         )
     rates = np.asarray(rates, dtype=float)
     if rates.shape != (n_cells,):
-        raise ValueError("rates must have shape (n_cells,)")
-
+        raise ValueError(f"rates must have shape ({n_cells},), got {rates.shape}")
+    
+    # Generate independent seeds for each cell
     cell_seeds = rng.integers(0, 2**32 - 1, size=n_cells, dtype=np.uint32)
+    
+    # Simulate each cell
     times_list: list[np.ndarray] = []
     dt_list: list[np.ndarray] = []
-    n_end = np.zeros(n_cells, dtype=int)
-
+    n_contacts = np.zeros(n_cells, dtype=int)
+    
     for i in range(n_cells):
-        rrng = np.random.default_rng(int(cell_seeds[i]))
-        ts = simulate_poisson_process_times(rate=float(rates[i]), T=T, rng=rrng)
-        times_list.append(ts)
-        dt_list.append(np.diff(ts) if ts.size >= 2 else np.array([], dtype=float))
-        n_end[i] = int(ts.size)
+        cell_rng = np.random.default_rng(int(cell_seeds[i]))
+        times = process_times(rate=float(rates[i]), T=T, rng=cell_rng)
+        dt = np.diff(times) if times.size >= 2 else np.array([], dtype=float)
+        
+        times_list.append(times)
+        dt_list.append(dt)
+        n_contacts[i] = int(times.size)
+    
+    return {
+        "n_cells": n_cells,
+        "max_time": T,
+        "rates": rates,
+        "times_list": np.asarray(times_list, dtype=object),
+        "dt_list": np.asarray(dt_list, dtype=object),
+        "n_contacts": n_contacts,
+    }
 
-    return dict(
-        n_cells=n_cells,
-        max_time=T,
-        rates=rates,
-        times_list=np.asarray(times_list, dtype=object),
-        dt_list=np.asarray(dt_list, dtype=object),
-        n_end=n_end,
-        model="constant_rate_poisson",
-        heterogeneity_mode=str(mode),
-    )
+
+
 
 
 def save_npz(path: str | Path, **payload: Any) -> str:
