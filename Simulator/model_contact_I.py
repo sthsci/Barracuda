@@ -129,10 +129,9 @@ def sample_lambda(
     mode: Mode = "homogeneous",
     seed: Optional[int] = None,
     *,
-    lambda0: Optional[float] = None,
-    p0: Optional[float] = None,
-    mean: Optional[float] = None,
-    sd: Optional[float] = None,
+    mu_lambda: Optional[float] = None,
+    p0_lambda: Optional[float] = None,
+    sd_lambda: Optional[float] = None,
     Dist_mode: DistMode = "gamma"
 ) -> np.ndarray:
     rng = np.random.default_rng(seed)
@@ -143,41 +142,41 @@ def sample_lambda(
     mode_s = str(mode).strip().lower()
     dist_mode_s = str(Dist_mode).strip().lower()
     
-    if mode_s not in {"homogeneous", "heterogeneous", "gamma", "lognormal", "truncnorm"}:
+    if mode_s not in {"homogeneous", "heterogeneous"}:
         raise ValueError(
-            "mode must be one of: homogeneous, heterogeneous, gamma, lognormal, truncnorm"
+            "mode must be one of: homogeneous, heterogeneous"
         )
     
     if mode_s == "homogeneous":
-        if lambda0 is None:
-            raise ValueError("homogeneous requires lambda0")
-        lam = np.full(n_cells, float(lambda0), dtype=float)
+        if mu_lambda is None:
+            raise ValueError("homogeneous requires mu_lambda")
+        lam = np.full(n_cells, float(mu_lambda), dtype=float)
     
-    else:
-        # Heterogeneous families.
-        if mode_s != "heterogeneous":
-            dist_mode_s = mode_s
-
-        if mean is None or sd is None:
-            raise ValueError("heterogeneous sampling requires mean and sd")
-        mean, sd = float(mean), float(sd)
+    if mode_s == "heterogeneous":
+        if mu_lambda is None or sd_lambda is None or p0_lambda is None:
+            raise ValueError("heterogeneous sampling requires mu_lambda, sd_lambda, and p0_lambda")
+        mu_lambda, sd_lambda = float(mu_lambda), float(sd_lambda)
 
         if dist_mode_s == "gamma":
-            if sd == 0:
-                lam = np.full(n_cells, mean, dtype=float)
+            if sd_lambda == 0:
+                lam = np.full(n_cells, mu_lambda, dtype=float)
             else:
-                shape, rate = _gamma_shape_rate_from_mean_sd(mean, sd)
+                shape, rate = _gamma_shape_rate_from_mean_sd(mu_lambda, sd_lambda)
                 lam = rng.gamma(shape=shape, scale=1.0 / rate, size=n_cells).astype(float)
         
         elif dist_mode_s == "lognormal":
-            mu, sigma = _lognormal_mu_sigma_from_mean_sd(mean, sd)
+            mu, sigma = _lognormal_mu_sigma_from_mean_sd(mu_lambda, sd_lambda)
             lam = rng.lognormal(mean=mu, sigma=sigma, size=n_cells).astype(float)
         
         elif dist_mode_s == "truncnorm":
-            lam = _sample_truncnorm_positive(rng=rng, mean=mean, sd=sd, size=n_cells)
+            lam = _sample_truncnorm_positive(rng=rng, mean=mu_lambda, sd=sd_lambda, size=n_cells)
         
-        else:
-            raise ValueError("Dist_mode must be one of: gamma, lognormal, truncnorm")
+        if sd_lambda == 0:
+            lam = np.full(n_cells, float(mu_lambda), dtype=float)
+        if p0_lambda > 0:
+            is_zero = rng.uniform(0.0, 1.0, size=n_cells) < p0_lambda
+            lam[is_zero] = 0.0
+        
     return lam
 
 
@@ -220,17 +219,20 @@ def simulate_SingleCell(
         "n_contacts": n_contacts,
     }
 
+OBS_MODE = Literal["Complete", "Truncated"]
 
 def simulate_Population(
     n_cells: int,
     T: float,
+    truncation_noise: Optional[float] = None,
+    obs_mode: OBS_MODE = "Complete",
     *,
     rates: Optional[np.ndarray] = None,
     mode: Mode = "homogeneous",
     seed: Optional[int] = None,
-    lambda0: Optional[float] = None,
-    mean: Optional[float] = None,
-    sd: Optional[float] = None,
+    mu_lambda: Optional[float] = None,
+    sd_lambda: Optional[float] = None,
+    p0_lambda: Optional[float] = None,
     Dist_mode: DistMode = "gamma",
 ) -> dict[str, Any]:
     n_cells = int(n_cells)
@@ -242,38 +244,53 @@ def simulate_Population(
     
     rng = np.random.default_rng(seed)
     
-    # Sample or validate rates
     if rates is None:
         rates = sample_lambda(
             n_cells=n_cells,
             mode=mode,
             seed=seed,
-            lambda0=lambda0,
-            mean=mean,
-            sd=sd,
+            mu_lambda=mu_lambda,
+            sd_lambda=sd_lambda,
+            p0_lambda=p0_lambda,
             Dist_mode=Dist_mode,
         )
     rates = np.asarray(rates, dtype=float)
     if rates.shape != (n_cells,):
         raise ValueError(f"rates must have shape ({n_cells},), got {rates.shape}")
     
-    # Generate independent seeds for each cell
     cell_seeds = rng.integers(0, 2**32 - 1, size=n_cells, dtype=np.uint32)
     
-    # Simulate each cell
+    ###simulate each cell####
     times_list: list[np.ndarray] = []
     dt_list: list[np.ndarray] = []
     n_contacts = np.zeros(n_cells, dtype=int)
     
-    for i in range(n_cells):
-        cell_rng = np.random.default_rng(int(cell_seeds[i]))
-        times = process_times(rate=float(rates[i]), T=T, rng=cell_rng)
-        dt = np.diff(times) if times.size >= 2 else np.array([], dtype=float)
-        
-        times_list.append(times)
-        dt_list.append(dt)
-        n_contacts[i] = int(times.size)
+    if obs_mode not in ("Complete", "Truncated"):
+        raise ValueError("obs_mode must be one of: Complete, Truncated")
     
+    if obs_mode == "Complete":
+        for i in range(n_cells):
+            simulation_singlecell = simulate_SingleCell(
+                lambda_rate=float(rates[i]),
+                T=T,
+                seed=int(cell_seeds[i]),
+            )
+            times_list.append(simulation_singlecell["times"])
+            dt_list.append(simulation_singlecell["dt"])
+            n_contacts[i] = simulation_singlecell["n_contacts"]
+    elif obs_mode == "Truncated":
+        T_list = np.random.normal(loc = T, scale=float(truncation_noise), size=n_cells).astype(float)
+        for i in range(n_cells):
+            Ti = max(float(T_list[i]), 0.0)
+            simulation_singlecell = simulate_SingleCell(
+                lambda_rate=float(rates[i]),
+                T=Ti,
+                seed=int(cell_seeds[i]),
+            )
+            times_list.append(simulation_singlecell["times"])
+            dt_list.append(simulation_singlecell["dt"])
+            n_contacts[i] = simulation_singlecell["n_contacts"]
+
     return {
         "n_cells": n_cells,
         "max_time": T,
@@ -281,399 +298,14 @@ def simulate_Population(
         "times_list": np.asarray(times_list, dtype=object),
         "dt_list": np.asarray(dt_list, dtype=object),
         "n_contacts": n_contacts,
+        "obs_mode": obs_mode,
+        "truncation_noise": truncation_noise,
     }
 
 
 
-
-
-def save_npz(path: str | Path, **payload: Any) -> str:
-    path = os.path.abspath(str(path))
-    np.savez_compressed(path, **payload)
-    return path
-
-
-def load_npz(path: str | Path) -> Dict[str, Any]:
-    data = np.load(str(path), allow_pickle=True)
-    out = {k: data[k] for k in data.files}
-    if "times_list" in out:
-        out["times_list"] = np.asarray(out["times_list"], dtype=object)
-    if "dt_list" in out:
-        out["dt_list"] = np.asarray(out["dt_list"], dtype=object)
-    return out
-
-
-def _parse_weights_string(s: str) -> Dict[float, float]:
-    s = s.strip()
-    if not s:
-        raise ValueError("empty weights string")
-    items = [x.strip() for x in s.split(",") if x.strip()]
-    weights: Dict[float, float] = {}
-    for it in items:
-        if ":" not in it:
-            raise ValueError(f"bad weight item '{it}', expected 'rate:prop'")
-        a, b = it.split(":", 1)
-        rate = float(a.strip())
-        prop = float(b.strip())
-        if rate < 0 or not np.isfinite(rate):
-            raise ValueError("rates in weights must be finite and >= 0")
-        if prop < 0 or not np.isfinite(prop):
-            raise ValueError("proportions in weights must be finite and >= 0")
-        weights[rate] = weights.get(rate, 0.0) + prop
-    if not weights:
-        raise ValueError("no valid weights parsed")
-    return weights
-
-
-def _parse_weight_items(items: Optional[list[str]]) -> Optional[Dict[float, float]]:
-    if not items:
-        return None
-    weights: Dict[float, float] = {}
-    for it in items:
-        it = it.strip()
-        if ":" not in it:
-            raise ValueError(f"bad --weight '{it}', expected 'rate:prop'")
-        a, b = it.split(":", 1)
-        rate = float(a.strip())
-        prop = float(b.strip())
-        if rate < 0 or not np.isfinite(rate):
-            raise ValueError("rates in weights must be finite and >= 0")
-        if prop < 0 or not np.isfinite(prop):
-            raise ValueError("proportions in weights must be finite and >= 0")
-        weights[rate] = weights.get(rate, 0.0) + prop
-    return weights
-
-
-def _apply_transparent_axes(ax):
-    ax.set_facecolor("none")
-
-
-def _legend_white(ax, loc: str = "best"):
-    leg = ax.legend(loc=loc, frameon=True, fontsize=10, edgecolor="black")
-    if leg is not None:
-        fr = leg.get_frame()
-        fr.set_facecolor("white")
-        fr.set_alpha(1.0)
-
-
-def _pooled_dt(dt_list: Any) -> np.ndarray:
-    parts: list[np.ndarray] = []
-    if dt_list is None:
-        return np.array([], dtype=float)
-    for dt in dt_list if isinstance(dt_list, (list, tuple, np.ndarray)) else []:
-        arr = np.asarray(dt, dtype=float)
-        arr = arr[np.isfinite(arr) & (arr > 0)]
-        if arr.size:
-            parts.append(arr)
-    return np.concatenate(parts) if parts else np.array([], dtype=float)
-
-
-def tune_log_xticks(ax, num_major: int = 8, minor_subs: tuple[int, ...] = (2, 5)):
-    ax.set_xscale("log")
-    ax.xaxis.set_major_locator(LogLocator(base=10.00, numticks=num_major))
-    ax.xaxis.set_major_formatter(FuncFormatter(lambda x, _: f"{x:.{2}f}"))
-    # ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=minor_subs, numticks=12))
-    # ax.xaxis.set_minor_formatter(NullFormatter())
-    ax.tick_params(axis="x", which="major", labelsize=10, length=6)
-    # ax.tick_params(axis="x", which="minor", length=3)
-
-
-def plot_default_histograms(
-    sim: Dict[str, Any],
-    save_path: str | Path,
-    *,
-    dpi: int = 300,
-    cmap_name: str = "inferno",
-) -> None:
-    T_show = float(sim.get("max_time", np.nan))
-    counts = np.asarray(sim.get("n_end", []), dtype=int)
-    dt = _pooled_dt(sim.get("dt_list", []))
-
-    cmap = plt.get_cmap(cmap_name)
-    col = cmap(0.75)
-
-    max_n = int(np.max(counts)) if counts.size else 0
-    count_bins = np.arange(-0.5, max_n + 1.5, 1.0)
-
-    dt = dt[np.isfinite(dt) & (dt > 0)]
-    if dt.size:
-        lo = max(float(np.min(dt)), 1e-8)
-        hi = float(np.max(dt))
-        dt_bins = np.logspace(np.log10(lo), np.log10(hi), num=28)
-    else:
-        dt_bins = "auto"
-
-    fig, axs = plt.subplots(1, 2, figsize=(12.4, 4.2), dpi=dpi)
-    fig.patch.set_alpha(0.0)
-    for ax in axs:
-        _apply_transparent_axes(ax)
-
-    axL, axR = axs[0], axs[1]
-
-    axL.hist(
-        counts,
-        bins=count_bins,
-        density=True,
-        histtype="stepfilled",
-        alpha=0.55,
-        edgecolor=col,
-        facecolor=col,
-        lw=1.5,
-        label="Counts",
-    )
-    axL.set_title(f"Contact number  (T={T_show:g})")
-    axL.set_xlabel("Contacts by T")
-    axL.set_ylabel("Density")
-    axL.xaxis.set_major_locator(MultipleLocator(1))
-    axL.grid(True, alpha=0.25)
-    axL.set_xlim(left=0)
-    _legend_white(axL, )
-
-    if dt.size:
-        axR.hist(
-            dt,
-            bins=dt_bins,
-            density=True,
-            histtype="stepfilled",
-            alpha=0.55,
-            edgecolor=col,
-            facecolor=col,
-            lw=1.5,
-            label="Δt between contacts",
-        )
-    axR.set_title("Inter-contact Δt")
-    axR.set_xlabel("Δt")
-    axR.set_ylabel("Density")
-    tune_log_xticks(axR)
-    axR.grid(True, which="both", alpha=0.25)
-    _legend_white(axR)
-
-    fig.tight_layout()
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(str(save_path), dpi=dpi, bbox_inches="tight", transparent=True)
-    plt.close(fig)
-
-
-def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Constant-rate contact model: simulate + visualise (raw only).")
-    p.add_argument("--n_cells", type=int, default=500)
-    p.add_argument("--T", type=float, default=180.0)
-    p.add_argument("--seed", type=int, default=0)
-    p.add_argument("--mode", choices=["homogeneous", "discrete", "gamma", "lognormal", "halfnormal"], default="homogeneous")
-
-    p.add_argument("--lambda0", type=float, default=1.0)
-
-    p.add_argument("--weights", type=str, default=None)
-    p.add_argument("--weight", action="append", default=None)
-
-    p.add_argument("--mean", type=float, default=None)
-    p.add_argument("--sd", type=float, default=None)
-
-    p.add_argument("--out_npz", type=str, default="sim_raw.npz")
-    p.add_argument("--out_png", type=str, default="sim_raw_hist.png")
-    p.add_argument("--dpi", type=int, default=300)
-    p.add_argument("--cmap", type=str, default="YlGnBu")
-    return p
-
-
-def _resolve_mode_args(args) -> tuple[DistMode, Optional[Dict[float, float]], Optional[float], Optional[float], Optional[float]]:
-    mode: DistMode = str(args.mode).lower()  # type: ignore[assignment]
-
-    weights = _parse_weight_items(args.weight)
-    if weights is None and args.weights is not None:
-        weights = _parse_weights_string(args.weights)
-
-    if mode == "discrete" and not weights:
-        raise ValueError("mode=discrete requires --weights 'rate:prop,...' or repeated --weight rate:prop")
-
-    if mode in {"gamma", "lognormal", "halfnormal"} and (args.mean is None or args.sd is None):
-        raise ValueError(f"mode={mode} requires --mean and --sd")
-
-    lam0 = float(args.lambda0) if mode == "homogeneous" else None
-    mean = float(args.mean) if args.mean is not None else None
-    sd = float(args.sd) if args.sd is not None else None
-    return mode, weights, lam0, mean, sd
-
-def plot_three_conditions_overlay(
-    sims: list[Dict[str, Any]],
-    labels: list[str],
-    save_path: str | Path,
-    *,
-    dpi: int = 300,
-    cmap_name: str = "YlGnBu",
-) -> None:
-    if len(sims) != len(labels):
-        raise ValueError("sims and labels must have the same length")
-    if len(sims) < 1:
-        raise ValueError("Need at least one sim")
-
-    counts_list = [np.asarray(sim.get("n_end", []), dtype=int) for sim in sims]
-    dt_list = [_pooled_dt(sim.get("dt_list", [])) for sim in sims]
-
-    all_counts = np.concatenate([c for c in counts_list if c.size]) if any(c.size for c in counts_list) else np.array([], dtype=int)
-    max_n = int(np.max(all_counts)) if all_counts.size else 0
-    count_bins = np.arange(-0.5, max_n + 1.5, 1.0)
-
-    all_dt = np.concatenate([d[(np.isfinite(d)) & (d > 0)] for d in dt_list if d.size]) if any(d.size for d in dt_list) else np.array([], dtype=float)
-    if all_dt.size:
-        lo = max(float(np.min(all_dt)), 1e-8)
-        hi = float(np.max(all_dt))
-        dt_bins = np.logspace(np.log10(lo), np.log10(hi), num=32)
-    else:
-        lo, hi, dt_bins = 1e-8, 1.0, "auto"
-
-    cmap = plt.get_cmap(cmap_name)
-    colors = [cmap(x) for x in np.linspace(0.35, 0.95, num=len(sims))]
-
-    fig, axs = plt.subplots(1, 2, figsize=(12.8, 4.4), dpi=dpi)
-    fig.patch.set_alpha(0.0)
-    for ax in axs:
-        _apply_transparent_axes(ax)
-
-    axL, axR = axs[0], axs[1]
-
-    for counts, lab, col in zip(counts_list, labels, colors):
-        axL.hist(
-            counts,
-            bins=count_bins,
-            density=True,
-            histtype="stepfilled",
-            alpha=0.40,
-            edgecolor=col,
-            facecolor=col,
-            lw=1.5,
-            label=lab,
-        )
-
-    T_show = float(sims[0].get("max_time", np.nan))
-    axL.set_title(f"Contact number  (T={T_show:g})")
-    axL.set_xlabel("Contacts by T")
-    axL.set_ylabel("Density")
-    axL.xaxis.set_major_locator(MultipleLocator(1))
-    axL.grid(True, alpha=0.25)
-    axL.set_xlim(left=0)
-    _legend_white(axL)
-
-    for dt, lab, col in zip(dt_list, labels, colors):
-        dt = np.asarray(dt, dtype=float)
-        dt = dt[np.isfinite(dt) & (dt > 0)]
-        if dt.size == 0:
-            continue
-        axR.hist(
-            dt,
-            bins=dt_bins,
-            density=True,
-            histtype="stepfilled",
-            alpha=0.40,
-            edgecolor=col,
-            facecolor=col,
-            lw=1.5,
-            label=lab,
-        )
-
-    axR.set_title("Inter-contact Δt")
-    axR.set_xlabel("Δt")
-    axR.set_ylabel("Density")
-    tune_log_xticks(axR)
-    axR.set_xlim(lo, hi)
-    axR.grid(True, which="both", alpha=0.25)
-    _legend_white(axR)
-
-    fig.tight_layout()
-    save_path = Path(save_path)
-    save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(str(save_path), dpi=dpi, bbox_inches="tight", transparent=True)
-    plt.close(fig)
-
-def _run_default() -> None:
-    outdir = Path("demo_contact_simple")
-    outdir.mkdir(parents=True, exist_ok=True)
-
-    sims: list[Dict[str, Any]] = []
-
-    sim1 = simulate_population_simple(
-        n_cells=5000,
-        T=100.0,
-        mode="homogeneous",
-        seed=0,
-        lambda0=0.05,
-    )
-    sims.append(sim1)
-
-    sim2 = simulate_population_simple(
-        n_cells=5000,
-        T=100.0,
-        mode="homogeneous",
-        seed=1,
-        lambda0=0.10,
-    )
-    sims.append(sim2)
-
-    sim3 = simulate_population_simple(
-        n_cells=5000,
-        T=100.0,
-        mode="discrete",
-        seed=2,
-        weights={0.0: 0.3, 0.10: 0.7},
-    )
-    sims.append(sim3)
-
-    labels = [
-        "hom λ=0.05",
-        "hom λ=0.10",
-        "disc {0:0.3, 0.10:0.7}",
-    ]
-
-    save_png = outdir / "sim_three_conditions_hist.png"
-    plot_three_conditions_overlay(
-        sims,
-        labels,
-        save_png,
-        dpi=300,
-        cmap_name="YlGnBu",
-    )
-
-    print("Default run complete:")
-    print("  png:", os.path.abspath(str(save_png)))
-
-
-
-def main(argv: Optional[Iterable[str]] = None) -> None:
-    if argv is None and len(sys.argv) == 1:
-        _run_default()
-        return
-
-    args = _build_parser().parse_args(argv)
-    mode, weights, lam0, mean, sd = _resolve_mode_args(args)
-
-    out = simulate_population_simple(
-        n_cells=args.n_cells,
-        T=args.T,
-        mode=mode,
-        seed=args.seed,
-        lambda0=lam0,
-        weights=weights,
-        mean=mean,
-        sd=sd,
-    )
-
-    npz_path = save_npz(
-        args.out_npz,
-        n_cells=out["n_cells"],
-        max_time=out["max_time"],
-        rates=out["rates"],
-        times_list=out["times_list"],
-        dt_list=out["dt_list"],
-        n_end=out["n_end"],
-        model=out["model"],
-        heterogeneity_mode=out["heterogeneity_mode"],
-    )
-    plot_default_histograms(out, args.out_png, dpi=int(args.dpi), cmap_name=str(args.cmap))
-
-    print("Saved simulation:", os.path.abspath(npz_path))
-    print("Saved plot:", os.path.abspath(str(args.out_png)))
-
+def main():
+    pass
 
 if __name__ == "__main__":
     main()

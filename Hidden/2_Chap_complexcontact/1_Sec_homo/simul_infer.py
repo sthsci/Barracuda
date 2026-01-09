@@ -32,7 +32,7 @@ sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(CHAP_ROOT))
 
 
-from Simulator.model_contact import (  # noqa: E402
+from Simulator.model_contact_complicated import (  # noqa: E402
     simulate_population,
     filter_dataset_in_memory,
     save_simulation_npz,

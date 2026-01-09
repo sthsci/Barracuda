@@ -37,7 +37,7 @@ import sys  # noqa: E402
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(CHAP_ROOT))
 
-from Simulator.model_contact_simple import *  # noqa: F401,F403,E402
+from Simulator.model_contact_I import *  # noqa: F401,F403,E402
 from Inference import contact_inference_simple as cis  # type: ignore  # noqa: E402
 
 

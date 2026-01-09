@@ -39,8 +39,8 @@ import sys  # noqa: E402
 sys.path.insert(0, str(PROJECT_ROOT))
 sys.path.insert(0, str(CHAP_ROOT))
 
-from Simulator.model_contact_simple import simulate_population_simple  # noqa: E402
-from Inference import contact_inference_hetero as cih  # type: ignore  # noqa: E402
+from Simulator.model_contact_I import simulate_population_simple  # noqa: E402
+from Inference import contact_inference as cih  # type: ignore  # noqa: E402
 
 
 DistName = str
