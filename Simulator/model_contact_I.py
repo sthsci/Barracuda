@@ -209,13 +209,18 @@ def simulate_SingleCell(
 
     times = process_times(rate=lambda_rate, T=T, rng=rng)
     
+    # Between-contact gaps only (excludes the initial waiting time 0 -> first contact).
     dt = np.diff(times) if times.size >= 2 else np.array([], dtype=float)
+
+    # Event gaps including the initial waiting time 0 -> first contact.
+    dt_full = np.diff(np.concatenate(([0.0], times))) if times.size >= 1 else np.array([], dtype=float)
     
     n_contacts = int(times.size)
     
     return {
         "times": times,
         "dt": dt,
+        "dt_full": dt_full,
         "n_contacts": n_contacts,
     }
 
@@ -263,6 +268,9 @@ def simulate_Population(
     ###simulate each cell####
     times_list: list[np.ndarray] = []
     dt_list: list[np.ndarray] = []
+    dt_list_full: list[np.ndarray] = []
+    dt_list_plus_final: list[np.ndarray] = []
+    dt_list_full_plus_final: list[np.ndarray] = []
     n_contacts = np.zeros(n_cells, dtype=int)
     
     if obs_mode not in ("Complete", "Truncated"):
@@ -277,11 +285,29 @@ def simulate_Population(
             )
             times_list.append(simulation_singlecell["times"])
             dt_list.append(simulation_singlecell["dt"])
+            dt_list_full.append(simulation_singlecell["dt_full"])
             n_contacts[i] = simulation_singlecell["n_contacts"]
+            if simulation_singlecell["times"].size:
+                final_dt = float(T - simulation_singlecell["times"][-1])
+            else:
+                final_dt = float(T)
+            final_dt = max(final_dt, 0.0)
+            dt_list_plus_final.append(
+                np.concatenate([simulation_singlecell["dt"], np.array([final_dt], dtype=float)])
+            )
+            dt_list_full_plus_final.append(
+                np.concatenate([simulation_singlecell["dt_full"], np.array([final_dt], dtype=float)])
+            )
     elif obs_mode == "Truncated":
-        T_list = np.random.normal(loc = T, scale=float(truncation_noise), size=n_cells).astype(float)
+        if truncation_noise is None:
+            raise ValueError("truncation_noise must be provided for Truncated obs_mode")
+        trunc_sd = float(truncation_noise)
+        if trunc_sd < 0:
+            raise ValueError("truncation_noise must be >= 0 for Truncated obs_mode")
+        trunc_noise = np.abs(rng.normal(loc=0.0, scale=trunc_sd, size=n_cells)).astype(float)
+        T_list = T - trunc_noise
         for i in range(n_cells):
-            Ti = max(float(T_list[i]), 0.0)
+            Ti = min(max(float(T_list[i]), 0.0), T)
             simulation_singlecell = simulate_SingleCell(
                 lambda_rate=float(rates[i]),
                 T=Ti,
@@ -289,7 +315,19 @@ def simulate_Population(
             )
             times_list.append(simulation_singlecell["times"])
             dt_list.append(simulation_singlecell["dt"])
+            dt_list_full.append(simulation_singlecell["dt_full"])
             n_contacts[i] = simulation_singlecell["n_contacts"]
+            if simulation_singlecell["times"].size:
+                final_dt = float(Ti - simulation_singlecell["times"][-1])
+            else:
+                final_dt = float(Ti)
+            final_dt = max(final_dt, 0.0)
+            dt_list_plus_final.append(
+                np.concatenate([simulation_singlecell["dt"], np.array([final_dt], dtype=float)])
+            )
+            dt_list_full_plus_final.append(
+                np.concatenate([simulation_singlecell["dt_full"], np.array([final_dt], dtype=float)])
+            )
 
     return {
         "n_cells": n_cells,
@@ -297,6 +335,9 @@ def simulate_Population(
         "rates": rates,
         "times_list": np.asarray(times_list, dtype=object),
         "dt_list": np.asarray(dt_list, dtype=object),
+        "dt_list_full": np.asarray(dt_list_full, dtype=object),
+        "dt_list+final": np.asarray(dt_list_plus_final, dtype=object),
+        "dt_list_full+final": np.asarray(dt_list_full_plus_final, dtype=object),
         "n_contacts": n_contacts,
         "obs_mode": obs_mode,
         "truncation_noise": truncation_noise,

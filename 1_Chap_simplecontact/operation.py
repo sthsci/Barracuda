@@ -19,6 +19,7 @@ import pymc as pm
 import seaborn as sns
 from matplotlib import gridspec
 from matplotlib.ticker import FuncFormatter, LogLocator, MultipleLocator
+from matplotlib.colors import TwoSlopeNorm
 
 plt.rcParams.update(
     {
@@ -142,6 +143,7 @@ def ground_truth_for_model(scenarios: Sequence[scenario], model_name: str) -> Di
 
 
 def _legend_white(ax, loc: str = "best") -> None:
+    
     leg = ax.legend(loc=loc, frameon=True, fontsize=10, edgecolor="black")
     if leg is not None:
         fr = leg.get_frame()
@@ -184,6 +186,7 @@ def plot_counts_and_dt(
     sims: Sequence[Dict[str, Any]],
     labels: Sequence[str],
     save_path: str | Path,
+    show_legend: bool = True,
     cmap_name: str = "inferno",
     dpi: int = 350,
     counts_max: Optional[int] = None,
@@ -192,8 +195,11 @@ def plot_counts_and_dt(
     if len(sims) != len(labels):
         raise ValueError("sims and labels must have the same length")
 
-    cmap = plt.colormaps.get_cmap(str(cmap_name))
-    colors = cmap(np.linspace(0.3, 0.9, len(labels)))
+    if len(labels) == 1:
+        colors = ["black"]
+    else:
+        cmap = plt.colormaps.get_cmap(str(cmap_name))
+        colors = cmap(np.linspace(0.3, 0.9, len(labels)))
 
     fig = plt.figure(figsize=(float(size[0]), float(size[1])), dpi=int(dpi))
     fig.patch.set_alpha(0.0)
@@ -219,7 +225,8 @@ def plot_counts_and_dt(
     ax_counts.set_xlim(left=-0.5)
     ax_counts.xaxis.set_major_locator(MultipleLocator(1))
     ax_counts.grid(True, alpha=0.30)
-    _legend_white(ax_counts, loc="upper right")
+    if bool(show_legend):
+        _legend_white(ax_counts, loc="upper right")
 
     pooled_dt = np.concatenate([_pooled_dt(sim.get("dt_list", [])) for sim in sims]) if sims else np.array([], dtype=float)
     pooled_dt = pooled_dt[np.isfinite(pooled_dt) & (pooled_dt > 0)]
@@ -244,7 +251,8 @@ def plot_counts_and_dt(
         ax_dt.set_ylabel("Density")
         ax_dt.grid(True, which="both", alpha=0.30)
 
-    _legend_white(ax_dt, loc="best")
+    if bool(show_legend):
+        _legend_white(ax_dt, loc="best")
 
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
@@ -260,6 +268,7 @@ def plot_posteriors(
     ground_truth: Optional[Dict[str, Dict[str, float]]] = None,
     parameters: Sequence[str],
     parameter_display: Optional[Dict[str, str]] = None,
+    show_legend: bool = True,
     hdi_prob: float = 0.95,
     sample_size: int = 200000,
     save_path: str | Path = "posteriors",
@@ -272,8 +281,11 @@ def plot_posteriors(
     xlims: Optional[Dict[str, Tuple[float, float]]] = None,
 ) -> None:
     sns.set_context("talk", font_scale=float(font_scale))
-    cmap = plt.colormaps.get_cmap(str(cmap_name))
-    colors = cmap(np.linspace(0.3, 0.9, len(idatas)))
+    if len(idatas) == 1:
+        colors = ["black"]
+    else:
+        cmap = plt.colormaps.get_cmap(str(cmap_name))
+        colors = cmap(np.linspace(0.3, 0.9, len(idatas)))
     rng = np.random.default_rng(seed)
 
     params = [str(p) for p in parameters]
@@ -369,7 +381,7 @@ def plot_posteriors(
                             color=color,
                             alpha=0.2,
                             linewidth=1.5,
-                            label=label if irow == 0 else None,
+                            label=(label if (bool(show_legend) and irow == 0) else None),
                         )
                     else:
                         sns.histplot(vals, bins=30, stat="density", kde=False, ax=ax, color=color, alpha=0.18, element="step", fill=True)
@@ -384,7 +396,7 @@ def plot_posteriors(
                             element="step",
                             fill=False,
                             linewidth=1.8,
-                            label=label if irow == 0 else None,
+                            label=(label if (bool(show_legend) and irow == 0) else None),
                         )
 
                     try:
@@ -420,21 +432,60 @@ def plot_posteriors(
                 ax.set_xlabel(parameter_display.get(colpar, colpar))
                 ax.set_ylabel(parameter_display.get(rowpar, rowpar))
 
-            xpar = rowpar if icol == irow else colpar
-            if xpar in param_xlims:
-                ax.set_xlim(*param_xlims[xpar])
+            if icol == irow:
+                xpar = rowpar
+                if xpar in param_xlims:
+                    ax.set_xlim(*param_xlims[xpar])
+            else:
+                if colpar in param_xlims:
+                    ax.set_xlim(*param_xlims[colpar])
+                if rowpar in param_xlims:
+                    ax.set_ylim(*param_xlims[rowpar])
 
             ax.margins(0.05)
 
-    handles, leg_labels = gaxes[0, 0].get_legend_handles_labels()
-    if handles:
-        fig.legend(handles, leg_labels, loc="center", bbox_to_anchor=(0.85, 0.85), frameon=True, edgecolor="black", fontsize=10)
+    if bool(show_legend):
+        handles, leg_labels = gaxes[0, 0].get_legend_handles_labels()
+        if handles:
+            fig.legend(handles, leg_labels, loc="center", bbox_to_anchor=(0.85, 0.85), frameon=True, edgecolor="black", fontsize=10)
 
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(save_path.with_suffix(".png"), dpi=int(dpi), bbox_inches="tight", transparent=True)
     plt.close(fig)
     print("Saved joint posterior plot:", str(save_path.with_suffix(".png")))
+
+
+def _posterior_hdi_rows(
+    idata: az.InferenceData,
+    *,
+    params: Sequence[str],
+    hdi_prob: float = 0.95,
+) -> List[Dict[str, float | str]]:
+    posterior = idata.posterior
+    rows: List[Dict[str, float | str]] = []
+    for p in params:
+        if p not in posterior:
+            continue
+        vals = posterior[p].stack(sample=("chain", "draw")).values.ravel()
+        vals = np.asarray(vals, dtype=float)
+        vals = vals[np.isfinite(vals)]
+        if vals.size == 0:
+            continue
+        try:
+            lo, hi = az.hdi(vals, hdi_prob=float(hdi_prob))
+        except Exception:
+            continue
+        rows.append(
+            {
+                "parameter": str(p),
+                "hdi_prob": float(hdi_prob),
+                "hdi_low": float(lo),
+                "hdi_high": float(hi),
+                "hdi_width": float(hi - lo),
+            }
+        )
+    return rows
 
 
 def _estimate_logml(pm_model: pm.Model, idata: az.InferenceData) -> float:
@@ -481,98 +532,151 @@ def _estimate_logml(pm_model: pm.Model, idata: az.InferenceData) -> float:
         if isinstance(sample_stats, dict) and "log_marginal_likelihood" in sample_stats:
             return _robust_mean_logml(sample_stats["log_marginal_likelihood"])
 
+    attrs = getattr(idata, "attrs", None)
+    if isinstance(attrs, dict) and "log_marginal_likelihood" in attrs:
+        return _robust_mean_logml(attrs["log_marginal_likelihood"])
+
     raise RuntimeError(
         "Thermodynamic log evidence is unavailable. "
         "Use SMC; it should provide sample_stats['log_marginal_likelihood']."
     )
 
 
-def _bayes_factor_table(logml_by_model: Dict[str, float], ref: str = "homo") -> pd.DataFrame:
-    if ref not in logml_by_model:
-        raise ValueError(f"Reference model {ref!r} missing")
-
-    ref_logml = float(logml_by_model[ref])
+def _bayes_factor_pairs(logml_by_model: Dict[str, float]) -> pd.DataFrame:
+    models = list(logml_by_model.keys())
     rows: List[Dict[str, float | str]] = []
 
-    for m, logml in logml_by_model.items():
-        d = float(logml) - ref_logml
-        log10_bf = d / np.log(10.0)
-        bf = np.inf if d > 700.0 else float(np.exp(d))
-        rows.append(
-            {
-                "model": m,
-                "logml": float(logml),
-                f"Δlogml_vs_{ref}": float(d),
-                f"log10_BF_vs_{ref}": float(log10_bf),
-                f"BF_vs_{ref}": float(bf) if np.isfinite(bf) else np.inf,
-            }
-        )
+    for i in range(len(models)):
+        for j in range(i + 1, len(models)):
+            m1, m2 = models[i], models[j]
+            logml_1 = float(logml_by_model[m1])
+            logml_2 = float(logml_by_model[m2])
+            d = logml_1 - logml_2
+            log10_bf = d / np.log(10.0)
+            bf = np.inf if d > 700.0 else float(np.exp(d))
+            rows.append(
+                {
+                    "model_1": m1,
+                    "model_2": m2,
+                    "logml_1": logml_1,
+                    "logml_2": logml_2,
+                    "Δlogml": float(d),
+                    "log10_BF": float(log10_bf),
+                    "BF": float(bf) if np.isfinite(bf) else np.inf,
+                }
+            )
 
-    return (
-        pd.DataFrame(rows)
-        .sort_values(f"Δlogml_vs_{ref}", ascending=False)
-        .reset_index(drop=True)
-    )
+    return pd.DataFrame(rows).sort_values("Δlogml", ascending=False).reset_index(drop=True)
 
 
-def plot_bayes_factor_groups(
+def _logml_summary_table(
+    logml_rows: Sequence[Dict[str, Any]],
+    *,
+    sort_desc: bool = True,
+) -> pd.DataFrame:
+    df = pd.DataFrame(list(logml_rows))
+    if df.empty:
+        return df
+    if "logml" in df.columns:
+        df["logml"] = pd.to_numeric(df["logml"], errors="coerce")
+        df = df.sort_values("logml", ascending=not bool(sort_desc), na_position="last")
+    cols = [c for c in ["scenario", "sampler", "model", "logml", "ok", "error"] if c in df.columns]
+    return df[cols] if cols else df
+
+
+def plot_bayes_factor_pairs(
     *,
     bf_tables: Dict[str, Dict[str, pd.DataFrame]],
     scenarios_order: Sequence[str],
-    model_order: Sequence[str],
-    ref: str = "homo",
     save_path: str | Path,
     dpi: int = 350,
     use_log10: bool = True,
+    cmap_name: str = "coolwarm",
 ) -> None:
     samplers = list(bf_tables.keys())
     ncols = len(samplers)
+    if not scenarios_order:
+        return
 
-    fig = plt.figure(figsize=(7.0 * ncols, 5.2), dpi=int(dpi))
-    fig.patch.set_alpha(0.0)
-
-    for j, sampler in enumerate(samplers, start=1):
-        ax = fig.add_subplot(1, ncols, j)
-        ax.set_facecolor("none")
-
-        group_x = np.arange(len(scenarios_order), dtype=float)
-        n_models = len(model_order)
-        width = 0.82 / max(1, n_models)
-        offsets = (np.arange(n_models, dtype=float) - (n_models - 1) / 2.0) * width
-
-        for k, m in enumerate(model_order):
-            ys: List[float] = []
-            for sc_name in scenarios_order:
-                df = bf_tables[sampler][sc_name]
-                row = df.loc[df["model"] == m]
-                if row.empty:
-                    ys.append(np.nan)
-                    continue
-
-                if use_log10 and f"log10_BF_vs_{ref}" in df.columns:
-                    ys.append(float(row.iloc[0][f"log10_BF_vs_{ref}"]))
-                else:
-                    bf = float(row.iloc[0][f"BF_vs_{ref}"])
-                    ys.append(float(np.log10(max(bf, 1e-300))) if use_log10 else float(bf))
-
-            ax.bar(group_x + offsets[k], ys, width=width, label=m)
-
-        ax.axhline(0.0, linewidth=1.2)
-        ax.set_xticks(group_x)
-        ax.set_xticklabels(list(scenarios_order))
-        ax.set_title(f"Bayes factors ({sampler})", fontweight="bold")
-        ax.set_ylabel(r"$\log_{10}\,\mathrm{BF}$ vs " + ref if use_log10 else f"BF vs {ref}")
-        ax.grid(True, axis="y", alpha=0.25)
-        ax.legend(frameon=True, edgecolor="black", fontsize=9)
-
+    cmap = plt.colormaps.get_cmap(str(cmap_name))
     save_path = Path(save_path)
     save_path.parent.mkdir(parents=True, exist_ok=True)
-    fig.savefig(save_path.with_suffix(".png"), dpi=int(dpi), bbox_inches="tight", transparent=True)
-    plt.close(fig)
-    print("Saved BF comparison plot:", str(save_path.with_suffix(".png")))
+
+    for sc_name in scenarios_order:
+        fig = plt.figure(figsize=(7.2 * ncols, 5.8), dpi=int(dpi))
+        fig.patch.set_alpha(0.0)
+
+        for j, sampler in enumerate(samplers, start=1):
+            ax = fig.add_subplot(1, ncols, j)
+            ax.set_facecolor("none")
+
+            if sc_name not in bf_tables[sampler]:
+                ax.axis("off")
+                continue
+            df = bf_tables[sampler][sc_name]
+
+            labels = [f"{a} vs {b}" for a, b in zip(df["model_1"], df["model_2"])]
+            vals = df["log10_BF"] if use_log10 else df["BF"]
+            vals = np.asarray(vals, dtype=float)
+            finite_vals = vals[np.isfinite(vals)]
+            if finite_vals.size == 0:
+                finite_vals = np.array([0.0], dtype=float)
+            vmin = float(np.min(finite_vals))
+            vmax = float(np.max(finite_vals))
+            if vmin == vmax:
+                vmin, vmax = vmin - 1.0, vmax + 1.0
+            if vmin < 0.0 < vmax:
+                norm = TwoSlopeNorm(vcenter=0.0, vmin=vmin, vmax=vmax)
+            else:
+                norm = plt.Normalize(vmin=vmin, vmax=vmax)
+            colors = cmap(norm(vals))
+
+            y = np.arange(len(vals))
+            ax.barh(y, vals, color=colors, edgecolor="black", linewidth=0.8)
+            ax.set_yticks(y)
+            ax.set_yticklabels(labels)
+            ax.axvline(0.0, linewidth=1.2)
+            ax.set_title(f"Bayes factors ({sampler})", fontweight="bold")
+            ax.set_xlabel(r"$\log_{10}\,\mathrm{BF}$" if use_log10 else "BF")
+            ax.grid(True, axis="x", alpha=0.25)
+            ax.margins(x=0.15)
+
+            span = float(np.nanmax(finite_vals) - np.nanmin(finite_vals)) if finite_vals.size else 1.0
+            offset = 0.02 * span if span > 0 else 0.05
+            for yi, val in zip(y, vals):
+                if not np.isfinite(val):
+                    label = "inf" if val > 0 else "-inf"
+                    xpos = 0.0
+                    ha = "left"
+                else:
+                    label = f"{val:.2f}"
+                    if val >= 0:
+                        xpos = val + offset
+                        ha = "left"
+                    else:
+                        xpos = val - offset
+                        ha = "right"
+                ax.text(xpos, yi, label, va="center", ha=ha, fontsize=9)
+
+        out_png = save_path.with_name(f"{save_path.stem}_{sc_name}").with_suffix(".png")
+        fig.savefig(out_png, dpi=int(dpi), bbox_inches="tight", transparent=True)
+        plt.close(fig)
+        print("Saved BF comparison plot:", str(out_png))
 
 
 def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
+    if str(args.inference_mode) == "counts+gaps":
+        scheme = str(getattr(args, "gaps_scheme", "no_beginning"))
+        if scheme == "full":
+            dt_key = "dt_list_full+final"
+        elif scheme == "no_tail":
+            dt_key = "dt_list_full"
+        else:
+            dt_key = "dt_list+final"
+        dt_data = sc.results_dir[dt_key]
+    else:
+        dt_data = sc.results_dir["dt_list+final"]
+
     def _safe_infer(model_label: str, fn, *fn_args, **fn_kwargs):
         try:
             return fn(*fn_args, **fn_kwargs)
@@ -586,11 +690,13 @@ def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
         draws=int(args.posterior_samples),
         tune=int(args.posterior_tune),
         chains=int(args.posterior_chains),
+        target_accept=float(args.posterior_target_accept),
         cores=int(args.cores),
         smc_draws=int(args.smc_particles),
         smc_cores=int(args.smc_cores),
-        lambda_prior_bounds=(-5.0, 2.0),
+        lambda_prior_bounds=(0, 2.0),
         random_seed=(int(args.seed) if args.seed is not None else None),
+        dt_scheme=str(getattr(args, "gaps_scheme", "no_beginning")),
     )
 
     pack_homo = _safe_infer(
@@ -598,7 +704,7 @@ def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
         cih.inference_homo,
         sc.results_dir["n_contacts"],
         sc.results_dir["max_time"],
-        sc.results_dir["dt_list"],
+        dt_data,
         **base_kwargs,
     )
 
@@ -607,7 +713,7 @@ def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
         cih.inference_Z2P,
         sc.results_dir["n_contacts"],
         sc.results_dir["max_time"],
-        sc.results_dir["dt_list"],
+        dt_data,
         p_prior_bounds=(1.0, 1.0),
         **base_kwargs,
     )
@@ -617,10 +723,10 @@ def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
         cih.inference_Dis2P,
         sc.results_dir["n_contacts"],
         sc.results_dir["max_time"],
-        sc.results_dir["dt_list"],
+        dt_data,
         dis_mode=str(sc.dis_mode or "gamma"),
-        std_prior_factor=1.0,
-        marginalized=(sampler == "smc"),
+        std_prior_factor=5,
+        # marginalized=(sampler == "smc"),
         **base_kwargs,
     )
 
@@ -629,11 +735,11 @@ def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
         cih.inference_hetero3,
         sc.results_dir["n_contacts"],
         sc.results_dir["max_time"],
-        sc.results_dir["dt_list"],
+        dt_data,
         dis_mode=str(sc.dis_mode or "gamma"),
         p_prior_bounds=(1.0, 1.0),
-        std_prior_factor=1.0,
-        marginalized=(sampler == "smc"),
+        std_prior_factor=5,
+        # marginalized=(sampler == "smc"),
         **base_kwargs,
     )
 
@@ -642,16 +748,16 @@ def run_all_inference(sc: scenario, args, *, sampler: str) -> Dict[str, Any]:
 
 def _model_plot_settings(model_name: str):
     if model_name == "homo":
-        return ("lambda",), {"lambda": r"$\lambda$"}, {"lambda": (0.0, 0.12)}
+        return ("lambda",), {"lambda": r"$\lambda$"}, {"lambda": (0, 8)}
     if model_name == "Z2P":
-        return ("lambda", "p_zero"), {"lambda": r"$\lambda$", "p_zero": r"$\phi_0$"}, {"lambda": (0.0, 0.12), "p_zero": (0.0, 1.0)}
+        return ("lambda", "p_zero"), {"lambda": r"$\lambda$", "p_zero": r"$\phi_0$"}, {"lambda": (0, 8), "p_zero": (0.0, 1.0)}
     if model_name == "Dis2P":
-        return ("mu_lambda", "sigma_lambda"), {"mu_lambda": r"$\mu_{\lambda}$", "sigma_lambda": r"$\sigma_{\lambda}$"}, {"mu_lambda": (0.0, 0.12), "sigma_lambda": (0.0, 0.12)}
+        return ("mu_lambda", "sigma_lambda"), {"mu_lambda": r"$\mu_{\lambda}$", "sigma_lambda": r"$\sigma_{\lambda}$"}, {"mu_lambda": (0.0, 8), "sigma_lambda": (0.0, 6)}
     if model_name == "hetero3":
         return (
             ("mu_lambda", "sigma_lambda", "p_zero"),
             {"mu_lambda": r"$\mu_{\lambda}$", "sigma_lambda": r"$\sigma_{\lambda}$", "p_zero": r"$\phi_0$"},
-            {"mu_lambda": (0.0, 0.12), "sigma_lambda": (0.0, 0.12), "p_zero": (0.0, 1.0)},
+            {"mu_lambda": (0.0, 8), "sigma_lambda": (0.0, 6), "p_zero": (0.0, 1.0)},
         )
     raise ValueError(f"Unknown model_name: {model_name!r}")
 
@@ -664,18 +770,60 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         )
     )
 
-    p.add_argument("--n_cell", type=int, default=5000, help="Number of killer cells in the simulation.")
-    p.add_argument("--T", type=float, default=60.0, help="Total simulation time.")
+    p.add_argument("--n_cell", type=int, default=500, help="Number of killer cells in the simulation.")
+    p.add_argument("--T", type=float, default=1, help="Total simulation time.")
     p.add_argument("--obs_mode", type=str, default="Complete", help="Observation mode: Complete or Truncated.")
     p.add_argument("--T_sd", type=float, default=None, help="Standard deviation of observation time for Truncated mode.")
     p.add_argument("--dis_mode", type=str, default="gamma", help="Distribution mode for heterogeneous lambda.")
     p.add_argument("--seed", type=int, default=None, help="Random seed for simulation.")
-    p.add_argument("--out_dir", type=str, default="results_1", help="Directory to save results.")
+    p.add_argument("--out_dir", type=str, default="results_default", help="Directory to save results.")
 
-    p.add_argument("--inference_mode", type=str, default="counts+gaps", help="Inference mode: counts or counts+gaps.")
-    p.add_argument("--posterior_samples", type=int, default=5000)
+    posterior_save_group = p.add_mutually_exclusive_group()
+    posterior_save_group.add_argument(
+        "--save_posterior",
+        dest="save_posterior",
+        action="store_true",
+        help="Save NUTS posterior draws to NetCDF (default).",
+    )
+    posterior_save_group.add_argument(
+        "--no_save_posterior",
+        dest="save_posterior",
+        action="store_false",
+        help="Do not save NUTS posterior draws to disk.",
+    )
+    p.set_defaults(save_posterior=True)
+
+    legend_group = p.add_mutually_exclusive_group()
+    legend_group.add_argument(
+        "--legend",
+        dest="show_legend",
+        action="store_true",
+        help="Show legends in output plots (default).",
+    )
+    legend_group.add_argument(
+        "--no_legend",
+        dest="show_legend",
+        action="store_false",
+        help="Hide legends in all output plots.",
+    )
+    p.set_defaults(show_legend=True)
+
+    p.add_argument("--inference_mode", type=str, default="counts", help="Inference mode: counts or counts+gaps.")
+    p.add_argument(
+        "--gaps_scheme",
+        type=str,
+        default="full",
+        choices=["full", "no_beginning", "no_tail"],
+        help=(
+            "For counts+gaps likelihood: choose which dt intervals are used. "
+            "full = include initial gap and tail; no_beginning = exclude initial gap, include tail; "
+            "no_tail = include initial gap, exclude tail."
+        ),
+    )
+    p.add_argument("--posterior_samples", type=int, default=10000)
     p.add_argument("--posterior_tune", type=int, default=3000)
-    p.add_argument("--posterior_chains", type=int, default=4)
+    p.add_argument("--posterior_chains", type=int, default=2)
+    p.add_argument("--posterior_target_accept", type=float, default=0.95)
 
     p.add_argument("--smc_particles", type=int, default=5000, help="Number of SMC particles (draws) per chain.")
     p.add_argument("--smc_cores", type=int, default=0, help="CPU processes for SMC (0 = all available cores).")
@@ -690,17 +838,51 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         if args.T_sd is None or args.T_sd <= 0:
             raise ValueError("T_sd must be positive for Truncated observation mode.")
 
+    base_dir = Path(args.out_dir)
+    base_dir.mkdir(parents=True, exist_ok=True)
+
     scenarios: List[scenario] = [
-        scenario(name="Homo", mode="homogeneous", n_cell=args.n_cell, T=args.T, T_sd=args.T_sd, obs_mode=args.obs_mode, mu_lambda=0.05),
+        # scenario(
+        #     name="homogeneous",
+        #     mode="homogeneous",
+        #     n_cell=args.n_cell,
+        #     T=args.T,
+        #     T_sd=args.T_sd,
+        #     obs_mode=args.obs_mode,
+        #     mu_lambda=4,
+        # ),
+        # scenario(
+        #     name="gamma_hetero",
+        #     mode="heterogeneous",
+        #     n_cell=args.n_cell,
+        #     T=args.T,
+        #     T_sd=args.T_sd, 
+        #     obs_mode=args.obs_mode,
+        #     mu_lambda=4,
+        #     sd_lambda=3,
+        #     p0_lambda=0.0,
+        #     dis_mode=args.dis_mode,
+        # ),
+        # scenario(
+        #     name="zero_inflated_hetero",
+        #     mode="heterogeneous",
+        #     n_cell=args.n_cell,
+        #     T=args.T,
+        #     T_sd=args.T_sd, 
+        #     obs_mode=args.obs_mode,
+        #     mu_lambda=4,
+        #     sd_lambda=0.0,
+        #     p0_lambda=0.4,
+        # ),
         scenario(
-            name="Hetero",
+            name="Fully Heterogeneous",
             mode="heterogeneous",
             n_cell=args.n_cell,
             T=args.T,
             T_sd=args.T_sd,
             obs_mode=args.obs_mode,
-            mu_lambda=0.08,
-            sd_lambda=0.06,
+            mu_lambda=4,
+            sd_lambda=3,
             p0_lambda=0.2,
             dis_mode=args.dis_mode,
         ),
@@ -721,16 +903,17 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
             seed=(int(args.seed) if args.seed is not None else None),
         )
         sc.take_results(sim_data)
+        sim_out = base_dir / f"simulation_data_{sc.name}.npz"
+        np.savez_compressed(sim_out, **sim_data)
+        print("Saved simulation data:", str(sim_out))
         print(f"Simulation completed for {sc.name}.")
-
-    base_dir = Path(args.out_dir)
-    base_dir.mkdir(parents=True, exist_ok=True)
 
     plot_counts_and_dt(
         size=(14, 6),
         sims=[sc.results_dir for sc in scenarios],
         labels=[sc.name for sc in scenarios],
         save_path=base_dir / "simulation",
+        show_legend=bool(args.show_legend),
         cmap_name="gist_earth",
         dpi=400,
         dt_xlim=(1e-2, 1e2),
@@ -746,12 +929,28 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         print(f"\n=== Inference (NUTS - Posterior): scenario={sc.name} ===")
         bay_store[sc.name]["nuts"] = run_all_inference(sc, args, sampler="nuts")
 
+        if bool(args.save_posterior):
+            nuts_pack = bay_store[sc.name].get("nuts", {})
+            for model_name in model_names:
+                pack = nuts_pack.get(model_name)
+                if not (isinstance(pack, dict) and ("idata" in pack)):
+                    continue
+                idata = pack.get("idata")
+                if not isinstance(idata, az.InferenceData):
+                    continue
+                out_nc = base_dir / f"posterior_{_safe_slug(sc.name)}_{model_name}_nuts.nc"
+                try:
+                    _save_idata_netcdf(idata, out_nc)
+                except Exception as e:
+                    print(f"[PosteriorSave] Failed saving NetCDF: scenario={sc.name} model={model_name}: {e}")
+
     # 2. Run SMC for Bayes Factors
     for sc in scenarios:
         print(f"\n=== Inference (SMC - Evidence): scenario={sc.name} ===")
         bay_store[sc.name]["smc"] = run_all_inference(sc, args, sampler="smc")
 
     # 3. Plot Posteriors (Using NUTS results)
+    hdi_rows: List[Dict[str, float | str]] = []
     for model_name in model_names:
         idatas: List[Tuple[str, az.InferenceData]] = []
         for sc in scenarios:
@@ -769,11 +968,17 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
         parameters, parameter_display, xlims = _model_plot_settings(model_name)
         ground_truth = ground_truth_for_model(scenarios, model_name)
 
+        for sc_name, idata in idatas:
+            for row in _posterior_hdi_rows(idata, params=parameters, hdi_prob=0.95):
+                row.update({"scenario": sc_name, "model": model_name})
+                hdi_rows.append(row)
+
         plot_posteriors(
             idatas,
             ground_truth=ground_truth if ground_truth else None,
             parameters=parameters,
             parameter_display=parameter_display,
+            show_legend=bool(args.show_legend),
             save_path=base_dir / f"posterior_triangle_{model_name}_nuts",
             cmap_name="gist_earth",
             sample_size=6000,
@@ -784,28 +989,75 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
             seed=(int(args.seed) if args.seed is not None else None),
         )
 
-    print("\n===== Bayes factors per scenario (ref = homo) using SMC =====")
+    if hdi_rows:
+        hdi_df = pd.DataFrame(hdi_rows)
+        out_hdi = base_dir / "posterior_hdi_widths_nuts.csv"
+        hdi_df.to_csv(out_hdi, index=False)
+        print("Saved:", str(out_hdi))
+
+    print("\n===== Bayes factors per scenario (all pairwise) using SMC =====")
     bf_tables: Dict[str, pd.DataFrame] = {}
+
+    logml_all_rows: List[Dict[str, Any]] = []
 
     for sc in scenarios:
         logml_by_model: Dict[str, float] = {}
+        sc_logml_rows: List[Dict[str, Any]] = []
         for model_name in model_names:
             pack = bay_store[sc.name].get("smc", {}).get(model_name)
             if pack is None:
+                sc_logml_rows.append(
+                    {
+                        "scenario": sc.name,
+                        "sampler": "smc",
+                        "model": model_name,
+                        "logml": np.nan,
+                        "ok": False,
+                        "error": "missing pack",
+                    }
+                )
                 continue
             try:
-                logml_by_model[model_name] = _estimate_logml(pack["model"], pack["idata"])
+                logml = _estimate_logml(pack["model"], pack["idata"])
+                logml_by_model[model_name] = float(logml)
+                sc_logml_rows.append(
+                    {
+                        "scenario": sc.name,
+                        "sampler": "smc",
+                        "model": model_name,
+                        "logml": float(logml),
+                        "ok": True,
+                        "error": "",
+                    }
+                )
             except RuntimeError as e:
                 print(f"[BayesFactor] Skipping evidence: scenario={sc.name} sampler=smc model={model_name}: {e}")
+                sc_logml_rows.append(
+                    {
+                        "scenario": sc.name,
+                        "sampler": "smc",
+                        "model": model_name,
+                        "logml": np.nan,
+                        "ok": False,
+                        "error": str(e),
+                    }
+                )
 
-        if "homo" not in logml_by_model:
-            print(f"[BayesFactor] Skipping scenario={sc.name} sampler=smc: no evidence for ref 'homo'.")
+        if sc_logml_rows:
+            df_logml = _logml_summary_table(sc_logml_rows)
+            out_logml_csv = base_dir / f"log_marginal_likelihoods_{_safe_slug(sc.name)}_smc.csv"
+            df_logml.to_csv(out_logml_csv, index=False)
+            print("Saved:", str(out_logml_csv))
+            logml_all_rows.extend(sc_logml_rows)
+
+        if len(logml_by_model) < 2:
+            print(f"[BayesFactor] Skipping scenario={sc.name} sampler=smc: need at least 2 models.")
             continue
 
-        df_bf = _bayes_factor_table(logml_by_model, ref="homo")
+        df_bf = _bayes_factor_pairs(logml_by_model)
         bf_tables[sc.name] = df_bf
 
-        out_csv = base_dir / f"bayes_factors_{sc.name}_smc.csv"
+        out_csv = base_dir / f"bayes_factors_pairs_{sc.name}_smc.csv"
         df_bf.to_csv(out_csv, index=False)
         print(f"\nScenario: {sc.name} | sampler=smc")
         print(df_bf.to_string(index=False))
@@ -813,19 +1065,46 @@ def main(argv: Optional[Iterable[str]] = None) -> None:
 
     if bf_tables:
         params_wrapper = {"smc": bf_tables}
-        plot_bayes_factor_groups(
+        plot_bayes_factor_pairs(
             bf_tables=params_wrapper,
             scenarios_order=[sc.name for sc in scenarios],
-            model_order=model_names,
-            ref="homo",
-            save_path=base_dir / "bayes_factor_comparison_grouped",
+            save_path=base_dir / "bayes_factor_pairs_comparison",
             dpi=450,
             use_log10=True,
+            cmap_name="coolwarm",
         )
     else:
         print("[BayesFactor] No Bayes factor tables produced (no thermodynamic evidence found).")
 
+    if logml_all_rows:
+        df_all_logml = _logml_summary_table(logml_all_rows)
+        out_all_logml = base_dir / "log_marginal_likelihoods_all_models_smc.csv"
+        df_all_logml.to_csv(out_all_logml, index=False)
+        print("Saved:", str(out_all_logml))
+
     print("\nDone.")
+
+
+def _safe_slug(s: str) -> str:
+    s = str(s).strip()
+    out = []
+    for ch in s:
+        if ch.isalnum() or ch in ("-", "_"):
+            out.append(ch)
+        elif ch.isspace() or ch in ("/", "\\", ":", "."):
+            out.append("_")
+        else:
+            out.append("_")
+    slug = "".join(out)
+    while "__" in slug:
+        slug = slug.replace("__", "_")
+    return slug.strip("_") or "scenario"
+
+
+def _save_idata_netcdf(idata: az.InferenceData, out_path: Path) -> None:
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    az.to_netcdf(idata, str(out_path))
+    print("Saved posterior idata:", str(out_path))
 
 
 if __name__ == "__main__":
