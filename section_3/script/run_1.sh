@@ -35,7 +35,7 @@ chains=6
 smc_particles=5000
 smc_cores=6
 prior_draws=2000
-n_quad=100
+n_quad=60
 
 # Priors used by the fitted model.
 lambda_prior_lower=-1.0

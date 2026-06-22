@@ -235,6 +235,11 @@ def _parallel_smc_failed(exc: BaseException) -> bool:
         "did not produce any results" in message
         or "No message from samplers" in message
         or "got end of file during message" in message
+        or (
+            "file lock" in message.lower()
+            and "could not be acquired" in message.lower()
+        )
+        or "filelock._error.Timeout" in message
     )
 
 
