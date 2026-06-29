@@ -1,5 +1,44 @@
+# Local/private project folders
 /Hidden/
 /Archive/
 /CH_data/
 /backup_scripts/
-/*/results/
+
+# Generated analysis output
+results/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Virtual environments and local env files
+.venv/
+venv/
+env/
+.env
+.env.*
+!.env.example
+
+# Logs and temporary files
+*.log
+*.tmp
+*.temp
+*~
+
+# macOS and editor metadata
+.DS_Store
+._*
+.vscode/
+.idea/
+
+# Affinity/graphics app lock files
+*~lock~
