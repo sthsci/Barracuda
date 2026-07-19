@@ -250,7 +250,7 @@ def _write_subset_metadata(path: Path, df: pd.DataFrame, scenario: dict[str, Any
     pd.DataFrame([true_parameters]).to_csv(path / "true_parameters.csv", index=False)
 
 
-def _fit_or_load_model(
+def _infer_or_load_model(
     *,
     model_name: str,
     df: pd.DataFrame,
@@ -323,7 +323,7 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Generate four section-3 contact-kill decision scenarios and run four "
-            "SMC model fits across cumulative sample sizes for Bayes-factor "
+            "SMC model infers across cumulative sample sizes for Bayes-factor "
             "trajectories."
         )
     )
@@ -424,7 +424,7 @@ def main(argv: Optional[list[str]] = None) -> None:
                         + n_cells * 100
                         + model_idx
                     )
-                    _idata, logml = _fit_or_load_model(
+                    _idata, logml = _infer_or_load_model(
                         model_name=model_name,
                         df=subset_sim,
                         obs_time=float(args.T),

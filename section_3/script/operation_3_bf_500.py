@@ -235,7 +235,7 @@ def main(argv: Optional[list[str]] = None) -> None:
                     n_cells=int(args.n_cells),
                     model_idx=model_idx,
                 )
-                _idata, logml = bfop._fit_or_load_model(
+                _idata, logml = bfop._infer_or_load_model(
                     model_name=model_name,
                     df=subset_sim,
                     obs_time=float(args.T),
