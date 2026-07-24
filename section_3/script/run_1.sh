@@ -32,10 +32,10 @@ gt_beta_y=-0.8
 
 # SMC controls.
 chains=6
-smc_particles=5000
+smc_particles=8000
 smc_cores=6
 prior_draws=2000
-n_quad=60
+n_quad=120
 
 # Priors used by the fitted model.
 lambda_prior_lower=-1.0

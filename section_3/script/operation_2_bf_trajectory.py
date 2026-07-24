@@ -130,6 +130,25 @@ def _selected_scenarios(raw: str) -> list[dict[str, Any]]:
     return selected
 
 
+def _selected_models(raw: str) -> list[str]:
+    if str(raw).strip().lower() == "all":
+        return list(MODEL_ORDER)
+
+    wanted = {
+        item.strip()
+        for item in str(raw).replace(",", " ").split()
+        if item.strip()
+    }
+    missing = wanted.difference(MODEL_BY_NAME)
+    if missing:
+        raise ValueError(f"Unknown model(s): {', '.join(sorted(missing))}")
+
+    selected = [model_name for model_name in MODEL_ORDER if model_name in wanted]
+    if not selected:
+        raise ValueError("--models must select at least one model")
+    return selected
+
+
 def _save_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, indent=2, sort_keys=True))
@@ -322,8 +341,8 @@ def _infer_or_load_model(
 def main(argv: Optional[list[str]] = None) -> None:
     parser = argparse.ArgumentParser(
         description=(
-            "Generate four section-3 contact-kill decision scenarios and run four "
-            "SMC model infers across cumulative sample sizes for Bayes-factor "
+            "Generate section-3 contact-kill decision scenarios and run selected "
+            "SMC model fits across cumulative sample sizes for Bayes-factor "
             "trajectories."
         )
     )
@@ -337,6 +356,17 @@ def main(argv: Optional[list[str]] = None) -> None:
     parser.add_argument("--base_seed", type=int, default=2026, help="Base simulation seed.")
     parser.add_argument("--replicates", type=int, default=3, help="Independent synthetic datasets per scenario.")
     parser.add_argument("--scenarios", type=str, default="all", help="all, or comma list such as No1,No3.")
+    parser.add_argument(
+        "--models",
+        type=str,
+        default="all",
+        help=(
+            "all, or a comma/space-separated list of canonical model names "
+            "(homogeneous_history_independent, homogeneous_history_dependent, "
+            "heterogeneous_history_independent, heterogeneous_history_dependent). "
+            "Each selected scenario's declared true model must be included."
+        ),
+    )
     parser.add_argument(
         "--out_dir",
         type=str,
@@ -366,6 +396,19 @@ def main(argv: Optional[list[str]] = None) -> None:
     if int(args.replicates) <= 0:
         raise ValueError("--replicates must be a positive integer")
     scenarios = _selected_scenarios(args.scenarios)
+    model_order = _selected_models(args.models)
+
+    missing_true_models = [
+        f"{scenario['scenario']} ({scenario['true_model']})"
+        for scenario in scenarios
+        if str(scenario["true_model"]) not in model_order
+    ]
+    if missing_true_models:
+        raise ValueError(
+            "--models must include the declared true model for every selected "
+            f"scenario; missing: {', '.join(missing_true_models)}"
+        )
+
     out_dir = Path(args.out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -375,7 +418,7 @@ def main(argv: Optional[list[str]] = None) -> None:
         "base_seed": int(args.base_seed),
         "replicates": int(args.replicates),
         "scenarios": [scenario["scenario"] for scenario in scenarios],
-        "models": list(MODEL_ORDER),
+        "models": list(model_order),
         "chains": int(args.chains),
         "smc_particles": int(args.smc_particles),
         "smc_cores": int(args.smc_cores),
@@ -416,7 +459,8 @@ def main(argv: Optional[list[str]] = None) -> None:
                 _write_subset_metadata(subset_dir, subset_sim, scenario, float(args.T))
 
                 logml_by_model: dict[str, float] = {}
-                for model_idx, model_name in enumerate(MODEL_ORDER):
+                for model_name in model_order:
+                    model_idx = MODEL_ORDER.index(model_name)
                     seed = int(
                         args.base_seed
                         + scenario_idx * 1_000_000
@@ -438,7 +482,7 @@ def main(argv: Optional[list[str]] = None) -> None:
                 best_model = max(logml_by_model, key=logml_by_model.get)
                 best_logml = logml_by_model[best_model]
 
-                for model_name in MODEL_ORDER:
+                for model_name in model_order:
                     row = {
                         "scenario": scenario["scenario"],
                         "scenario_label": scenario["label"],
