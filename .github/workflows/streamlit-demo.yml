@@ -1,0 +1,43 @@
+name: Streamlit demo checks
+
+on:
+  push:
+    branches: [main, codex/streamlit-demo]
+  pull_request:
+    paths:
+      - "streamlit_app.py"
+      - "webapp/**"
+      - "tests/**"
+      - "requirements*.txt"
+      - "Dockerfile"
+      - ".dockerignore"
+      - ".streamlit/**"
+      - ".github/workflows/streamlit-demo.yml"
+      - "section_1/src/inference.py"
+      - "section_2/src/inference_donor_relative.py"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run fast tests
+        run: pytest -q
+        env:
+          MPLCONFIGDIR: /tmp/matplotlib
+          XDG_CACHE_HOME: /tmp/.cache
+          PYTENSOR_FLAGS: optimizer_excluding=fusion,base_compiledir=/tmp/pytensor
+      - name: Run real count and donor-aware SMC smoke tests
+        run: pytest -q tests/test_webapp_smc_smoke.py
+        env:
+          ORCA_RUN_SMC_SMOKE: "1"
+          MPLCONFIGDIR: /tmp/matplotlib
+          XDG_CACHE_HOME: /tmp/.cache
+          PYTENSOR_FLAGS: optimizer_excluding=fusion,base_compiledir=/tmp/pytensor

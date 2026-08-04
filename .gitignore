@@ -30,6 +30,7 @@ env/
 .env
 .env.*
 !.env.example
+.streamlit/secrets.toml
 
 # Logs and temporary files
 *.log

@@ -52,3 +52,64 @@ This notebook demonstrates the main Section 1 workflow on synthetic data: genera
 - `section_1/results/` stores generated numerical results such as summaries and Bayes-factor tables.
 
 Large posterior trace files (`*.nc`) are generated outputs and are not recommended for normal GitHub commits. They can be regenerated from the notebooks/scripts.
+
+## Streamlit Bayesian Lab (demo branch)
+
+The `codex/streamlit-demo` branch contains a five-page research preview for learning and testing the event-count framework:
+
+1. Bayesian inference 101, including Bayes' theorem, MCMC, SMC, marginal likelihoods, Bayes factors, diagnostics, and Thomas Bayes.
+2. Synthetic data generation followed by parameter recovery and model comparison.
+3. Donor-ignorant event-count inference from an example, uploaded CSV, or editable browser table.
+4. A small donor-aware hierarchical extension.
+5. A roadmap page for the trajectory model under development.
+
+The preview intentionally uses small SMC settings. Its default results are illustrative and are not publication-grade.
+
+### Run locally
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+streamlit run streamlit_app.py
+```
+
+Alternatively, build the included container:
+
+```bash
+docker build -t orca-streamlit-demo .
+docker run --rm -p 8501:8501 orca-streamlit-demo
+```
+
+### Input schemas
+
+Donor-ignorant CSV:
+
+```csv
+cell_id,count
+cell_001,3
+cell_002,0
+cell_003,1
+cell_004,2
+cell_005,0
+```
+
+Donor-aware CSV:
+
+```csv
+cell_id,donor_id,count
+cell_001,donor_A,3
+cell_002,donor_A,0
+cell_003,donor_A,1
+cell_004,donor_B,2
+cell_005,donor_B,0
+cell_006,donor_B,1
+```
+
+Each upload should contain one outcome and one experimental condition. The current likelihood uses a single observation time entered in the interface for every row. Do not upload names, clinical metadata, raw microscopy, or unapproved donor-derived data.
+
+The public demo accepts 5–1,000 cells, integer counts from 0–100, and at least one positive count. Donor-aware inputs need 2–12 donors with at least three cells per donor; larger donor groups are strongly preferred for stable donor-specific estimates.
+
+### Deployment status
+
+This branch is suitable for local testing with synthetic or approved anonymous data. It is not yet an Imperial production deployment. Before public hosting, complete the ASK ICT process and agree the domain/runtime, authentication needs, retention and deletion policy, server-side job queue and compute limits, security review, privacy notice, and WCAG accessibility audit with Imperial ICT.

@@ -1,0 +1,13 @@
+cell_id,donor_id,count
+cell_001,donor_A,0
+cell_002,donor_A,1
+cell_003,donor_A,2
+cell_004,donor_A,1
+cell_005,donor_B,4
+cell_006,donor_B,0
+cell_007,donor_B,3
+cell_008,donor_B,2
+cell_009,donor_C,5
+cell_010,donor_C,1
+cell_011,donor_C,0
+cell_012,donor_C,3

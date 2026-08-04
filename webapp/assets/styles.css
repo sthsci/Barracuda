@@ -1,0 +1,161 @@
+:root {
+  --orca-navy: #142b3b;
+  --orca-teal: #007c83;
+  --orca-teal-soft: #d9eeeb;
+  --orca-coral: #e45b4d;
+  --orca-amber: #f3b54a;
+  --orca-paper: #fbfcfa;
+  --orca-mist: #eef4f2;
+  --orca-line: #cfddda;
+}
+
+.stApp {
+  background:
+    radial-gradient(circle at 88% 3%, rgba(0, 124, 131, 0.09), transparent 25rem),
+    var(--orca-paper);
+}
+
+[data-testid="stSidebar"] {
+  border-right: 1px solid var(--orca-line);
+  background: #f5f8f6;
+}
+
+[data-testid="stSidebar"] h3 {
+  color: var(--orca-navy);
+  letter-spacing: 0.12em;
+}
+
+.block-container {
+  max-width: 1240px;
+  padding-top: 2.2rem;
+  padding-bottom: 5rem;
+}
+
+.orca-hero {
+  position: relative;
+  overflow: hidden;
+  padding: clamp(1.8rem, 4vw, 3.4rem);
+  margin-bottom: 2rem;
+  color: white;
+  background: linear-gradient(125deg, #102a3b 0%, #173e4e 56%, #007c83 140%);
+  border-radius: 1.35rem;
+  box-shadow: 0 18px 44px rgba(20, 43, 59, 0.16);
+}
+
+.orca-hero::after {
+  content: "";
+  position: absolute;
+  width: 18rem;
+  height: 18rem;
+  right: -5rem;
+  top: -8rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3rem rgba(255, 255, 255, 0.025), 0 0 0 6rem rgba(255, 255, 255, 0.02);
+}
+
+.orca-hero h1 {
+  max-width: 850px;
+  margin: 0.35rem 0 0.8rem;
+  color: white;
+  font-size: clamp(2.15rem, 5vw, 4.5rem);
+  line-height: 0.98;
+  letter-spacing: -0.045em;
+}
+
+.orca-hero p {
+  max-width: 760px;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 1.05rem;
+  line-height: 1.65;
+}
+
+.orca-kicker {
+  color: #8edbd5;
+  font-size: 0.76rem;
+  font-weight: 750;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.orca-badge {
+  display: inline-block;
+  margin-top: 1.35rem;
+  padding: 0.35rem 0.72rem;
+  color: white;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 999px;
+  font-size: 0.76rem;
+  font-weight: 650;
+}
+
+.orca-note {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.28fr) 1fr;
+  gap: 1rem;
+  align-items: start;
+  margin: 1rem 0 1.4rem;
+  padding: 1rem 1.15rem;
+  border: 1px solid var(--orca-line);
+  border-left-width: 0.35rem;
+  border-radius: 0.8rem;
+  background: white;
+}
+
+.orca-note span { line-height: 1.55; }
+.orca-note-teal { border-left-color: var(--orca-teal); }
+.orca-note-amber { border-left-color: var(--orca-amber); }
+.orca-note-navy { border-left-color: var(--orca-navy); }
+
+.orca-step {
+  min-height: 11.5rem;
+  padding: 1.25rem;
+  border: 1px solid var(--orca-line);
+  border-radius: 1rem;
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.orca-step > span {
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  color: white;
+  background: var(--orca-teal);
+  border-radius: 50%;
+  font-size: 0.75rem;
+  font-weight: 800;
+}
+
+.orca-step h3 { margin: 0.85rem 0 0.45rem; font-size: 1rem; }
+.orca-step p { margin: 0; color: #49606d; line-height: 1.5; }
+
+[data-testid="stMetric"] {
+  padding: 0.8rem 1rem;
+  border: 1px solid var(--orca-line);
+  border-radius: 0.85rem;
+  background: white;
+}
+
+[data-testid="stDataFrame"], [data-testid="stTable"] {
+  border: 1px solid var(--orca-line);
+  border-radius: 0.8rem;
+  overflow: hidden;
+}
+
+div.stButton > button[kind="primary"] {
+  border-color: var(--orca-teal);
+  background: var(--orca-teal);
+}
+
+div.stButton > button[kind="primary"]:hover {
+  border-color: #005e63;
+  background: #005e63;
+}
+
+@media (max-width: 700px) {
+  .orca-note { grid-template-columns: 1fr; gap: 0.35rem; }
+  .orca-hero { border-radius: 1rem; }
+}
