@@ -430,8 +430,17 @@ def build_model(
     p0_prior=(1.0, 1.0),
     sigma_eta_prior: float = 1.0,
     beta_prior_sd: float = 1.0,
+    fixed_beta_x: float | None = None,
+    fixed_beta_y: float | None = None,
     n_quad: int = 30,
 ):
+    has_fixed_beta_x = fixed_beta_x is not None
+    has_fixed_beta_y = fixed_beta_y is not None
+    if has_fixed_beta_x != has_fixed_beta_y:
+        raise ValueError("fixed_beta_x and fixed_beta_y must be supplied together.")
+    if has_fixed_beta_x and not spec.history_dependent:
+        raise ValueError("Fixed history effects require a history-dependent ModelSpec.")
+
     coords = {
         "cell": np.arange(data.n_cells),
         "event": np.arange(data.z.size),
@@ -494,17 +503,27 @@ def build_model(
             )
 
         if spec.history_dependent:
-            beta_x = pm.Normal(
-                "beta_x",
-                mu=0.0,
-                sigma=float(beta_prior_sd),
-            )
+            if has_fixed_beta_x:
+                beta_x = pm.Deterministic(
+                    "beta_x",
+                    pt.as_tensor_variable(float(fixed_beta_x)),
+                )
+                beta_y = pm.Deterministic(
+                    "beta_y",
+                    pt.as_tensor_variable(float(fixed_beta_y)),
+                )
+            else:
+                beta_x = pm.Normal(
+                    "beta_x",
+                    mu=0.0,
+                    sigma=float(beta_prior_sd),
+                )
 
-            beta_y = pm.Normal(
-                "beta_y",
-                mu=0.0,
-                sigma=float(beta_prior_sd),
-            )
+                beta_y = pm.Normal(
+                    "beta_y",
+                    mu=0.0,
+                    sigma=float(beta_prior_sd),
+                )
         else:
             beta_x = pm.Deterministic(
                 "beta_x",

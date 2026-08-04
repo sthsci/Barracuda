@@ -57,11 +57,11 @@ from section_3.src import simulator as sim  # noqa: E402
 SCENARIOS: list[dict[str, Any]] = [
     {
         "scenario": "No1",
-        "label": "No1: sigma_eta=0.75, beta=(0.8,-0.8)",
+        "label": "No1: sigma_eta=1.0, beta=(0.8,-0.8)",
         "gt_mean_lambda": 4.0,
         "gt_sigma_lambda": 2.0,
         "gt_p0": 0.25,
-        "gt_sigma_eta": 0.75,
+        "gt_sigma_eta": 1.0,
         "gt_beta_x": 0.8,
         "gt_beta_y": -0.8,
         "true_model": "heterogeneous_history_dependent",
@@ -69,11 +69,11 @@ SCENARIOS: list[dict[str, Any]] = [
     },
     {
         "scenario": "No2",
-        "label": "No2: sigma_eta=0.75, beta=(0,0)",
+        "label": "No2: sigma_eta=1.0, beta=(0,0)",
         "gt_mean_lambda": 4.0,
         "gt_sigma_lambda": 2.0,
         "gt_p0": 0.25,
-        "gt_sigma_eta": 0.75,
+        "gt_sigma_eta": 1.0,
         "gt_beta_x": 0.0,
         "gt_beta_y": 0.0,
         "true_model": "heterogeneous_history_independent",

@@ -34,10 +34,10 @@ models="homogeneous_history_dependent,heterogeneous_history_dependent"
 
 # SMC controls.
 chains=6
-smc_particles=8000
+smc_particles=10000
 smc_cores=6
 prior_draws=0
-n_quad=100
+n_quad=45
 
 # Priors used by both fitted models.
 lambda_prior_lower=-1.0

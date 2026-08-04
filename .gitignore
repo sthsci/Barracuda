@@ -6,6 +6,9 @@
 
 # Generated analysis output
 results/
+/output/
+/tmp/
+*.nc
 
 # Python
 __pycache__/
