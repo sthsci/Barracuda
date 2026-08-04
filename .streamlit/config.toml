@@ -4,7 +4,7 @@ primaryColor = "#007C83"
 backgroundColor = "#FBFCFA"
 secondaryBackgroundColor = "#EEF4F2"
 textColor = "#142B3B"
-font = "sans-serif"
+font = "monospace"
 
 [server]
 headless = true

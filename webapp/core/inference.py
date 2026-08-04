@@ -616,7 +616,7 @@ def build_results_zip(
         _zip_write(
             archive,
             "README.txt",
-            "ORCA Bayesian event-count demo results\n"
+            "Orca Bayesian event-count demo results\n"
             "\n"
             "Bayes-factor columns compare each fitted model with the model that "
             "has the largest SMC log evidence. Posterior intervals are 95% HDIs.\n"

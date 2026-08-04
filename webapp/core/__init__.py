@@ -1,4 +1,4 @@
-"""Stable, UI-independent API for the ORCA Streamlit demo."""
+"""Stable, UI-independent API for the Orca Streamlit demo."""
 
 from .data import (
     sample_count_frame,

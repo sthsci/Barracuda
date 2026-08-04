@@ -1,1 +1,1 @@
-"""Streamlit interface for the ORCA Bayesian event-count framework."""
+"""Streamlit interface for the Orca Bayesian event-count framework."""

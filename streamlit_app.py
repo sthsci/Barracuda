@@ -6,7 +6,7 @@ from webapp.ui import load_styles
 
 
 st.set_page_config(
-    page_title="ORCA Bayesian Lab",
+    page_title="Orca",
     page_icon=":material/experiment:",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -14,12 +14,19 @@ st.set_page_config(
 load_styles()
 
 pages = {
+    "Project": [
+        st.Page(
+            "webapp/pages/home.py",
+            title="Home",
+            icon=":material/home:",
+            default=True,
+        ),
+    ],
     "Learn": [
         st.Page(
             "webapp/pages/bayes_101.py",
             title="0 · Bayesian inference 101",
             icon=":material/school:",
-            default=True,
         ),
     ],
     "Experiment": [
@@ -49,8 +56,10 @@ pages = {
 }
 
 with st.sidebar:
-    st.markdown("### ORCA")
-    st.caption("Bayesian event-count laboratory")
+    st.markdown("### Orca")
+    st.caption(
+        "Bayesian inference for heterogeneity in immune-cell decision-making"
+    )
     st.markdown("---")
     st.caption(
         "Research preview · Inputs are processed in the running session and are not intentionally retained."

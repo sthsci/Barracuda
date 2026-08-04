@@ -1,4 +1,5 @@
 :root {
+  --orca-mono: "SFMono-Regular", "SF Mono", Monaco, Menlo, Consolas, "Liberation Mono", monospace;
   --orca-navy: #142b3b;
   --orca-teal: #007c83;
   --orca-teal-soft: #d9eeeb;
@@ -7,6 +8,32 @@
   --orca-paper: #fbfcfa;
   --orca-mist: #eef4f2;
   --orca-line: #cfddda;
+}
+
+html,
+body,
+.stApp,
+[data-testid="stSidebar"],
+button,
+input,
+textarea,
+select {
+  font-family: var(--orca-mono);
+  font-variant-ligatures: none;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+label,
+[data-testid="stCaptionContainer"],
+[data-testid="stMetricLabel"],
+[data-testid="stMetricValue"] {
+  font-family: var(--orca-mono);
 }
 
 .stApp {
@@ -59,8 +86,8 @@
   margin: 0.35rem 0 0.8rem;
   color: white;
   font-size: clamp(2.15rem, 5vw, 4.5rem);
-  line-height: 0.98;
-  letter-spacing: -0.045em;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
 }
 
 .orca-hero p {
@@ -131,6 +158,27 @@
 
 .orca-step h3 { margin: 0.85rem 0 0.45rem; font-size: 1rem; }
 .orca-step p { margin: 0; color: #49606d; line-height: 1.5; }
+
+.orca-route-label {
+  display: inline-block;
+  margin-bottom: 0.45rem;
+  color: var(--orca-teal);
+  font-size: 0.74rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.orca-question {
+  margin: 1rem 0 1.6rem;
+  padding: 1.3rem 1.45rem;
+  color: var(--orca-navy);
+  background: linear-gradient(120deg, rgba(217, 238, 235, 0.72), rgba(255, 255, 255, 0.92));
+  border: 1px solid var(--orca-line);
+  border-radius: 1rem;
+  font-size: clamp(1rem, 2vw, 1.28rem);
+  line-height: 1.65;
+}
 
 [data-testid="stMetric"] {
   padding: 0.8rem 1rem;

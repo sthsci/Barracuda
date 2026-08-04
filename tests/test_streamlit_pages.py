@@ -6,6 +6,7 @@ from streamlit.testing.v1 import AppTest
 def test_every_navigation_page_loads_without_an_exception() -> None:
     app = AppTest.from_file("streamlit_app.py")
     expected_pages = [
+        ("webapp/pages/home.py", "One question, three levels of information"),
         ("webapp/pages/bayes_101.py", "The update at the heart of Bayesian inference"),
         ("webapp/pages/synthetic_validation.py", "A. Choose the ground truth"),
         ("webapp/pages/event_counts.py", "A. Provide a small dataset"),

@@ -38,7 +38,7 @@ with term_columns[3]:
 
 st.subheader("Try a small exact update")
 st.caption(
-    "This Beta–Binomial example is for teaching. The ORCA event-count models use different likelihoods and numerical inference."
+    "This Beta–Binomial example is for teaching. The Orca event-count models use different likelihoods and numerical inference."
 )
 
 controls, chart = st.columns([0.32, 0.68], gap="large")
