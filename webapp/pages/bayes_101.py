@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 from scipy.stats import beta as beta_distribution
 
+from webapp.core.coin import simulate_coin_tosses, uniform_prior_posterior
 from webapp.ui import hero, note, step_card
 
 
@@ -36,42 +37,99 @@ with term_columns[2]:
 with term_columns[3]:
     step_card("04", "Evidence", "The likelihood averaged over the prior; it normalises the posterior and compares models.")
 
-st.subheader("Try a small exact update")
+st.subheader("Toss a coin and recover its bias")
 st.caption(
-    "This Beta–Binomial example is for teaching. The Orca event-count models use different likelihoods and numerical inference."
+    "This is a small synthetic-data validation: choose the true chance of heads, simulate tosses, "
+    "and see whether Bayesian inference recovers the value you set."
 )
 
 controls, chart = st.columns([0.32, 0.68], gap="large")
 with controls:
-    prior_alpha = st.slider("Prior α", 1, 20, 2, help="Prior event-like observations plus one.")
-    prior_beta = st.slider("Prior β", 1, 30, 8, help="Prior non-event-like observations plus one.")
-    opportunities = st.slider("Observed opportunities", 1, 100, 20)
-    successes = st.slider("Observed events", 0, opportunities, min(8, opportunities))
+    probability_heads = st.slider(
+        "True probability of heads",
+        0.0,
+        1.0,
+        0.5,
+        step=0.01,
+        help="This is the known ground truth used to generate the synthetic coin tosses.",
+    )
+    st.caption(
+        f"Ground truth: P(head) = {probability_heads:.2f} · "
+        f"P(tail) = {1.0 - probability_heads:.2f}"
+    )
+    n_tosses = st.slider(
+        "Number of tosses",
+        1,
+        500,
+        20,
+        help="Increase this to see how more data usually narrow the posterior uncertainty.",
+    )
+    st.markdown("**Prior (fixed)**  \nP(head) ~ Uniform(0, 1)")
+    st.caption("Every head probability between 0 and 1 starts with equal density.")
+    if st.button(
+        "Toss again",
+        type="primary",
+        width="stretch",
+        help="Generate another synthetic dataset with the same settings.",
+    ):
+        st.session_state["coin_toss_round"] = st.session_state.get("coin_toss_round", 0) + 1
 
-posterior_alpha = prior_alpha + successes
-posterior_beta = prior_beta + opportunities - successes
-x = np.linspace(0.001, 0.999, 500)
-prior_density = beta_distribution.pdf(x, prior_alpha, prior_beta)
+toss_round = int(st.session_state.get("coin_toss_round", 0))
+outcomes = simulate_coin_tosses(
+    probability_heads,
+    n_tosses,
+    seed=2026 + toss_round,
+)
+heads = int(outcomes.sum())
+tails = n_tosses - heads
+observed_head_rate = heads / n_tosses
+posterior_alpha, posterior_beta = uniform_prior_posterior(heads, n_tosses)
+
+x = np.linspace(0.0, 1.0, 500)
+prior_density = np.ones_like(x)
 posterior_density = beta_distribution.pdf(x, posterior_alpha, posterior_beta)
 
 with chart:
     figure, axis = plt.subplots(figsize=(8, 3.8))
-    axis.plot(x, prior_density, color="#647988", linewidth=2.2, label="Prior")
-    axis.plot(x, posterior_density, color="#007C83", linewidth=2.8, label="Posterior")
+    axis.plot(x, prior_density, color="#647988", linewidth=2.2, label="Uniform prior")
+    axis.plot(
+        x,
+        posterior_density,
+        color="#007C83",
+        linewidth=2.8,
+        label=f"Posterior after {n_tosses} tosses",
+    )
     axis.fill_between(x, posterior_density, color="#007C83", alpha=0.12)
-    axis.set(xlabel="Event probability θ", ylabel="Probability density", xlim=(0, 1))
+    axis.axvline(
+        probability_heads,
+        color="#E45B4D",
+        linewidth=2.2,
+        label=f"True P(head) = {probability_heads:.2f}",
+    )
+    axis.axvline(
+        observed_head_rate,
+        color="#142B3B",
+        linestyle="--",
+        linewidth=1.8,
+        label=f"Observed heads/tosses = {observed_head_rate:.2f}",
+    )
+    axis.set(xlabel="Probability of heads", ylabel="Probability density", xlim=(0, 1))
     axis.spines[["top", "right"]].set_visible(False)
     axis.legend(frameon=False)
     st.pyplot(figure, width="stretch")
     plt.close(figure)
 
-prior_mean = prior_alpha / (prior_alpha + prior_beta)
 posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta)
 posterior_interval = beta_distribution.ppf([0.025, 0.975], posterior_alpha, posterior_beta)
-metric_columns = st.columns(3)
-metric_columns[0].metric("Prior mean", f"{prior_mean:.3f}")
-metric_columns[1].metric("Posterior mean", f"{posterior_mean:.3f}")
-metric_columns[2].metric("Posterior 95% interval", f"{posterior_interval[0]:.3f}–{posterior_interval[1]:.3f}")
+metric_columns = st.columns(4)
+metric_columns[0].metric("Tosses observed", f"{heads} heads · {tails} tails")
+metric_columns[1].metric("Observed P(head)", f"{observed_head_rate:.3f}")
+metric_columns[2].metric("Posterior mean P(head)", f"{posterior_mean:.3f}")
+metric_columns[3].metric("Posterior 95% interval", f"{posterior_interval[0]:.3f}–{posterior_interval[1]:.3f}")
+st.caption(
+    "There is no universal required number of tosses. Increase the number until the remaining "
+    "posterior uncertainty is sufficiently small for the question you want to answer."
+)
 
 st.header("When the posterior is not available on paper")
 mcmc_tab, smc_tab = st.tabs(["MCMC", "SMC"])
