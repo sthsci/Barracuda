@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from webapp.palette import DONOR_TEAL
 from webapp.core.inference import (
     InferenceSettings,
     build_results_zip,
@@ -237,7 +238,7 @@ def data_overview(frame: pd.DataFrame, *, donor_aware: bool = False) -> None:
     count_frequency = (
         frame["count"].value_counts().sort_index().rename_axis("Event count").rename("Number of cells")
     )
-    st.bar_chart(count_frequency, color="#007C83", x_label="Event count", y_label="Number of cells")
+    st.bar_chart(count_frequency, color=DONOR_TEAL, x_label="Event count", y_label="Number of cells")
     st.dataframe(frame, hide_index=True, width="stretch", height=280)
 
     if donor_aware:

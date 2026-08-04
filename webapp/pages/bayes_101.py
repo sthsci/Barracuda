@@ -7,6 +7,12 @@ import streamlit as st
 from scipy.stats import beta as beta_distribution
 
 from webapp.core.coin import simulate_coin_tosses, uniform_prior_posterior
+from webapp.palette import (
+    CONDITION_BISPECIFIC,
+    DONOR_TEAL,
+    MODEL_ZERO_INFLATED_GAMMA,
+    PAPER_SPINE,
+)
 from webapp.ui import hero, note, step_card
 
 
@@ -91,24 +97,24 @@ posterior_density = beta_distribution.pdf(x, posterior_alpha, posterior_beta)
 
 with chart:
     figure, axis = plt.subplots(figsize=(8, 3.8))
-    axis.plot(x, prior_density, color="#647988", linewidth=2.2, label="Uniform prior")
+    axis.plot(x, prior_density, color=PAPER_SPINE, linewidth=2.2, label="Uniform prior")
     axis.plot(
         x,
         posterior_density,
-        color="#007C83",
+        color=DONOR_TEAL,
         linewidth=2.8,
         label=f"Posterior after {n_tosses} tosses",
     )
-    axis.fill_between(x, posterior_density, color="#007C83", alpha=0.12)
+    axis.fill_between(x, posterior_density, color=DONOR_TEAL, alpha=0.12)
     axis.axvline(
         probability_heads,
-        color="#E45B4D",
+        color=CONDITION_BISPECIFIC,
         linewidth=2.2,
         label=f"True P(head) = {probability_heads:.2f}",
     )
     axis.axvline(
         observed_head_rate,
-        color="#142B3B",
+        color=MODEL_ZERO_INFLATED_GAMMA,
         linestyle="--",
         linewidth=1.8,
         label=f"Observed heads/tosses = {observed_head_rate:.2f}",
