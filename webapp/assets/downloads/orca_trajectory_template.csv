@@ -1,0 +1,7 @@
+cell_id,condition,history
+control_cell_001,Control,"0,0,1,0"
+control_cell_002,Control,"1,1"
+control_cell_003,Control,""
+treatment_cell_001,Treatment,"0,1,1"
+treatment_cell_002,Treatment,"1,0,1,0"
+treatment_cell_003,Treatment,"0"

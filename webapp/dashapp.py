@@ -38,7 +38,7 @@ NAV_LABELS = {
     event_counts_overview.PATH: "Event count analysis",
     event_counts.PATH: "Donor ignorant · Data and validation",
     donor_aware.PATH: "Donor aware · Condition analysis",
-    trajectory.PATH: "Trajectory model",
+    trajectory.PATH: "Trajectory inference",
 }
 NAV_IDS = {page.PATH: f"nav-{index}" for index, page in enumerate(PAGES)}
 NAV_BASE_CLASSES = {
@@ -224,7 +224,7 @@ def create_app() -> Dash:
         ]
         return content, *classes
 
-    for prefix in ("synthetic", "counts", "donor"):
+    for prefix in ("synthetic", "counts", "donor", "trajectory"):
         @app.callback(
             Output(f"{prefix}-particles", "value"),
             Output(f"{prefix}-chains", "value"),

@@ -296,6 +296,13 @@ a:hover { color: var(--orca-rust); }
 .orca-model-definition h3 { margin: 0 0 0.45rem; font-size: 0.88rem; }
 .orca-model-definition p { margin: 0; color: var(--orca-ink-soft); font-size: 0.8rem; line-height: 1.45; }
 .orca-model-definition > span { display: block; margin-top: 0.65rem; color: var(--orca-navy); font-family: var(--orca-mono); font-size: 0.67rem; }
+.orca-trajectory-intro { margin: clamp(2rem, 5vw, 3.6rem) 0 1.5rem; }
+.orca-trajectory-model-card { min-width: 0; padding: 0.9rem; background: var(--orca-sheet); border: 1px solid var(--orca-line); border-top: 3px double var(--orca-ink); }
+.orca-trajectory-model-card > strong { color: var(--orca-rust); font-family: var(--orca-mono); font-size: 0.7rem; }
+.orca-trajectory-model-card h3 { margin: 0.38rem 0 0.45rem; font-size: 0.9rem; }
+.orca-trajectory-model-card p { margin: 0; color: var(--orca-ink-soft); font-size: 0.8rem; line-height: 1.45; }
+.orca-trajectory-model-card small { display: block; margin-top: 0.65rem; color: var(--orca-navy); font-family: var(--orca-mono); font-size: 0.67rem; }
+.orca-trajectory-parameter-chip { display: inline-block; width: fit-content; margin-top: 0.2rem; padding: 0.18rem 0.35rem; color: var(--orca-navy); background: var(--orca-paper-warm); border: 1px solid var(--orca-line-soft); font-family: var(--orca-mono); font-size: 0.64rem; }
 .orca-model-title { display: inline-flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.05rem; }
 .orca-model-script { font-family: "STIX Two Math", "Cambria Math", var(--orca-serif); font-size: 1.08em; font-style: italic; font-weight: 700; }
 .orca-model-title sub { margin-right: 0.08rem; font-family: var(--orca-serif); font-size: 0.7em; }
@@ -381,6 +388,8 @@ a:hover { color: var(--orca-rust); }
 .orca-model-checklist { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; }
 .orca-model-option { display: flex !important; gap: 0.65rem; align-items: flex-start; padding: 0.9rem; background: var(--orca-sheet); border: 1px solid var(--orca-line); border-radius: 2px; cursor: pointer; }
 .orca-model-option:hover { border-color: var(--orca-sage); }
+.orca-model-option:has(input:checked) { background: var(--orca-paper-warm); border-color: var(--orca-primary); }
+.orca-model-option:has(input:focus-visible) { outline: 2px solid var(--orca-rust); outline-offset: 2px; }
 .orca-check-input { margin-top: 0.22rem; accent-color: var(--orca-primary); }
 .orca-model-option-copy { display: grid; gap: 0.22rem; }
 .orca-model-option-copy strong { font-family: var(--orca-mono); font-size: 0.77rem; }
@@ -579,6 +588,9 @@ a:hover { color: var(--orca-rust); }
 .orca-joint-plot-scroll { width: 100%; min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; }
 .orca-joint-posterior-plot { width: 100%; min-width: 760px; }
 .orca-bayes-factor-plot { width: 100%; min-width: 0; }
+.orca-trajectory-empirical-plot { width: 100%; min-width: 0; margin-top: 1rem; background: var(--orca-sheet); border: 1px solid var(--orca-line-soft); }
+.orca-trajectory-results .orca-model-result-panel { padding: 1rem; background: var(--orca-sheet); border: 1px solid var(--orca-line-soft); }
+.orca-trajectory-results .orca-model-result-panel > h4 { margin: 0 0 0.6rem; }
 .orca-analysis-downloads { display: grid; width: 100%; gap: 0.75rem; padding: 1rem; border: 1px solid var(--orca-line); background: var(--orca-sheet); }
 .orca-analysis-downloads > .orca-button { width: 100%; }
 .orca-download-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.55rem; padding-top: 0.8rem; }

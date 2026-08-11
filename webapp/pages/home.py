@@ -122,20 +122,14 @@ def layout() -> html.Div:
                     ),
                     html.Section(
                         [
-                            html.Div(
-                                [
-                                    html.Span("Ordered data", className="orca-section-label"),
-                                    html.Span("In development", className="orca-status"),
-                                ],
-                                className="orca-explore-heading",
-                            ),
+                            html.Span("Ordered data", className="orca-section-label"),
                             html.H3(dcc.Link("Contact trajectories", href="/trajectory")),
                             html.P(
                                 "Use the order of successful and unsuccessful contacts to distinguish stable killing propensity from the effects of previous interactions.",
                                 className="orca-explore-copy",
                             ),
                             html.Div(
-                                [_subpage_link("Trajectory model", "See the model and planned input format.", "/trajectory")],
+                                [_subpage_link("Trajectory inference", "Choose synthetic data or upload ordered contact histories.", "/trajectory")],
                                 className="orca-explore-links",
                             ),
                         ],

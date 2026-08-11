@@ -37,9 +37,9 @@ The `codex/dash-app` branch contains a focused Dash interface for learning and t
 
 1. A project home page and guide to the available sections.
 2. Bayesian inference 101, including Bayes' theorem, MCMC, SMC, marginal likelihoods, and Bayes factors.
-3. Donor ignorant event count inference, beginning with a choice between synthetic validation and the user's own data. Own data may contain one to four independently fitted experimental conditions.
+3. Donor ignorant event count inference, beginning with a choice between synthetic validation and the user's own data. Inference can run independently for one to four experimental conditions.
 4. Donor aware hierarchical inference for one to four conditions, including Bayes factors, within-versus-between donor heterogeneity, population and donor posterior views, and particle-level condition contrasts.
-5. A roadmap page for the trajectory interface under development.
+5. Donor ignorant trajectory inference from synthetic or uploaded ordered contact histories, with empirical state maps, model evidence, marginal posteriors, and full joint posteriors.
 
 The application intentionally defaults to small SMC settings. Preview results are illustrative and are not publication-grade. The scientific simulation, validation, inference, and result-export functions are kept separate from the Dash interface.
 
@@ -84,7 +84,17 @@ cell_005,donor_B,Treatment,0
 cell_006,donor_B,Treatment,1
 ```
 
-Each upload contains one count outcome and may contain one to four experimental conditions. If `condition` is omitted, all rows are assigned to `Group 1`. Conditions are fitted independently with the same selected models and prior settings. The likelihood uses one observation time entered in the interface for every row. Do not upload names, clinical metadata, raw microscopy, or unapproved donor data.
+Trajectory CSV:
+
+```csv
+cell_id,condition,history
+cell_001,Control,"0,0,1,0"
+cell_002,Control,"1,1"
+cell_003,Control,""
+cell_004,Treatment,"0,1,1"
+```
+
+Each count upload contains one count outcome and may contain one to four experimental conditions. Each trajectory upload contains one ordered binary history per cell; a blank history retains a cell with zero observed contacts. If `condition` is omitted, all rows are assigned to `Condition 1`. Inference runs independently for each condition with the same selected models and prior settings. The likelihood uses one observation time entered in the interface for every row. Do not upload names, clinical metadata, raw microscopy, or unapproved donor data.
 
 The public demo accepts 5–1,000 cells per condition, integer counts from 0–100, and at least one positive count in each condition. Donor aware inputs need 2–12 donors with at least three cells per donor in every condition; larger donor groups are strongly preferred for stable donor estimates.
 

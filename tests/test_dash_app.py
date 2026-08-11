@@ -54,7 +54,7 @@ def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:
         "/event-counts": "Choose an analysis",
         "/event-counts/donor-ignorant": "Which data do you want to use?",
         "/event-counts/donor-aware": "Provide counts with donor labels",
-        "/trajectory": "What the trajectory model retains",
+        "/trajectory": "Which trajectory data do you want to use?",
     }
     assert {page.PATH for page in PAGES} == set(expected)
     for page in PAGES:
@@ -101,6 +101,16 @@ def test_dash_layout_contains_upload_edit_inference_and_download_surfaces() -> N
         "donor-table",
         "donor-run",
         "donor-condition-colour-controls",
+        "trajectory-workflow",
+        "trajectory-generate",
+        "trajectory-upload",
+        "trajectory-empirical-figure",
+        "trajectory-condition-colour-controls",
+        "trajectory-run",
+        "trajectory-pymc-progress-bar",
+        "trajectory-pymc-progress-label",
+        "trajectory-pymc-progress-meta",
+        "trajectory-chain-progress",
     }
     assert required <= ids
 
