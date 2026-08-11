@@ -1,13 +1,47 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from contextvars import ContextVar
 import os
-from typing import Optional, Tuple
+import re
+from typing import Callable, Optional, Tuple
 
 import arviz as az
 import numpy as np
 import pymc as pm
 import pytensor.tensor as pt
+
+
+SMCProgressCallback = Callable[[int, float], None]
+_smc_progress_callback: ContextVar[SMCProgressCallback | None] = ContextVar(
+    "orca_smc_progress_callback",
+    default=None,
+)
+_smc_status_pattern = re.compile(r"Stage:\s*(\d+)\s+Beta:\s*([0-9.]+)")
+
+
+def _install_smc_progress_bridge() -> None:
+    """Forward PyMC's own stage and beta updates to the active web callback."""
+
+    import pymc.smc.sampling as smc_sampling
+
+    progress_class = smc_sampling.CustomProgress
+    if getattr(progress_class, "_orca_progress_bridge", False):
+        return
+
+    class OrcaSMCProgress(progress_class):
+        _orca_progress_bridge = True
+
+        def update(self, task_id, *args, **kwargs):
+            status = kwargs.get("status")
+            callback = _smc_progress_callback.get()
+            if callback is not None and isinstance(status, str):
+                match = _smc_status_pattern.search(status)
+                if match is not None:
+                    callback(int(match.group(1)), float(match.group(2)))
+            return super().update(task_id, *args, **kwargs)
+
+    smc_sampling.CustomProgress = OrcaSMCProgress
 
 
 def _validate_counts(contacts_per_cell, obs_time: float) -> Tuple[np.ndarray, float]:
@@ -42,17 +76,23 @@ def _sample_smc(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
-    trace = pm.sample_smc(
-        draws=int(draws),
-        chains=int(chains),
-        cores=_resolve_cores(cores),
-        random_seed=random_seed,
-        progressbar=True,
-        return_inferencedata=False,
-        threshold=float(threshold),
-        correlation_threshold=float(correlation_threshold),
-    )
+    _install_smc_progress_bridge()
+    progress_token = _smc_progress_callback.set(progress_callback)
+    try:
+        trace = pm.sample_smc(
+            draws=int(draws),
+            chains=int(chains),
+            cores=_resolve_cores(cores),
+            random_seed=random_seed,
+            progressbar=True,
+            return_inferencedata=False,
+            threshold=float(threshold),
+            correlation_threshold=float(correlation_threshold),
+        )
+    finally:
+        _smc_progress_callback.reset(progress_token)
 
     to_idata = getattr(pm, "to_inferencedata", None) or getattr(pm, "to_inference_data", None)
     if to_idata is None:
@@ -146,6 +186,7 @@ def inference_homo(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     N, T = _validate_counts(contacts_per_cell, obs_time)
 
@@ -161,6 +202,7 @@ def inference_homo(
             random_seed=random_seed,
             threshold=threshold,
             correlation_threshold=correlation_threshold,
+            progress_callback=progress_callback,
         )
         _summarize(idata)
 
@@ -179,6 +221,7 @@ def inference_Z2P(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     N, T = _validate_counts(contacts_per_cell, obs_time)
 
@@ -195,6 +238,7 @@ def inference_Z2P(
             random_seed=random_seed,
             threshold=threshold,
             correlation_threshold=correlation_threshold,
+            progress_callback=progress_callback,
         )
         _summarize(idata)
 
@@ -246,6 +290,7 @@ def inference_Dis2P(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     N, T = _validate_counts(contacts_per_cell, obs_time)
     n_t = pt.as_tensor_variable(N.astype(float))
@@ -270,6 +315,7 @@ def inference_Dis2P(
             random_seed=random_seed,
             threshold=threshold,
             correlation_threshold=correlation_threshold,
+            progress_callback=progress_callback,
         )
         _summarize(idata)
 
@@ -289,6 +335,7 @@ def inference_hetero3(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     N, T = _validate_counts(contacts_per_cell, obs_time)
     n_t = pt.as_tensor_variable(N.astype(float))
@@ -320,6 +367,7 @@ def inference_hetero3(
             random_seed=random_seed,
             threshold=threshold,
             correlation_threshold=correlation_threshold,
+            progress_callback=progress_callback,
         )
         _summarize(idata)
 

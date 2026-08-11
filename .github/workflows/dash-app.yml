@@ -1,18 +1,17 @@
-name: Streamlit demo checks
+name: Dash application checks
 
 on:
   push:
-    branches: [main, codex/streamlit-demo]
+    branches: [main, codex/dash-app]
   pull_request:
     paths:
-      - "streamlit_app.py"
+      - "dash_app.py"
       - "webapp/**"
       - "tests/**"
       - "requirements*.txt"
       - "Dockerfile"
       - ".dockerignore"
-      - ".streamlit/**"
-      - ".github/workflows/streamlit-demo.yml"
+      - ".github/workflows/dash-app.yml"
       - "section_1/src/inference.py"
       - "section_2/src/inference_donor_relative.py"
 

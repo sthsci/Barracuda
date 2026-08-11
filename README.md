@@ -1,6 +1,6 @@
 # Orca
 
-**Bayesian inference for heterogeneity in immune-cell decision-making**
+**Bayesian inference for heterogeneity in immune cell decision making**
 
 Research code supporting the manuscript *A Bayesian framework reveals heterogeneous and stochastic decision-making in NK cell cytotoxicity*. Orca uses single-cell contact and kill histories to ask whether variation in natural killer (NK) cell behaviour arises from stochastic events, stable cell-to-cell differences, donor effects, interaction history, or a combination of these mechanisms.
 
@@ -31,18 +31,17 @@ The simplest introduction is [`section_1/notebook/demo_validation_1.ipynb`](sect
 
 The scientific stack is built around Python, PyMC, PyTensor, ArviZ, NumPy, pandas, SciPy, Matplotlib, and xarray. The analyses are computationally intensive: manuscript-scale SMC runs use substantially more particles and chains than exploratory checks.
 
-## Streamlit preview
+## Dash web application
 
-The `codex/streamlit-demo` branch contains a six-page interface for learning and testing the framework:
+The `codex/dash-app` branch contains a focused Dash interface for learning and testing the framework:
 
 1. A project home page and guide to the available sections.
 2. Bayesian inference 101, including Bayes' theorem, MCMC, SMC, marginal likelihoods, and Bayes factors.
-3. Synthetic data generation followed by parameter recovery and model comparison.
-4. Donor-ignorant event-count inference from an example, uploaded CSV, or editable browser table.
-5. A small donor-aware hierarchical extension.
-6. A roadmap page for the trajectory interface under development.
+3. Donor ignorant event count inference, beginning with a choice between synthetic validation and the user's own data. Own data may contain one to four independently fitted experimental conditions.
+4. Donor aware hierarchical inference for one to four conditions, including Bayes factors, within-versus-between donor heterogeneity, population and donor posterior views, and particle-level condition contrasts.
+5. A roadmap page for the trajectory interface under development.
 
-The preview intentionally uses small SMC settings. Its default results are illustrative and are not publication-grade.
+The application intentionally defaults to small SMC settings. Preview results are illustrative and are not publication-grade. The scientific simulation, validation, inference, and result-export functions are kept separate from the Dash interface.
 
 ### Run locally
 
@@ -50,14 +49,14 @@ The preview intentionally uses small SMC settings. Its default results are illus
 python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-streamlit run streamlit_app.py
+python dash_app.py
 ```
 
 Alternatively, build the included container:
 
 ```bash
-docker build -t orca-streamlit-demo .
-docker run --rm -p 8501:8501 orca-streamlit-demo
+docker build -t orca-dash-app .
+docker run --rm -p 8501:8501 orca-dash-app
 ```
 
 ### Input schemas
@@ -65,29 +64,29 @@ docker run --rm -p 8501:8501 orca-streamlit-demo
 Donor-ignorant CSV:
 
 ```csv
-cell_id,count
-cell_001,3
-cell_002,0
-cell_003,1
-cell_004,2
-cell_005,0
+cell_id,condition,count
+cell_001,Control,3
+cell_002,Control,0
+cell_003,Control,1
+cell_004,Treatment,2
+cell_005,Treatment,0
 ```
 
 Donor-aware CSV:
 
 ```csv
-cell_id,donor_id,count
-cell_001,donor_A,3
-cell_002,donor_A,0
-cell_003,donor_A,1
-cell_004,donor_B,2
-cell_005,donor_B,0
-cell_006,donor_B,1
+cell_id,donor_id,condition,count
+cell_001,donor_A,Control,3
+cell_002,donor_A,Control,0
+cell_003,donor_A,Control,1
+cell_004,donor_B,Treatment,2
+cell_005,donor_B,Treatment,0
+cell_006,donor_B,Treatment,1
 ```
 
-Each upload should contain one outcome and one experimental condition. The current likelihood uses a single observation time entered in the interface for every row. Do not upload names, clinical metadata, raw microscopy, or unapproved donor-derived data.
+Each upload contains one count outcome and may contain one to four experimental conditions. If `condition` is omitted, all rows are assigned to `Group 1`. Conditions are fitted independently with the same selected models and prior settings. The likelihood uses one observation time entered in the interface for every row. Do not upload names, clinical metadata, raw microscopy, or unapproved donor data.
 
-The public demo accepts 5–1,000 cells, integer counts from 0–100, and at least one positive count. Donor-aware inputs need 2–12 donors with at least three cells per donor; larger donor groups are strongly preferred for stable donor-specific estimates.
+The public demo accepts 5–1,000 cells per condition, integer counts from 0–100, and at least one positive count in each condition. Donor aware inputs need 2–12 donors with at least three cells per donor in every condition; larger donor groups are strongly preferred for stable donor estimates.
 
 ### Deployment status
 

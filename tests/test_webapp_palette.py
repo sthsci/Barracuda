@@ -37,9 +37,13 @@ def test_web_theme_reuses_manuscript_figure_palette() -> None:
         assert color in css
 
 
-def test_streamlit_theme_uses_manuscript_neutrals_and_primary_color() -> None:
-    config = Path(".streamlit/config.toml").read_text(encoding="utf-8").upper()
-    assert 'PRIMARYCOLOR = "#0F6B78"' in config
-    assert 'BACKGROUNDCOLOR = "#FFFFFF"' in config
-    assert 'SECONDARYBACKGROUNDCOLOR = "#F7F7F7"' in config
-    assert 'TEXTCOLOR = "#262A33"' in config
+def test_dash_theme_uses_flat_print_neutrals_and_accessible_focus() -> None:
+    css = Path("webapp/assets/styles.css").read_text(encoding="utf-8").upper()
+    assert "--ORCA-PRIMARY: #304B3D" in css
+    assert "--ORCA-PAPER: #FAF8F2" in css
+    assert "--ORCA-SHEET: #FFFEFA" in css
+    assert "--ORCA-MIST: #EFEAE1" in css
+    assert "--ORCA-INK: #25231F" in css
+    assert "GRADIENT(" not in css
+    assert ":FOCUS-VISIBLE" in css
+    assert "PREFERS-REDUCED-MOTION" in css

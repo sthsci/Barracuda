@@ -1,1 +1,1 @@
-"""Streamlit interface for the Orca Bayesian event-count framework."""
+"""Dash interface for the Orca Bayesian event count framework."""

@@ -1,4 +1,4 @@
-"""UI-neutral adapters around the paper's event-count inference modules."""
+"""UI neutral adapters around the paper's event count inference modules."""
 
 from __future__ import annotations
 
@@ -8,8 +8,10 @@ from importlib import import_module, metadata
 from io import BytesIO
 import json
 import math
+from pathlib import Path
 import platform
 import re
+from tempfile import TemporaryDirectory
 import time
 from types import ModuleType
 from typing import Any, Final
@@ -26,6 +28,7 @@ from .data import (
 
 
 ProgressCallback = Callable[[int, int, str], None]
+SamplerProgressCallback = Callable[[int, int, str, int, float], None]
 
 
 @dataclass(frozen=True)
@@ -33,6 +36,7 @@ class ModelSpec:
     """Display and backend metadata for one model in the comparison set."""
 
     key: str
+    notation: str
     label: str
     short_label: str
     backend_function: str
@@ -44,19 +48,21 @@ class ModelSpec:
 MODEL_SPECS: Final[dict[str, ModelSpec]] = {
     "homo": ModelSpec(
         key="homo",
-        label="Homogeneous Poisson",
-        short_label="Homogeneous",
+        notation="𝓜_homo",
+        label="𝓜_homo · Homogeneous Poisson",
+        short_label="𝓜_homo",
         backend_function="inference_homo",
-        description="One event rate shared by every cell.",
+        description="Every cell shares λ. Differences between counts arise from Poisson sampling variation.",
         count_parameters=("lambda",),
         donor_parameters=("mu_lambda_population", "mu_lambda_donor"),
     ),
     "z2p": ModelSpec(
         key="z2p",
-        label="Zero-inflated Poisson",
-        short_label="Zero-inflated",
+        notation="𝓜_ZI",
+        label="𝓜_ZI · Zero inflated Poisson",
+        short_label="𝓜_ZI",
         backend_function="inference_Z2P",
-        description="A shared active-cell rate plus a structural-zero fraction.",
+        description="A fraction φ₀ is nonengaging. The remaining cells share one event rate λ.",
         count_parameters=("lambda", "p_zero"),
         donor_parameters=(
             "mu_lambda_population",
@@ -67,10 +73,11 @@ MODEL_SPECS: Final[dict[str, ModelSpec]] = {
     ),
     "dis2p": ModelSpec(
         key="dis2p",
-        label="Distributed-rate Gamma–Poisson",
-        short_label="Distributed rate",
+        notation="𝓜_Γ",
+        label="𝓜_Γ · Heterogeneous Gamma Poisson",
+        short_label="𝓜_Γ",
         backend_function="inference_Dis2P",
-        description="Cell rates follow a Gamma distribution without structural zeros.",
+        description="Continuous cell-to-cell heterogeneity: event rates λᵢ among engaging cells follow Gamma(μλ, σλ), with φ₀ = 0.",
         count_parameters=("mu_lambda", "sigma_lambda"),
         donor_parameters=(
             "mu_lambda_population",
@@ -81,10 +88,11 @@ MODEL_SPECS: Final[dict[str, ModelSpec]] = {
     ),
     "hetero3": ModelSpec(
         key="hetero3",
-        label="Zero-inflated Gamma–Poisson",
-        short_label="Full heterogeneous",
+        notation="𝓜_ZIΓ",
+        label="𝓜_ZIΓ · Zero inflated heterogeneous Gamma Poisson",
+        short_label="𝓜_ZIΓ",
         backend_function="inference_hetero3",
-        description="Gamma-distributed active-cell rates plus structural zeros.",
+        description="Continuous cell-to-cell heterogeneity plus a fraction φ₀ of nonengaging cells; positive rates follow Gamma(μλ, σλ).",
         count_parameters=("mu_lambda", "sigma_lambda", "p_zero"),
         donor_parameters=(
             "mu_lambda_population",
@@ -129,10 +137,10 @@ class InferenceSettings:
     seed: int | None = None
     threshold: float = 0.5
     correlation_threshold: float = 0.01
-    lambda_prior_bounds: tuple[float, float] = (-5.0, 2.0)
+    lambda_prior_bounds: tuple[float, float] = (-1.5, 1.5)
     p_prior_bounds: tuple[float, float] = (1.0, 1.0)
-    std_prior_factor: float = 1.0
-    donor_deviation_prior: tuple[float, float, float] = (0.2, 0.2, 0.5)
+    std_prior_factor: float = 3.0
+    donor_deviation_prior: tuple[float, float, float] = (0.3, 0.3, 1.0)
 
     def __post_init__(self) -> None:
         _positive_int(self.draws, "draws")
@@ -300,6 +308,7 @@ def _fit_models(
     specs: Sequence[ModelSpec],
     donor_aware: bool,
     progress_callback: ProgressCallback | None,
+    sampler_progress_callback: SamplerProgressCallback | None,
 ) -> dict[str, InferenceResult]:
     backend = _load_backend(donor_aware)
     counts = frame["count"].to_numpy(dtype=np.int64)
@@ -321,6 +330,16 @@ def _fit_models(
             settings,
             donor_aware=donor_aware,
         )
+        if sampler_progress_callback is not None and not donor_aware:
+            kwargs["progress_callback"] = (
+                lambda stage, beta, *, _index=index, _total=total, _label=spec.label: sampler_progress_callback(
+                    _index,
+                    _total,
+                    _label,
+                    int(stage),
+                    float(beta),
+                )
+            )
         positional: tuple[Any, ...]
         if donor_aware:
             kwargs["donor_num"] = len(donor_labels)
@@ -362,8 +381,9 @@ def run_count_models(
     settings: InferenceSettings | None = None,
     model_keys: Sequence[str] | None = None,
     progress_callback: ProgressCallback | None = None,
+    sampler_progress_callback: SamplerProgressCallback | None = None,
 ) -> dict[str, InferenceResult]:
-    """Validate and fit donor-ignorant models sequentially with SMC."""
+    """Validate and fit donor ignorant models sequentially with SMC."""
 
     validated = validate_count_frame(frame)
     duration = validate_observation_time(observation_time)
@@ -377,6 +397,7 @@ def run_count_models(
         specs=_selected_specs(model_keys),
         donor_aware=False,
         progress_callback=progress_callback,
+        sampler_progress_callback=sampler_progress_callback,
     )
 
 
@@ -401,6 +422,7 @@ def run_donor_models(
         specs=_selected_specs(model_keys),
         donor_aware=True,
         progress_callback=progress_callback,
+        sampler_progress_callback=None,
     )
 
 
@@ -517,6 +539,80 @@ def summary_table(
     return pd.concat(tables, ignore_index=True)
 
 
+_COMMON_PARAMETER_SOURCES: Final[dict[str, dict[str, str]]] = {
+    "homo": {"mu_lambda": "lambda"},
+    "z2p": {"mu_lambda": "lambda", "p_zero": "p_zero"},
+    "dis2p": {"mu_lambda": "mu_lambda", "sigma_lambda": "sigma_lambda"},
+    "hetero3": {
+        "mu_lambda": "mu_lambda",
+        "sigma_lambda": "sigma_lambda",
+        "p_zero": "p_zero",
+    },
+}
+
+
+def posterior_draw_table(
+    results: Mapping[str, InferenceResult],
+    *,
+    max_draws_per_model: int | None = None,
+) -> pd.DataFrame:
+    """Return paired posterior draws on the common event-count parameter axes.
+
+    Rows, rather than individual parameter vectors, are subsampled so the joint
+    dependence between parameters is preserved.
+    """
+
+    if max_draws_per_model is not None:
+        max_draws_per_model = int(max_draws_per_model)
+        if max_draws_per_model <= 0:
+            raise ValueError("max_draws_per_model must be positive or None")
+
+    tables: list[pd.DataFrame] = []
+    for model_key, result in results.items():
+        if result.donor_aware:
+            continue
+        mapping = _COMMON_PARAMETER_SOURCES[model_key]
+        vectors: dict[str, np.ndarray] = {}
+        for public_name, source_name in mapping.items():
+            if source_name not in result.idata.posterior.data_vars:
+                continue
+            values = result.idata.posterior[source_name]
+            extra_dims = [dim for dim in values.dims if dim not in {"chain", "draw"}]
+            if extra_dims:
+                continue
+            vectors[public_name] = np.asarray(values, dtype=float).reshape(-1)
+        if not vectors:
+            continue
+        row_count = min(len(values) for values in vectors.values())
+        frame = pd.DataFrame(
+            {name: values[:row_count] for name, values in vectors.items()}
+        )
+        frame.insert(0, "posterior_draw", np.arange(row_count, dtype=int))
+        frame.insert(0, "model", result.model_label)
+        frame.insert(0, "model_key", model_key)
+        if max_draws_per_model is not None and len(frame) > max_draws_per_model:
+            indices = np.linspace(
+                0,
+                len(frame) - 1,
+                max_draws_per_model,
+                dtype=int,
+            )
+            frame = frame.iloc[indices].reset_index(drop=True)
+        tables.append(frame)
+
+    columns = [
+        "model_key",
+        "model",
+        "posterior_draw",
+        "mu_lambda",
+        "sigma_lambda",
+        "p_zero",
+    ]
+    if not tables:
+        return pd.DataFrame(columns=columns)
+    return pd.concat(tables, ignore_index=True).reindex(columns=columns)
+
+
 def csv_bytes(frame: pd.DataFrame) -> bytes:
     """Serialize a report table to UTF-8 CSV entirely in memory."""
 
@@ -557,8 +653,9 @@ def build_results_zip(
     settings: InferenceSettings,
     *,
     truth: Mapping[str, Any] | None = None,
+    artifacts: Mapping[str, bytes] | None = None,
 ) -> bytes:
-    """Create a compact, reproducible results bundle without writing to disk."""
+    """Create a reproducible bundle with tables and raw posterior files."""
 
     if not results:
         raise ValueError("at least one inference result is required")
@@ -569,7 +666,7 @@ def build_results_zip(
         raise TypeError("results values must be InferenceResult instances")
     modes = {result.donor_aware for result in result_values}
     if len(modes) != 1:
-        raise ValueError("a report cannot mix donor-aware and donor-ignorant results")
+        raise ValueError("a report cannot mix donor aware and donor ignorant results")
     donor_aware = modes.pop()
     validated_data = (
         validate_donor_frame(data) if donor_aware else validate_count_frame(data)
@@ -578,6 +675,7 @@ def build_results_zip(
 
     evidence = evidence_table(results)
     summaries = summary_table(results)
+    posterior_draws = posterior_draw_table(results)
     metadata_payload = {
         "observation_time": duration,
         "donor_aware": donor_aware,
@@ -604,6 +702,7 @@ def build_results_zip(
         _zip_write(archive, "input_data.csv", csv_bytes(validated_data))
         _zip_write(archive, "model_evidence.csv", csv_bytes(evidence))
         _zip_write(archive, "posterior_summary.csv", csv_bytes(summaries))
+        _zip_write(archive, "posterior_samples.csv", csv_bytes(posterior_draws))
         _zip_write(archive, "run_metadata.json", metadata_json)
         if truth is not None:
             truth_json = json.dumps(
@@ -613,13 +712,42 @@ def build_results_zip(
                 default=_json_default,
             ) + "\n"
             _zip_write(archive, "ground_truth.json", truth_json)
+        with TemporaryDirectory(prefix="orca-idata-") as temporary_directory:
+            temporary_root = Path(temporary_directory)
+            for result in result_values:
+                filename = f"posterior_{result.model_key}_smc.nc"
+                path = temporary_root / filename
+                result.idata.to_netcdf(str(path))
+                _zip_write(archive, filename, path.read_bytes())
+        for name, content in (artifacts or {}).items():
+            safe_name = str(name).replace("\\", "/").lstrip("/")
+            if not safe_name or ".." in Path(safe_name).parts:
+                raise ValueError(f"unsafe artifact name: {name!r}")
+            _zip_write(archive, safe_name, bytes(content))
         _zip_write(
             archive,
-            "README.txt",
-            "Orca Bayesian event-count demo results\n"
+            "README.md",
+            "# Orca Bayesian event count results\n"
             "\n"
-            "Bayes-factor columns compare each fitted model with the model that "
-            "has the largest SMC log evidence. Posterior intervals are 95% HDIs.\n"
-            "The bundle intentionally excludes large raw posterior files.\n",
+            "The `posterior_<model>_smc.nc` files are ArviZ InferenceData "
+            "objects produced by PyMC Sequential Monte Carlo. The CSV files "
+            "contain the input counts, SMC evidence, posterior summaries and "
+            "paired posterior draws used by the joint plot.\n"
+            "\n"
+            "```python\n"
+            "import arviz as az\n"
+            "import pandas as pd\n"
+            "\n"
+            "idata = az.from_netcdf('posterior_hetero3_smc.nc')\n"
+            "print(az.summary(idata, var_names=['mu_lambda', 'sigma_lambda', 'p_zero']))\n"
+            "draws = idata.posterior[['mu_lambda', 'sigma_lambda', 'p_zero']].to_dataframe()\n"
+            "az.plot_pair(idata, var_names=['mu_lambda', 'sigma_lambda', 'p_zero'], kind='kde', marginals=True)\n"
+            "evidence = pd.read_csv('model_evidence.csv')\n"
+            "```\n"
+            "\n"
+            "The Bayes factor column `log10_BF_best_vs_model` compares the "
+            "largest SMC log evidence with each fitted model. Posterior "
+            "intervals in `posterior_summary.csv` are 95% HDIs. Prior settings "
+            "and software versions are recorded in `run_metadata.json`.\n",
         )
     return buffer.getvalue()

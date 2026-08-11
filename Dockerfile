@@ -18,8 +18,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 RUN useradd --create-home appuser
 
-COPY --chown=appuser:appuser .streamlit ./.streamlit
-COPY --chown=appuser:appuser streamlit_app.py ./
+COPY --chown=appuser:appuser dash_app.py ./
 COPY --chown=appuser:appuser webapp ./webapp
 COPY --chown=appuser:appuser section_1/src ./section_1/src
 COPY --chown=appuser:appuser section_2/src ./section_2/src
@@ -28,6 +27,6 @@ USER appuser
 
 EXPOSE 8501
 
-HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/_stcore/health')"
+HEALTHCHECK CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8501/healthz')"
 
-CMD ["streamlit", "run", "streamlit_app.py", "--server.address=0.0.0.0", "--server.port=8501"]
+CMD ["gunicorn", "--bind", "0.0.0.0:8501", "--workers", "1", "--threads", "2", "--timeout", "900", "dash_app:server"]

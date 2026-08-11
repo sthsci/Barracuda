@@ -147,12 +147,30 @@ def test_count_models_run_sequentially_with_none_seed_and_progress(fake_backend)
     assert fake_backend.calls[0][1][1] == 2.5
     assert fake_backend.calls[0][2]["random_seed"] is None
     assert fake_backend.calls[1][2]["p_prior_bounds"] == (1.0, 1.0)
-    assert fake_backend.calls[1][2]["std_prior_factor"] == 1.0
+    assert fake_backend.calls[1][2]["std_prior_factor"] == 3.0
     assert events == [
-        (1, 2, "Homogeneous Poisson"),
-        (2, 2, "Zero-inflated Gamma–Poisson"),
+        (1, 2, "𝓜_homo · Homogeneous Poisson"),
+        (2, 2, "𝓜_ZIΓ · Zero inflated heterogeneous Gamma Poisson"),
     ]
     assert all(result.model is None for result in results.values())
+
+
+def test_model_specs_use_the_paper_symbols_names_and_donor_prior_defaults() -> None:
+    assert {key: spec.notation for key, spec in facade.MODEL_SPECS.items()} == {
+        "homo": "𝓜_homo",
+        "z2p": "𝓜_ZI",
+        "dis2p": "𝓜_Γ",
+        "hetero3": "𝓜_ZIΓ",
+    }
+    assert facade.MODEL_SPECS["dis2p"].label.endswith(
+        "Heterogeneous Gamma Poisson"
+    )
+    assert facade.MODEL_SPECS["hetero3"].label.endswith(
+        "Zero inflated heterogeneous Gamma Poisson"
+    )
+    assert facade.InferenceSettings().donor_deviation_prior == (0.3, 0.3, 1.0)
+    assert facade.InferenceSettings().lambda_prior_bounds == (-1.5, 1.5)
+    assert facade.InferenceSettings().std_prior_factor == 3.0
 
 
 def test_donor_wrapper_encodes_all_donors_and_uses_relative_prior_shapes(fake_backend) -> None:
@@ -240,18 +258,55 @@ def test_build_results_zip_contains_valid_compact_in_memory_reports() -> None:
             "input_data.csv",
             "model_evidence.csv",
             "posterior_summary.csv",
+            "posterior_samples.csv",
+            "posterior_homo_smc.nc",
+            "posterior_hetero3_smc.nc",
             "run_metadata.json",
             "ground_truth.json",
-            "README.txt",
+            "README.md",
         }
         evidence = pd.read_csv(archive.open("model_evidence.csv"))
+        posterior_samples = pd.read_csv(archive.open("posterior_samples.csv"))
         metadata = json.load(archive.open("run_metadata.json"))
         truth = json.load(archive.open("ground_truth.json"))
+        readme = archive.read("README.md").decode("utf-8")
 
     assert evidence.iloc[0]["model_key"] == "hetero3"
     assert metadata["settings"]["seed"] is None
     assert metadata["n_cells"] == 12
     assert truth == {"model_key": "hetero3", "seed": None}
+    assert {"mu_lambda", "sigma_lambda", "p_zero"} <= set(posterior_samples)
+    assert "az.from_netcdf" in readme
+
+
+def test_posterior_draw_table_preserves_parameter_pairing() -> None:
+    idata = az.from_dict(
+        posterior={
+            "mu_lambda": np.array([[1.0, 2.0, 3.0, 4.0]]),
+            "sigma_lambda": np.array([[10.0, 20.0, 30.0, 40.0]]),
+            "p_zero": np.array([[0.1, 0.2, 0.3, 0.4]]),
+        }
+    )
+    result = InferenceResult(
+        model_key="hetero3",
+        model_label=facade.MODEL_SPECS["hetero3"].label,
+        donor_aware=False,
+        idata=idata,
+        model=None,
+        log_evidence=-1.0,
+        elapsed_seconds=0.1,
+        n_cells=4,
+        observation_time=1.0,
+    )
+
+    draws = facade.posterior_draw_table(
+        {"hetero3": result}, max_draws_per_model=2
+    )
+
+    assert draws[["mu_lambda", "sigma_lambda", "p_zero"]].to_dict("records") == [
+        {"mu_lambda": 1.0, "sigma_lambda": 10.0, "p_zero": 0.1},
+        {"mu_lambda": 4.0, "sigma_lambda": 40.0, "p_zero": 0.4},
+    ]
 
 
 def test_report_rejects_mixed_donor_modes() -> None:

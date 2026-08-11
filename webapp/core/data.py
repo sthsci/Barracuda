@@ -1,4 +1,4 @@
-"""Canonical tabular schemas and validation for event-count data."""
+"""Canonical tabular schemas and validation for event count data."""
 
 from __future__ import annotations
 
@@ -117,7 +117,7 @@ def validate_count_frame(frame: pd.DataFrame) -> pd.DataFrame:
 
 
 def validate_donor_frame(frame: pd.DataFrame) -> pd.DataFrame:
-    """Return a normalized canonical donor-aware event-count frame.
+    """Return a normalized canonical donor aware event count frame.
 
     In addition to the count-data rules, every row must have a donor label.
     For categorical donor columns, every declared category must be represented;
@@ -161,7 +161,7 @@ def validate_donor_frame(frame: pd.DataFrame) -> pd.DataFrame:
     donor_count = len(donor_sizes)
     if not MIN_DONORS <= donor_count <= MAX_DONORS:
         raise ValueError(
-            f"donor-aware data must contain {MIN_DONORS} to {MAX_DONORS} donors"
+            f"donor aware data must contain {MIN_DONORS} to {MAX_DONORS} donors"
         )
     sparse = donor_sizes[donor_sizes < MIN_CELLS_PER_DONOR]
     if not sparse.empty:
@@ -186,7 +186,7 @@ def validate_observation_time(observation_time: float) -> float:
 
 
 def sample_count_frame() -> pd.DataFrame:
-    """Small built-in donor-ignorant dataset suitable for the demo editor."""
+    """Small built in donor ignorant dataset suitable for the demo editor."""
 
     return pd.DataFrame(
         {

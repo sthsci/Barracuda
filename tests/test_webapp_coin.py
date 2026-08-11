@@ -3,7 +3,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from webapp.core.coin import simulate_coin_tosses, uniform_prior_posterior
+from webapp.core.coin import beta_highest_density_interval, simulate_coin_tosses, uniform_prior_posterior
 
 
 def test_coin_toss_simulation_is_reproducible_and_binary() -> None:
@@ -17,6 +17,21 @@ def test_coin_toss_simulation_is_reproducible_and_binary() -> None:
 
 def test_uniform_prior_updates_to_expected_beta_posterior() -> None:
     assert uniform_prior_posterior(heads=7, n_tosses=10) == (8, 4)
+
+
+def test_highest_density_interval_handles_symmetric_and_boundary_posteriors() -> None:
+    symmetric = beta_highest_density_interval(6, 6, 0.95)
+    boundary = beta_highest_density_interval(13, 1, 0.95)
+
+    assert symmetric[0] == pytest.approx(1 - symmetric[1], abs=1e-7)
+    assert boundary == pytest.approx((0.05 ** (1 / 13), 1.0), abs=1e-7)
+
+
+def test_smaller_hdi_probability_produces_a_narrower_interval() -> None:
+    interval_80 = beta_highest_density_interval(8, 4, 0.8)
+    interval_95 = beta_highest_density_interval(8, 4, 0.95)
+
+    assert interval_80[1] - interval_80[0] < interval_95[1] - interval_95[0]
 
 
 @pytest.mark.parametrize(

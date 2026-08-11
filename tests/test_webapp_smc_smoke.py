@@ -38,7 +38,7 @@ def test_real_homogeneous_smc_smoke() -> None:
     reason="set ORCA_RUN_SMC_SMOKE=1 to run the optional PyMC SMC smoke test",
 )
 def test_real_donor_aware_homogeneous_smc_smoke() -> None:
-    """Exercise the donor-relative backend used by the Streamlit prototype."""
+    """Exercise the donor-relative backend used by the Dash application."""
 
     results = run_donor_models(
         sample_donor_frame(),

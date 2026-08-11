@@ -1,146 +1,98 @@
+"""Donor aware hierarchical analysis page."""
+
 from __future__ import annotations
 
-import pandas as pd
-import streamlit as st
+from dash import dcc, html
 
-from webapp.analysis_ui import (
-    data_overview,
-    inference_controls,
-    model_selector,
-    normalize_uploaded_frame,
-    read_uploaded_csv,
-    render_results,
-)
-from webapp.core.data import sample_donor_frame, validate_donor_frame
-from webapp.core.inference import run_donor_models
-from webapp.ui import hero, note
+from webapp.pages.analysis_page import layout as analysis_layout
+from webapp.pages.analysis_page import register_callbacks as register_analysis_callbacks
 
 
-hero(
-    "3 · Hierarchical extension",
-    "Donor-aware event-count inference",
-    "Allow event-rate, continuous heterogeneity and non-engaging fractions to vary between donors while estimating population-level quantities.",
-    badge="Prototype hierarchy · 2–12 donors",
-)
+PATH = "/event-counts/donor-aware"
+TITLE = "Donor aware analysis"
 
-note(
-    "Treat donor codes carefully",
-    "A label such as donor_01 can still be pseudonymised personal data when a separate key can reconnect it to an individual. Use synthetic or approved anonymised data in this demo.",
-    tone="amber",
-)
 
-st.header("A. Provide donor-labelled counts")
-source = st.radio(
-    "Input method",
-    ["Example", "Upload CSV", "Edit spreadsheet"],
-    horizontal=True,
-    key="donor_source",
-)
-
-candidate: pd.DataFrame | None = None
-if source == "Example":
-    candidate = sample_donor_frame()
-    st.caption("A fully synthetic example with three donor labels.")
-elif source == "Upload CSV":
-    uploaded = st.file_uploader("Upload donor-aware CSV", type=["csv"], help="Maximum size: 1 MB.")
-    if uploaded is not None:
-        try:
-            raw = read_uploaded_csv(uploaded)
-            candidate = normalize_uploaded_frame(raw, prefix="donor_upload", donor_aware=True)
-        except ValueError as exc:
-            st.error(str(exc))
-else:
-    starter = sample_donor_frame().groupby("donor_id", group_keys=False).head(4)
-    candidate = st.data_editor(
-        starter,
-        num_rows="dynamic",
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "cell_id": st.column_config.TextColumn("Cell ID", required=True),
-            "donor_id": st.column_config.TextColumn("Donor ID", required=True),
-            "count": st.column_config.NumberColumn("Event count", min_value=0, step=1, required=True),
-        },
-        key="donor_editor",
+def layout() -> html.Div:
+    page = analysis_layout(
+        prefix="donor",
+        donor_aware=True,
+        kicker="Event counts · Donor aware",
+        title="Donor aware condition analysis",
+        lead="Fit one to four experimental conditions while allowing the mean event rate μλ,d, continuous cell-to-cell heterogeneity σλ,d and fraction of nonengaging cells φ₀,d to vary between donors.",
+        badge="2 to 12 donors per condition · Section 2 hierarchy",
     )
+    children = list(page.children)
+    children.insert(
+        3,
+        html.Section(
+            [
+                html.Span("How the hierarchy is read", className="orca-section-label"),
+                html.H2("Cells within donors, then donors within each condition"),
+                html.P(
+                    "Each experimental condition is fitted independently. Within a condition, donor parameters are estimated jointly around shared reference priors, while reported population parameters are cell-weighted moments of the donor mixture.",
+                    className="orca-section-lead",
+                ),
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Strong("1 · Model evidence"),
+                                html.P("Compare the four candidate count models with SMC marginal likelihoods and Bayes factors."),
+                            ]
+                        ),
+                        html.Div(
+                            [
+                                html.Strong("2 · Sources of heterogeneity"),
+                                html.P("Split population variance into continuous variation within donors and differences between donor means."),
+                            ]
+                        ),
+                        html.Div(
+                            [
+                                html.Strong("3 · Posterior views"),
+                                html.P("Inspect population posteriors by condition, all donors within a condition, and conditions within each donor."),
+                            ]
+                        ),
+                        html.Div(
+                            [
+                                html.Strong("4 · Condition contrasts"),
+                                html.P("Choose any two conditions and compare their independent posterior particle distributions."),
+                            ]
+                        ),
+                    ],
+                    className="orca-bf-flow",
+                ),
+                html.Details(
+                    [
+                        html.Summary("Variance decomposition and comparison rule"),
+                        dcc.Markdown(
+                            r"""
+For active-donor weights $\widetilde w_d$, the population variance is decomposed for every posterior particle:
 
-observation_time = st.number_input(
-    "Common observation time",
-    min_value=0.01,
-    max_value=100.0,
-    value=1.0,
-    step=0.25,
-    key="donor_observation_time",
-    help="All cells must currently share one observation duration.",
-)
+$$V_{\mathrm{within}}=\sum_d\widetilde w_d\sigma_{\lambda,d}^2,$$
 
-valid_frame: pd.DataFrame | None = None
-if candidate is not None:
-    try:
-        valid_frame = validate_donor_frame(candidate.dropna(how="all"))
-    except ValueError as exc:
-        st.error(f"Please correct the input: {exc}")
-    else:
-        st.success("The donor-aware dataset passed the demo validation checks.")
-        data_overview(valid_frame, donor_aware=True)
+$$V_{\mathrm{between}}=\sum_d\widetilde w_d(\mu_{\lambda,d}-\bar\mu_\lambda)^2,$$
 
-if valid_frame is None:
-    st.stop()
+$$\bar\sigma_\lambda=\sqrt{V_{\mathrm{within}}+V_{\mathrm{between}}}.$$
 
-st.header("B. Configure the hierarchical fit")
-selected_models = model_selector("donor", default=["dis2p"])
-settings = inference_controls("donor", donor_aware=True)
+Fits for two experimental conditions are independent. A contrast therefore uses every possible particle pair when practical; for larger posteriors it uses a reproducible uniform sample of independent pairs. It does **not** subtract only the two posterior means.
+""",
+                            mathjax=True,
+                            className="orca-model-equations",
+                        ),
+                    ],
+                    className="orca-details",
+                ),
+            ],
+            className="orca-workflow-panel orca-donor-method",
+        ),
+    )
+    return html.Div(children)
 
-if st.button(
-    "Fit selected donor-aware models",
-    type="primary",
-    width="stretch",
-    disabled=settings is None or not selected_models,
-):
-    st.session_state.pop("donor_results", None)
-    progress = st.progress(0.0, text="Preparing donor-aware inference")
 
-    def update_progress(index: int, total: int, label: str) -> None:
-        progress.progress((index - 1) / total, text=f"Fitting {label} ({index}/{total})")
+def register_callbacks(app) -> None:
+    register_analysis_callbacks(app, prefix="donor", donor_aware=True)
+    from webapp.donor_interactive import register_donor_contrast_callbacks
+    from webapp.donor_reporting import register_donor_reporting_callbacks
 
-    try:
-        results = run_donor_models(
-            valid_frame,
-            float(observation_time),
-            settings=settings,
-            model_keys=selected_models,
-            progress_callback=update_progress,
-        )
-    except Exception as exc:
-        progress.empty()
-        st.error(f"Donor-aware inference did not complete: {exc}")
-    else:
-        progress.progress(1.0, text="Inference complete")
-        st.session_state["donor_results"] = results
-        st.session_state["donor_result_data"] = valid_frame.copy()
-        st.session_state["donor_result_time"] = float(observation_time)
-        st.session_state["donor_result_settings"] = settings
-
-if "donor_results" in st.session_state:
-    result_data = st.session_state["donor_result_data"]
-    result_time = st.session_state["donor_result_time"]
-    result_settings = st.session_state["donor_result_settings"]
-    result_models = list(st.session_state["donor_results"])
-    if (
-        not valid_frame.equals(result_data)
-        or float(observation_time) != result_time
-        or settings != result_settings
-        or selected_models != result_models
-    ):
-        st.warning(
-            "The input, model selection or inference settings have changed since "
-            "the last fit. Run inference again to view matching donor-aware results."
-        )
-    else:
-        render_results(
-            st.session_state["donor_results"],
-            data=result_data,
-            observation_time=result_time,
-            settings=result_settings,
-            download_name="orca_donor_aware_results.zip",
-        )
+    register_donor_reporting_callbacks(app, prefix="donor")
+    register_donor_contrast_callbacks(app, prefix="donor")

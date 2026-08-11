@@ -1,139 +1,152 @@
+"""Donor ignorant synthetic validation and real data analysis."""
+
 from __future__ import annotations
 
-import pandas as pd
-import streamlit as st
+from typing import Final
 
-from webapp.analysis_ui import (
-    data_overview,
-    inference_controls,
-    model_selector,
-    normalize_uploaded_frame,
-    read_uploaded_csv,
-    render_results,
-)
-from webapp.core.data import sample_count_frame, validate_count_frame
-from webapp.core.inference import run_count_models
-from webapp.ui import hero, note
+from dash import Input, Output, dcc, html
+
+from webapp.pages import synthetic_validation
+from webapp.pages.analysis_page import layout as analysis_layout
+from webapp.pages.analysis_page import register_callbacks as register_analysis_callbacks
+from webapp.ui import hero
 
 
-hero(
-    "2 · Donor-ignorant analysis",
-    "Event-count inference",
-    "Analyse one outcome and one condition at a time. Upload a CSV, edit a spreadsheet in the browser, or begin with a synthetic example.",
-    badge="Derived integer counts only · maximum 1,000 cells",
-)
+PATH = "/event-counts/donor-ignorant"
+TITLE = "Donor ignorant analysis"
 
-note(
-    "Input scope",
-    "Use one row per cell and one count outcome—such as contacts or kills. Do not upload names, clinical metadata, raw microscopy, or other identifiers.",
-    tone="navy",
-)
+WORKFLOW_ID: Final[str] = "donor-ignorant-workflow"
+SYNTHETIC_PANEL_ID: Final[str] = "donor-ignorant-synthetic-panel"
+OWN_DATA_PANEL_ID: Final[str] = "donor-ignorant-own-data-panel"
 
-st.header("A. Provide a small dataset")
-source = st.radio("Input method", ["Example", "Upload CSV", "Edit spreadsheet"], horizontal=True)
 
-candidate: pd.DataFrame | None = None
-if source == "Example":
-    candidate = sample_count_frame()
-    st.caption("A synthetic example included with the demo.")
-elif source == "Upload CSV":
-    uploaded = st.file_uploader("Upload CSV", type=["csv"], help="Maximum size: 1 MB.")
-    if uploaded is not None:
-        try:
-            raw = read_uploaded_csv(uploaded)
-            candidate = normalize_uploaded_frame(raw, prefix="counts_upload", donor_aware=False)
-        except ValueError as exc:
-            st.error(str(exc))
-else:
-    starter = sample_count_frame().head(12)
-    candidate = st.data_editor(
-        starter,
-        num_rows="dynamic",
-        hide_index=True,
-        width="stretch",
-        column_config={
-            "cell_id": st.column_config.TextColumn("Cell ID", required=True),
-            "count": st.column_config.NumberColumn("Event count", min_value=0, step=1, required=True),
-        },
-        key="count_editor",
+def _without_hero(component: html.Div) -> list:
+    """Return an existing workflow body without its repeated route hero."""
+
+    children = component.children
+    if not isinstance(children, (list, tuple)):
+        return [children]
+    return [
+        child
+        for child in children
+        if getattr(child, "className", None) != "orca-hero"
+    ]
+
+
+def _workflow_option(title: str, description: str) -> html.Div:
+    return html.Div(
+        [html.Strong(title), html.Small(description)],
+        className="orca-model-option-copy",
     )
 
-observation_time = st.number_input(
-    "Common observation time",
-    min_value=0.01,
-    max_value=100.0,
-    value=1.0,
-    step=0.25,
-    help="All cells must currently share one observation duration.",
-)
 
-valid_frame: pd.DataFrame | None = None
-if candidate is not None:
-    try:
-        valid_frame = validate_count_frame(candidate.dropna(how="all"))
-    except ValueError as exc:
-        st.error(f"Please correct the input: {exc}")
-    else:
-        st.success("The dataset passed the demo validation checks.")
-        data_overview(valid_frame)
+def _synthetic_body() -> html.Div:
+    """Compose the established synthetic page without changing its IDs."""
 
-if valid_frame is None:
-    st.stop()
+    return html.Div(_without_hero(synthetic_validation.layout()))
 
-st.header("B. Configure and run inference")
-selected_models = model_selector("counts")
-settings = inference_controls("counts")
 
-if st.button(
-    "Fit selected event-count models",
-    type="primary",
-    width="stretch",
-    disabled=settings is None or not selected_models,
-):
-    st.session_state.pop("count_results", None)
-    progress = st.progress(0.0, text="Preparing inference")
+def _own_data_body() -> html.Div:
+    """Compose the condition-aware real data page with its original IDs."""
 
-    def update_progress(index: int, total: int, label: str) -> None:
-        progress.progress((index - 1) / total, text=f"Fitting {label} ({index}/{total})")
+    page = analysis_layout(
+        prefix="counts",
+        donor_aware=False,
+        kicker="Event counts · Donor ignorant · Real data",
+        title="Event counts without donor labels",
+        lead=(
+            "Analyse as many as four experimental conditions. Upload a CSV, "
+            "edit a spreadsheet in the browser, or begin with the built-in example."
+        ),
+        badge="Up to four experimental conditions · maximum 1,000 cells per condition",
+    )
+    return html.Div(_without_hero(page))
 
-    try:
-        results = run_count_models(
-            valid_frame,
-            float(observation_time),
-            settings=settings,
-            model_keys=selected_models,
-            progress_callback=update_progress,
-        )
-    except Exception as exc:
-        progress.empty()
-        st.error(f"Inference did not complete: {exc}")
-    else:
-        progress.progress(1.0, text="Inference complete")
-        st.session_state["count_results"] = results
-        st.session_state["count_result_data"] = valid_frame.copy()
-        st.session_state["count_result_time"] = float(observation_time)
-        st.session_state["count_result_settings"] = settings
 
-if "count_results" in st.session_state:
-    result_data = st.session_state["count_result_data"]
-    result_time = st.session_state["count_result_time"]
-    result_settings = st.session_state["count_result_settings"]
-    result_models = list(st.session_state["count_results"])
-    if (
-        not valid_frame.equals(result_data)
-        or float(observation_time) != result_time
-        or settings != result_settings
-        or selected_models != result_models
-    ):
-        st.warning(
-            "The input, model selection or inference settings have changed since "
-            "the last fit. Run inference again to view matching results."
-        )
-    else:
-        render_results(
-            st.session_state["count_results"],
-            data=result_data,
-            observation_time=result_time,
-            settings=result_settings,
-            download_name="orca_event_count_results.zip",
-        )
+def layout() -> html.Div:
+    return html.Div(
+        [
+            hero(
+                "Event counts · Donor ignorant",
+                "Choose how to begin",
+                "Validate the method against a known synthetic truth, or analyse your own count data without donor labels.",
+                badge="Synthetic validation • Real data analysis",
+            ),
+            html.Section(
+                [
+                    html.Span("Start here", className="orca-section-label"),
+                    html.H2("Which data do you want to use?"),
+                    html.P(
+                        "The choice changes the input workflow only. Provide a small dataset or generate one from a known truth; both routes fit the same four donor ignorant event count models.",
+                        className="orca-section-lead",
+                    ),
+                    dcc.RadioItems(
+                        id=WORKFLOW_ID,
+                        options=[
+                            {
+                                "label": _workflow_option(
+                                    "Synthetic data",
+                                    "Set a known ground truth, generate counts and check parameter recovery and model evidence.",
+                                ),
+                                "value": "synthetic",
+                            },
+                            {
+                                "label": _workflow_option(
+                                    "My own data",
+                                    "Provide a small dataset by uploading or entering one to four experimental conditions, then fit each independently.",
+                                ),
+                                "value": "own-data",
+                            },
+                        ],
+                        value=None,
+                        className="orca-model-checklist",
+                        inputClassName="orca-check-input",
+                        labelClassName="orca-model-option",
+                    ),
+                    html.P(
+                        "Choose one option to continue.",
+                        id="donor-ignorant-workflow-status",
+                        className="orca-help",
+                        role="status",
+                        **{"aria-live": "polite"},
+                    ),
+                ],
+                className="orca-workflow-panel",
+            ),
+            html.Div(
+                _synthetic_body(),
+                id=SYNTHETIC_PANEL_ID,
+                className="is-hidden",
+            ),
+            html.Div(
+                _own_data_body(),
+                id=OWN_DATA_PANEL_ID,
+                className="is-hidden",
+            ),
+        ]
+    )
+
+
+def register_callbacks(app) -> None:
+    @app.callback(
+        Output(SYNTHETIC_PANEL_ID, "className"),
+        Output(OWN_DATA_PANEL_ID, "className"),
+        Output("donor-ignorant-workflow-status", "children"),
+        Input(WORKFLOW_ID, "value"),
+    )
+    def choose_workflow(workflow: str | None):
+        if workflow == "synthetic":
+            return "orca-merged-workflow", "is-hidden", "Synthetic validation selected."
+        if workflow == "own-data":
+            return "is-hidden", "orca-merged-workflow", "Own data analysis selected."
+        return "is-hidden", "is-hidden", "Choose one option to continue."
+
+    # Retain the established ``counts-*`` callback contract for the complete
+    # condition-aware real data workflow.
+    register_analysis_callbacks(app, prefix="counts", donor_aware=False)
+
+    # The current registry normally registers the legacy synthetic route first.
+    # This guard also keeps the merged page functional if that route later
+    # remains only as a compatibility alias.
+    if not any("synthetic-data.data" in key for key in app.callback_map):
+        synthetic_validation.register_callbacks(app)
