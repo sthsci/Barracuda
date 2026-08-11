@@ -252,12 +252,22 @@ def _selected_specs(model_keys: Sequence[str] | None) -> list[ModelSpec]:
 
 
 def _load_backend(donor_aware: bool) -> ModuleType:
-    module_name = (
+    installed_name = (
+        "bayesorca._backends.donor.inference_donor_relative"
+        if donor_aware
+        else "bayesorca._backends.event_counts.inference"
+    )
+    source_name = (
         "section_2.src.inference_donor_relative"
         if donor_aware
         else "section_1.src.inference"
     )
-    return import_module(module_name)
+    try:
+        return import_module(installed_name)
+    except ModuleNotFoundError as exc:
+        if not exc.name or not exc.name.startswith("bayesorca"):
+            raise
+        return import_module(source_name)
 
 
 def _common_backend_kwargs(settings: InferenceSettings) -> dict[str, Any]:

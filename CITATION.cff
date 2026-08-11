@@ -1,0 +1,36 @@
+cff-version: 1.2.0
+message: "If you use bayesorca, please cite the ORCA manuscript and this software."
+title: "bayesorca: Bayesian inference for heterogeneity in immune cell cytotoxicity"
+type: software
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/sthsci/Orca"
+authors:
+  - family-names: Sung
+    given-names: Elephes
+  - family-names: Hosty
+    given-names: Cathal
+  - family-names: Peiser
+    given-names: Leanne
+  - family-names: Stepan
+    given-names: Lara
+  - family-names: Davis
+    given-names: Daniel M
+  - family-names: Perez-Carrasco
+    given-names: Ruben
+preferred-citation:
+  type: article
+  title: "A Bayesian framework reveals heterogeneous and stochastic decision-making in NK cell cytotoxicity"
+  authors:
+    - family-names: Sung
+      given-names: Elephes
+    - family-names: Hosty
+      given-names: Cathal
+    - family-names: Peiser
+      given-names: Leanne
+    - family-names: Stepan
+      given-names: Lara
+    - family-names: Davis
+      given-names: Daniel M
+    - family-names: Perez-Carrasco
+      given-names: Ruben
