@@ -33,10 +33,16 @@ import numpy as np
 import pymc as pm
 import pytensor.tensor as pt
 
-from section_1.src.smc_progress import (
-    SMCProgressCallback,
-    run_with_smc_progress,
-)
+try:
+    from bayesorca._backends.event_counts.smc_progress import (
+        SMCProgressCallback,
+        run_with_smc_progress,
+    )
+except ImportError:  # Support the research source tree without installation.
+    from section_1.src.smc_progress import (
+        SMCProgressCallback,
+        run_with_smc_progress,
+    )
 
 
 @dataclass(frozen=True)

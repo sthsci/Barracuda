@@ -1,0 +1,52 @@
+name: bayesorca package checks
+
+on:
+  push:
+    branches: [main, codex/bayesorca-package]
+    paths:
+      - "pyproject.toml"
+      - "PACKAGE_README.md"
+      - "src/bayesorca/**"
+      - "webapp/core/**"
+      - "section_1/src/**"
+      - "section_2/src/**"
+      - "section_3/src/**"
+      - "tests/test_bayesorca_package.py"
+      - ".github/workflows/python-package.yml"
+      - ".github/workflows/publish-package.yml"
+  pull_request:
+    paths:
+      - "pyproject.toml"
+      - "PACKAGE_README.md"
+      - "src/bayesorca/**"
+      - "webapp/core/**"
+      - "section_1/src/**"
+      - "section_2/src/**"
+      - "section_3/src/**"
+      - "tests/test_bayesorca_package.py"
+      - ".github/workflows/python-package.yml"
+      - ".github/workflows/publish-package.yml"
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install package and test tools
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[test,build]"
+      - name: Run package tests
+        run: python -m pytest -q tests/test_bayesorca_package.py
+      - name: Build wheel and source distribution
+        run: python -m build
+      - name: Validate distributions
+        run: python -m twine check dist/*
+      - name: Test wheel in a clean environment
+        run: |
+          python -m venv /tmp/bayesorca-wheel-test
+          /tmp/bayesorca-wheel-test/bin/python -m pip install dist/*.whl
+          /tmp/bayesorca-wheel-test/bin/python -c "import bayesorca; print(bayesorca.__version__)"

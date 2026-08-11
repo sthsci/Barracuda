@@ -31,6 +31,28 @@ The simplest introduction is [`section_1/notebook/demo_validation_1.ipynb`](sect
 
 The scientific stack is built around Python, PyMC, PyTensor, ArviZ, NumPy, pandas, SciPy, Matplotlib, and xarray. The analyses are computationally intensive: manuscript-scale SMC runs use substantially more particles and chains than exploratory checks.
 
+## Python package
+
+The reusable scientific API is packaged as `bayesorca`. It covers donor
+ignorant and donor aware event count inference, condition-wise analysis,
+synthetic data generation, ordered trajectory inference, evidence tables,
+posterior draw tables, and reproducible result archives.
+
+Install a released version with:
+
+```bash
+python -m pip install bayesorca
+```
+
+For development from this repository:
+
+```bash
+python -m pip install -e ".[test,build]"
+```
+
+See [`PACKAGE_README.md`](PACKAGE_README.md) for the public API and runnable
+examples. The Python package deliberately excludes the Dash presentation layer.
+
 ## Dash web application
 
 The `codex/dash-app` branch contains a focused Dash interface for learning and testing the framework:
