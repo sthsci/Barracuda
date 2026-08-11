@@ -34,6 +34,7 @@ docker build -t orca-web .
 docker run --rm -p 8501:8501 orca-web
 ```
 
-Until `bayesorca` is published on PyPI, `requirements.txt` installs it directly
-from the repository's `pypackage` branch. After the first PyPI release, replace
-that direct URL with an exact release pin such as `bayesorca==0.1.0`.
+Until `bayesorca` is published on PyPI, `requirements.txt` installs the verified
+wheel under `vendor/`. This keeps private-repository CI and container builds
+reproducible without storing a GitHub token. After the first PyPI release,
+replace the wheel path with an exact release pin such as `bayesorca==0.1.0`.
