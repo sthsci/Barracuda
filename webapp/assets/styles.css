@@ -395,6 +395,8 @@ a:hover { color: var(--orca-rust); }
 .orca-upload { display: grid; place-items: center; min-height: 9rem; margin: 0.8rem 0 1rem; padding: 1rem; color: var(--orca-primary); background: var(--orca-paper-warm); border: 1.5px dashed var(--orca-spine); border-radius: 2px; text-align: center; cursor: pointer; }
 .orca-upload span { margin-left: 0.25rem; color: var(--orca-ink-soft); }
 .orca-editor-shell { display: grid; gap: 0.65rem; margin: 0.8rem 0 1.25rem; }
+.orca-validation-ready { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin: 0.8rem 0; }
+.orca-validation-ready > :first-child { flex: 1 1 420px; margin: 0; }
 .orca-editor-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.55rem; }
 .orca-condition-colours-section { margin: 1.1rem 0; padding: 1rem; background: var(--orca-paper-warm); border: 1px solid var(--orca-line-soft); }
 .orca-condition-colours-section h3 { margin: 0 0 0.25rem; }

@@ -440,7 +440,7 @@ def bayes_factor_figure(
     )
     tick_values, tick_labels = _evidence_axis_ticks(upper)
     figure.update_xaxes(
-        title="log₁₀ BF(best model / fitted model)",
+        title="log₁₀ BF(best model / candidate model)",
         range=[0.0, upper],
         tickmode="array",
         tickvals=tick_values,
@@ -672,12 +672,12 @@ def _validated_condition_results(
     first_models: list[str] | None = None
     for condition, condition_results in results.items():
         if not isinstance(condition_results, Mapping) or not condition_results:
-            raise ValueError(f"condition {condition!r} contains no fitted models")
+            raise ValueError(f"condition {condition!r} contains no inference results")
         models = [canonical_model_name(model) for model in condition_results]
         if first_models is None:
             first_models = models
         elif models != first_models:
-            raise ValueError("every condition must contain the same fitted models in the same order")
+            raise ValueError("every condition must contain inference results for the same models in the same order")
         for model, result in condition_results.items():
             if not bool(getattr(result, "donor_aware", False)):
                 raise ValueError(
@@ -996,7 +996,7 @@ def condition_control_contrast_frame(
     control_donors = set(frame.loc[frame["condition"] == control, "donor_id"])
     treatment_donors = set(frame.loc[frame["condition"] == treatment, "donor_id"])
     if control_donors != treatment_donors:
-        raise ValueError("treatment and control fits must contain the same donors")
+        raise ValueError("treatment and control inference results must contain the same donors")
 
     value_columns = (
         ("delta_mu_lambda", "delta_sigma_lambda")
@@ -1703,7 +1703,7 @@ def _variance_summaries_for_model(
         )
         if cell_counts.isna().any():
             raise ValueError(
-                f"condition {condition!r} does not contain every fitted donor label"
+                f"condition {condition!r} does not contain every inferred donor label"
             )
         decomposition = decompose_population_heterogeneity(
             getattr(result, "idata"),
@@ -1752,7 +1752,7 @@ def _donor_model_panel(
     across_condition_figure = donor_joint_posterior_figure(
         donors.loc[donors["donor_id"] == initial_donor],
         group_by="condition",
-        title=f"{initial_donor} · Conditions fitted independently",
+        title=f"{initial_donor} · Independent inference by condition",
         colours=condition_colours,
     )
 
@@ -1793,7 +1793,7 @@ def _donor_model_panel(
             html.H4("Population posterior by condition"),
             html.P(
                 "Each curve is the population mixture moment from one independently "
-                "fitted condition. These are not the shared reference parameters of "
+                "condition inferred independently. These are not the shared reference parameters of "
                 "the donor hierarchy.",
                 className="orca-help",
             ),
@@ -1810,7 +1810,7 @@ def _donor_model_panel(
                             html.H4("Compare donors within one condition"),
                             html.P(
                                 "Mean, heterogeneity and fraction of nonengaging cells "
-                                "remain paired by SMC chain and draw within this fit.",
+                                "remain paired by SMC chain and draw within this inference run.",
                                 className="orca-help",
                             ),
                             dcc.Dropdown(
@@ -1955,7 +1955,7 @@ def render_donor_condition_results(
         [
             note(
                 "Inference complete",
-                "Each condition was fitted independently with the same donor-aware "
+                "Inference was run independently for each condition with the same donor aware "
                 "models and prior settings.",
                 tone="teal",
             ),
@@ -1965,7 +1965,7 @@ def render_donor_condition_results(
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
                         "Every condition has its own best model. The horizontal axis "
-                        "uses the unmodified log₁₀ BF(best model / fitted model) "
+                        "uses the unmodified log₁₀ BF(best model / candidate model) "
                         "scale, with exact boundaries at log₁₀(3), 1 and 2.",
                         className="orca-help",
                     ),
@@ -1982,7 +1982,7 @@ def render_donor_condition_results(
                     ),
                     html.H3("Evidence combined across conditions"),
                     html.P(
-                        "Because conditions were fitted independently, their log "
+                        "Because inference was run independently for each condition, their log "
                         "marginal likelihoods add. Aggregation is performed only after "
                         "checking that every model has one result for every condition.",
                         className="orca-help",
@@ -2004,7 +2004,7 @@ def render_donor_condition_results(
             html.Section(
                 [
                     html.Span("Posterior results", className="orca-section-label"),
-                    html.H3("Choose fitted models to visualise"),
+                    html.H3("Choose inference results to visualise"),
                     dcc.Checklist(
                         id=f"{prefix}-model-view",
                         options=[
@@ -2087,7 +2087,7 @@ def register_donor_reporting_callbacks(app: Any, *, prefix: str) -> None:
         return donor_joint_posterior_figure(
             subset,
             group_by="condition",
-            title=f"{donor_id} · Conditions fitted independently",
+            title=f"{donor_id} · Independent inference by condition",
             colours=payload.get("condition_colours", {}),
         )
 

@@ -165,7 +165,7 @@ def build_condition_results_zip(
             "README.txt",
             (
                 "Orca multi-condition analysis\n\n"
-                "Each experimental condition was fitted independently with the "
+                "Inference was run independently for each experimental condition with the "
                 "same model and prior settings. Open the nested orca_results.zip "
                 "inside each condition folder for evidence tables, posterior "
                 "summaries and ArviZ NetCDF files.\n"

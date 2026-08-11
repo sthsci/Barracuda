@@ -18,7 +18,7 @@ def layout() -> html.Div:
         donor_aware=True,
         kicker="Event counts · Donor aware",
         title="Donor aware condition analysis",
-        lead="Fit one to four experimental conditions while allowing the mean event rate μλ,d, continuous cell-to-cell heterogeneity σλ,d and fraction of nonengaging cells φ₀,d to vary between donors.",
+        lead="Run inference for one to four experimental conditions while allowing the mean event rate μλ,d, continuous cell-to-cell heterogeneity σλ,d and fraction of nonengaging cells φ₀,d to vary between donors.",
         badge="2 to 12 donors per condition · Section 2 hierarchy",
     )
     children = list(page.children)
@@ -29,7 +29,7 @@ def layout() -> html.Div:
                 html.Span("How the hierarchy is read", className="orca-section-label"),
                 html.H2("Cells within donors, then donors within each condition"),
                 html.P(
-                    "Each experimental condition is fitted independently. Within a condition, donor parameters are estimated jointly around shared reference priors, while reported population parameters are cell-weighted moments of the donor mixture.",
+                    "Inference is run independently for each experimental condition. Within a condition, donor parameters are estimated jointly around shared reference priors, while reported population parameters are cell-weighted moments of the donor mixture.",
                     className="orca-section-lead",
                 ),
                 html.Div(
@@ -74,7 +74,7 @@ $$V_{\mathrm{between}}=\sum_d\widetilde w_d(\mu_{\lambda,d}-\bar\mu_\lambda)^2,$
 
 $$\bar\sigma_\lambda=\sqrt{V_{\mathrm{within}}+V_{\mathrm{between}}}.$$
 
-Fits for two experimental conditions are independent. A contrast therefore uses every possible particle pair when practical; for larger posteriors it uses a reproducible uniform sample of independent pairs. It does **not** subtract only the two posterior means.
+Inference runs for two experimental conditions are independent. A contrast therefore uses every possible particle pair when practical; for larger posteriors it uses a reproducible uniform sample of independent pairs. It does **not** subtract only the two posterior means.
 """,
                             mathjax=True,
                             className="orca-model-equations",

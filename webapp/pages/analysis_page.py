@@ -21,7 +21,6 @@ from webapp.core.conditions import (
     condition_columns,
     default_condition_colours,
     normalize_condition_frame,
-    sample_condition_frame,
     sanitize_condition_colours,
     split_condition_frame,
     validate_condition_frame,
@@ -62,14 +61,13 @@ def _condition_colour_controls(
             html.Div(
                 [
                     html.Strong(label),
-                    html.Input(
+                    dcc.Input(
                         id={
                             "type": f"{prefix}-condition-colour",
                             "index": label,
                         },
                         type="color",
                         value=defaults[label],
-                        title=f"Choose the colour for {label}",
                         className="orca-colour-input",
                     ),
                     dcc.Dropdown(
@@ -96,11 +94,11 @@ def _condition_overview(
     frame: pd.DataFrame,
     *,
     donor_aware: bool,
-) -> html.Div:
+) -> html.Details:
     groups = split_condition_frame(frame, donor_aware=donor_aware)
-    return html.Div(
+    return html.Details(
         [
-            html.H3("Dataset by experimental condition"),
+            html.Summary("Review condition summaries"),
             dcc.Tabs(
                 [
                     dcc.Tab(
@@ -114,16 +112,15 @@ def _condition_overview(
                 className="orca-tabs",
             ),
         ],
-        className="orca-overview",
+        className="orca-details orca-overview",
     )
 
 
 def _grid_options(editable: bool) -> dict:
     options: dict = {
         "pagination": True,
-        "paginationPageSize": 12,
+        "paginationPageSize": 8,
         "paginationPageSizeSelector": False,
-        "domLayout": "autoHeight",
         "stopEditingWhenCellsLoseFocus": True,
     }
     if editable:
@@ -134,6 +131,29 @@ def _grid_options(editable: bool) -> dict:
             "enableClickSelection": False,
         }
     return options
+
+
+def _blank_rows(*, donor_aware: bool) -> list[dict[str, object]]:
+    """Return a minimum editable template without implying example data."""
+
+    if donor_aware:
+        return [
+            {
+                "cell_id": f"cell_{index:03d}",
+                "donor_id": "donor_01" if index <= 3 else "donor_02",
+                "condition": "Condition 1",
+                "count": 0,
+            }
+            for index in range(1, 7)
+        ]
+    return [
+        {
+            "cell_id": f"cell_{index:03d}",
+            "condition": "Condition 1",
+            "count": 0,
+        }
+        for index in range(1, 6)
+    ]
 
 
 def layout(
@@ -147,7 +167,7 @@ def layout(
 ) -> html.Div:
     default_models = None
     privacy_note = (
-        note("Treat donor codes carefully", "A label such as donor_01 can still be pseudonymised personal data when a separate key can reconnect it to an individual. Use synthetic or approved anonymised data in this demo.", tone="amber")
+        note("Treat donor codes carefully", "A label such as donor_01 can still be pseudonymised personal data when a separate key can reconnect it to an individual. Use synthetic or approved anonymised data in this web application.", tone="amber")
         if donor_aware
         else note("Input scope", "Use one row per cell and one count outcome, such as contacts or kills. Do not upload names, clinical metadata, raw microscopy, or other identifiers.", tone="navy")
     )
@@ -165,10 +185,14 @@ def layout(
                         "Include an experimental condition column to compare as many as four groups. A table without that column is treated as one group.",
                         className="orca-help",
                     ),
+                    html.H3("Choose your data source"),
                     dcc.RadioItems(
                         id=f"{prefix}-source",
-                        options=[{"label": "Example", "value": "example"}, {"label": "Upload CSV", "value": "upload"}, {"label": "Edit spreadsheet", "value": "edit"}],
-                        value="example",
+                        options=[
+                            {"label": "Upload my CSV", "value": "upload"},
+                            {"label": "Enter data manually", "value": "edit"},
+                        ],
+                        value="upload",
                         inline=True,
                         className="orca-segmented",
                         labelClassName="orca-segment",
@@ -177,11 +201,13 @@ def layout(
                     html.Div(
                         dcc.Upload(id=f"{prefix}-upload", children=html.Div([html.Strong("Drop a CSV here"), html.Span(" or choose a file")]), accept=".csv,text/csv", multiple=False, max_size=1_000_000, className="orca-upload"),
                         id=f"{prefix}-upload-panel",
-                        className="is-hidden",
+                        className="",
                     ),
                     html.Div(id=f"{prefix}-source-status", role="status", **{"aria-live": "polite"}),
-                    html.Div(
+                    html.Div(id=f"{prefix}-validation-status", role="status", **{"aria-live": "polite"}),
+                    html.Details(
                         [
+                            html.Summary("Review or edit input rows"),
                             html.Div(
                                 [
                                     html.Button("Add row", id=f"{prefix}-add-row", n_clicks=0, className="orca-button tertiary small"),
@@ -197,10 +223,10 @@ def layout(
                                 defaultColDef={"sortable": True, "resizable": True, "minWidth": 130, "flex": 1},
                                 dashGridOptions=_grid_options(False),
                                 className="ag-theme-quartz orca-data-grid orca-edit-grid",
-                                style={"width": "100%"},
+                                style={"width": "100%", "height": "430px"},
                             ),
                         ],
-                        className="orca-editor-shell",
+                        className="orca-details orca-editor-shell",
                     ),
                     html.Details(
                         [
@@ -219,7 +245,6 @@ def layout(
                         ],
                         className="orca-details orca-observation-details",
                     ),
-                    html.Div(id=f"{prefix}-validation-status", role="status", **{"aria-live": "polite"}),
                     html.Div(
                         [
                             html.H3("Condition colours"),
@@ -239,15 +264,16 @@ def layout(
             html.Div(
                 [
                     html.Span("Step B", className="orca-section-label"),
-                    html.H2("Configure the hierarchical fit" if donor_aware else "Configure and run inference"),
+                    html.H2("Configure and run donor aware inference" if donor_aware else "Configure and run donor ignorant inference"),
                     model_selector(prefix, default_models),
                     inference_controls(prefix, donor_aware=donor_aware),
                     html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
-                    html.Button("Fit selected donor aware models" if donor_aware else "Fit selected event count models", id=f"{prefix}-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                    html.Button("Run inference for selected models", id=f"{prefix}-run", n_clicks=0, disabled=True, className="orca-button primary full"),
                     html.Div(id=f"{prefix}-run-status", role="status", **{"aria-live": "polite"}),
                     dcc.Loading(html.Div(id=f"{prefix}-results"), type="circle", color="#304B3D", className="orca-loading"),
                     html.Div(id=f"{prefix}-download", className="orca-download-slot"),
                 ],
+                id=f"{prefix}-inference",
                 className="orca-workflow-panel",
             ),
         ]
@@ -280,11 +306,11 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             new_index = len(rows) + 1
             row = {
                 "cell_id": f"cell_{new_index:03d}",
-                "condition": "Control",
+                "condition": "Condition 1",
                 "count": 0,
             }
             if donor_aware:
-                row["donor_id"] = "donor_A"
+                row["donor_id"] = "donor_01"
             rows.append(row)
             return rows, _columns(donor_aware, True), grid_options, upload_class, action_class, html.Div()
         if triggered == f"{prefix}-remove-rows" and editable:
@@ -292,12 +318,8 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             rows = [row for row in list(current_rows or []) if row not in selected]
             status = html.P(f"Removed {len(selected)} selected row(s).", className="orca-help") if selected else html.P("Select one or more rows using the checkboxes first.", className="orca-help")
             return rows, _columns(donor_aware, True), grid_options, upload_class, action_class, status
-        if source == "example":
-            frame = sample_condition_frame(donor_aware=donor_aware)
-            return table_records(frame), _columns(donor_aware, False), grid_options, upload_class, action_class, html.P("A two-condition example included with Orca.", className="orca-help")
         if source == "edit":
-            frame = sample_condition_frame(donor_aware=donor_aware)
-            return table_records(frame), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("Edit cells directly, add rows, or select rows with the checkboxes and remove them.", className="orca-help")
+            return _blank_rows(donor_aware=donor_aware), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("A blank minimum-size template is ready. Replace the placeholder identifiers and counts, then add or remove rows as needed.", className="orca-help")
         if not upload_contents:
             return [], _columns(donor_aware, False), grid_options, upload_class, action_class, html.P("Upload a UTF-8 CSV up to 1 MB.", className="orca-help")
         try:
@@ -335,10 +357,20 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             return note("Please correct the input", str(exc), tone="amber"), html.Div(), None, True, html.Div(), "orca-condition-colours-section is-hidden"
         labels = list(split_condition_frame(valid, donor_aware=donor_aware))
         return (
-            note(
-                "Dataset ready",
-                f"The data passed the Orca checks for {len(labels)} experimental condition{'s' if len(labels) != 1 else ''}.",
-                tone="teal",
+            html.Div(
+                [
+                    note(
+                        "Dataset ready",
+                        f"The data passed the Orca checks for {len(labels)} experimental condition{'s' if len(labels) != 1 else ''}.",
+                        tone="teal",
+                    ),
+                    html.A(
+                        "Continue to inference settings ↓",
+                        href=f"#{prefix}-inference",
+                        className="orca-button primary small",
+                    ),
+                ],
+                className="orca-validation-ready",
             ),
             _condition_overview(valid, donor_aware=donor_aware),
             table_records(valid),
@@ -402,7 +434,7 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             if not records:
                 raise ValueError("Provide a valid dataset first.")
             if not models:
-                raise ValueError("Choose at least one model to fit.")
+                raise ValueError("Select at least one model for inference.")
             frame = validate_condition_frame(
                 pd.DataFrame(records),
                 donor_aware=donor_aware,

@@ -137,7 +137,7 @@ def condition_bayes_factor_figure(
         font={"family": SERIF, "color": INK, "size": 13},
         margin={"l": 190, "r": 82, "t": 92, "b": 78},
         xaxis_title="log₁₀ BF(𝓜<sub>best</sub> / 𝓜)",
-        yaxis_title="Condition and fitted model",
+        yaxis_title="Condition and candidate model",
         legend={
             "orientation": "h",
             "x": 0,
@@ -377,7 +377,7 @@ def render_condition_results(
         [
             note(
                 "Inference complete",
-                "Each condition was fitted independently with the same model and prior settings.",
+                "Inference was run independently for each condition with the same model and prior settings.",
                 tone="teal",
             ),
             html.Section(
@@ -385,7 +385,7 @@ def render_condition_results(
                     html.Span("Model evidence", className="orca-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
-                        "Every condition has its own best model. Bars use the raw log₁₀ BF(best model / fitted model) scale; the boundaries are exactly log₁₀(3), 1 and 2.",
+                        "Every condition has its own best model. Bars use the raw log₁₀ BF(best model / candidate model) scale; the boundaries are exactly log₁₀(3), 1 and 2.",
                         className="orca-help",
                     ),
                     dcc.Graph(
@@ -413,7 +413,7 @@ def render_condition_results(
             html.Section(
                 [
                     html.Span("Posterior results", className="orca-section-label"),
-                    html.H3("Choose fitted models to visualise"),
+                    html.H3("Choose inference results to visualise"),
                     dcc.Checklist(
                         id=f"{prefix}-model-view",
                         options=[

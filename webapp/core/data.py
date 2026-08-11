@@ -95,7 +95,7 @@ def _validate_demo_scope(frame: pd.DataFrame) -> None:
         raise ValueError(f"data may contain at most {MAX_CELLS:,} cells")
     if int(frame["count"].max()) > MAX_EVENT_COUNT:
         raise ValueError(
-            f"count may not exceed {MAX_EVENT_COUNT} in this public demo"
+            f"count may not exceed {MAX_EVENT_COUNT} in this web application"
         )
     if not frame["count"].gt(0).any():
         raise ValueError("data must contain at least one positive event count")

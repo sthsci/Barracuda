@@ -114,7 +114,7 @@ def layout() -> html.Div:
                         [
                             html.Summary("Alternative rate distributions · in development"),
                             html.P(
-                                "Lognormal, truncated Normal and other positive rate families are not used to generate data in this release. Keeping them separate ensures that every public simulation matches one of the four models fitted below.",
+                                "Lognormal, truncated Normal and other positive rate families are not used to generate data in this release. Keeping them separate ensures that every public simulation matches one of the four models evaluated below.",
                                 className="orca-help",
                             ),
                         ],
@@ -154,7 +154,7 @@ def layout() -> html.Div:
                     model_selector("synthetic"),
                     inference_controls("synthetic"),
                     html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
-                    html.Button("Fit selected models", id="synthetic-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                    html.Button("Run inference for selected models", id="synthetic-run", n_clicks=0, disabled=True, className="orca-button primary full"),
                     html.Div(id="synthetic-run-status", role="status", **{"aria-live": "polite"}),
                     html.Div(
                         [
@@ -185,7 +185,7 @@ def layout() -> html.Div:
                                 [
                                     html.Strong("Posterior and Bayes factor plots"),
                                     html.P(
-                                        "Fit one or more models. Posterior distributions appear for any fitted set, and comparative Bayes factors appear when at least two models are fitted.",
+                                        "Run inference for one or more models. Posterior distributions appear for every completed model, and comparative Bayes factors appear when at least two models are included.",
                                     ),
                                 ],
                                 className="orca-results-placeholder",
@@ -306,7 +306,7 @@ def register_callbacks(app) -> None:
                 y=0.5,
                 xref="paper",
                 yref="paper",
-                text="Select at least one fitted model",
+                text="Select at least one inference result",
                 showarrow=False,
                 font={"family": "Iowan Old Style, Georgia, serif", "size": 18},
             )
@@ -466,7 +466,7 @@ def register_callbacks(app) -> None:
             if not records:
                 raise ValueError("Generate a dataset first.")
             if not models:
-                raise ValueError("Choose at least one model to fit.")
+                raise ValueError("Select at least one model for inference.")
             frame = validate_count_frame(pd.DataFrame(records))
             settings = settings_from_values(particles, chains, cores, seed, threshold, correlation, prior_bounds, sigma_prior)
             selected_models = list(models)

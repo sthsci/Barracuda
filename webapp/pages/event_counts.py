@@ -56,7 +56,7 @@ def _own_data_body() -> html.Div:
         title="Event counts without donor labels",
         lead=(
             "Analyse as many as four experimental conditions. Upload a CSV, "
-            "edit a spreadsheet in the browser, or begin with the built-in example."
+            "or enter counts directly in the browser."
         ),
         badge="Up to four experimental conditions · maximum 1,000 cells per condition",
     )
@@ -77,7 +77,7 @@ def layout() -> html.Div:
                     html.Span("Start here", className="orca-section-label"),
                     html.H2("Which data do you want to use?"),
                     html.P(
-                        "The choice changes the input workflow only. Provide a small dataset or generate one from a known truth; both routes fit the same four donor ignorant event count models.",
+                        "The choice changes the input workflow only. Provide a small dataset or generate one from a known truth; both routes run inference with the same four donor ignorant event count models.",
                         className="orca-section-lead",
                     ),
                     dcc.RadioItems(
@@ -93,7 +93,7 @@ def layout() -> html.Div:
                             {
                                 "label": _workflow_option(
                                     "My own data",
-                                    "Provide a small dataset by uploading or entering one to four experimental conditions, then fit each independently.",
+                                    "Provide a small dataset by uploading or entering one to four experimental conditions, then run inference for each condition independently.",
                                 ),
                                 "value": "own-data",
                             },

@@ -67,7 +67,7 @@ def donor_contrast_payload(
         raise ValueError("max_draws_per_fit must be positive")
     condition_order = list(results)
     if not condition_order:
-        raise ValueError("at least one fitted condition is required")
+        raise ValueError("at least one completed condition inference is required")
     model_order = list(next(iter(results.values())))
     models: dict[str, object] = {}
     for model_key in model_order:
@@ -149,7 +149,7 @@ def contrast_from_payload(
         raise ValueError("choose two different experimental conditions")
     models = payload.get("models", {})
     if not isinstance(models, Mapping) or model_key not in models:
-        raise ValueError("choose a fitted donor aware model")
+        raise ValueError("choose a donor aware model included in inference")
     model = models[model_key]
     if not isinstance(model, Mapping):
         raise ValueError("donor posterior data are unavailable")
@@ -157,7 +157,7 @@ def contrast_from_payload(
     if not isinstance(conditions, Mapping):
         raise ValueError("donor posterior data are unavailable")
     if comparison not in conditions or reference not in conditions:
-        raise ValueError("the selected conditions were not fitted with this model")
+        raise ValueError("the selected conditions do not have inference results for this model")
     comparison_data = conditions[comparison]
     reference_data = conditions[reference]
     if not isinstance(comparison_data, Mapping) or not isinstance(reference_data, Mapping):
@@ -362,7 +362,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                 html.H3("Compare any two experimental conditions"),
                 note(
                     "Two conditions are required",
-                    "Fit at least two experimental conditions to compare their donor posterior distributions.",
+                    "Run inference for at least two experimental conditions to compare their donor posterior distributions.",
                     tone="navy",
                 ),
             ],
@@ -379,7 +379,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
             html.Span("Condition comparison", className="orca-section-label"),
             html.H3("Compare any two experimental conditions"),
             html.P(
-                "Comparison minus reference is calculated from both complete posterior particle distributions. Independent condition fits do not share chain or draw positions, so Orca uses every Cartesian particle pair when practical and a reproducible uniform sample of independent pairs for larger runs. It never reduces the comparison to a difference between two posterior means.",
+                "Comparison minus reference is calculated from both complete posterior particle distributions. Independent condition inference runs do not share chain or draw positions, so Orca uses every Cartesian particle pair when practical and a reproducible uniform sample of independent pairs for larger runs. It never reduces the comparison to a difference between two posterior means.",
                 className="orca-help",
             ),
             dcc.Store(id=f"{prefix}-contrast-data", data=payload),
@@ -387,7 +387,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                 [
                     html.Label(
                         [
-                            html.Span("Fitted model", className="orca-field-label"),
+                            html.Span("Candidate model", className="orca-field-label"),
                             dcc.Dropdown(
                                 id=f"{prefix}-contrast-model",
                                 options=options,
@@ -487,7 +487,7 @@ def register_donor_contrast_callbacks(app, *, prefix: str) -> None:
                 for row in metadata["donors"]
             )
             if exact:
-                rule = "Exact Cartesian comparison: every posterior particle from the comparison fit was paired with every particle from the reference fit."
+                rule = "Exact Cartesian comparison: every posterior particle from the comparison inference run was paired with every particle from the reference inference run."
             else:
                 returned = max(int(row["returned_pairs"]) for row in metadata["donors"])
                 rule = f"Monte Carlo Cartesian comparison: {returned:,} uniformly sampled independent particle pairs per donor."
@@ -498,7 +498,7 @@ def register_donor_contrast_callbacks(app, *, prefix: str) -> None:
                 y=0.5,
                 xref="paper",
                 yref="paper",
-                text="Choose two comparable fitted conditions",
+                text="Choose two conditions with comparable inference results",
                 showarrow=False,
             )
             figure.update_layout(

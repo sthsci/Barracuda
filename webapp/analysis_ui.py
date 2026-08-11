@@ -133,7 +133,7 @@ def model_selector(prefix: str, default: list[str] | None = None) -> html.Div:
     defaults = default or list(MODEL_LABELS)
     return html.Div(
         [
-            html.Div("Models to fit", className="orca-field-label"),
+            html.Div("Models included in inference", className="orca-field-label"),
             dcc.Checklist(
                 id=f"{prefix}-models",
                 options=[
@@ -151,7 +151,7 @@ def model_selector(prefix: str, default: list[str] | None = None) -> html.Div:
                 inputClassName="orca-check-input",
                 labelClassName="orca-model-option",
             ),
-            _help("Fit one model for parameter recovery, or at least two models for a Bayes factor comparison."),
+            _help("Select one model to estimate its parameters, or select at least two to compare model evidence with Bayes factors."),
         ],
         className="orca-field",
     )
@@ -197,13 +197,13 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
                     id=f"{prefix}-profile",
                     options=[
                         {"label": "Preview · quickest", "value": "preview"},
-                        {"label": "Demo · more repeatability", "value": "demo"},
+                        {"label": "Standard · more repeatability", "value": "demo"},
                         {"label": "Custom", "value": "custom"},
                     ],
                     value="preview",
                     clearable=False,
                 ),
-                "Preview is illustrative. Demo uses more particles and independent chains.",
+                "Preview is illustrative. Standard uses more particles and independent chains.",
             ),
             html.Details(
                 [
@@ -610,7 +610,7 @@ def _recovery_table(summary: pd.DataFrame, truth: Mapping[str, object]) -> pd.Da
         truth_value = float(truth[truth_key])
         rows.append(
             {
-                "Fitted model": row["model"],
+                "Candidate model": row["model"],
                 "Parameter": PARAMETER_LABELS.get(str(row["parameter"]), row["parameter"]),
                 "Ground truth": truth_value,
                 "Posterior mean": row.get("mean"),
@@ -642,7 +642,7 @@ def render_results(
     cards = html.Div(
         [
             metric("Best supported model", best, accent="teal"),
-            metric("Models fitted", str(len(results)), accent="navy"),
+            metric("Models analysed", str(len(results)), accent="navy"),
             metric("Cells analysed", f"{len(data):,}"),
         ],
         className="orca-metrics",
@@ -674,8 +674,8 @@ def render_results(
             "Exploratory rate distribution",
             "These data use "
             f"{truth.get('rate_distribution_label', 'an alternative distribution')} "
-            "for the engaging-cell rates. The fitted heterogeneous models assume "
-            "Gamma rates, so no fitted model is the exact generator.",
+            "for the engaging-cell rates. The heterogeneous candidate models assume "
+            "Gamma rates, so none is the exact generating model.",
             tone="amber",
         )
     archive = build_results_zip(results, data, observation_time, settings, truth=dict(truth) if truth is not None else None)
@@ -691,7 +691,7 @@ def render_results(
             note("Inference complete", "All selected models completed successfully.", tone="teal"),
             generator_note,
             cards,
-            html.Div([html.H3("Model comparison"), data_table(evidence), html.P("The best supported fitted model has log10 BF versus best equal to zero. Repeat small SMC runs across seeds and particle counts before drawing conclusions.", className="orca-help")], className="orca-result-section"),
+            html.Div([html.H3("Model comparison"), data_table(evidence), html.P("The best-supported candidate model has log₁₀ BF(best/model) equal to zero. Repeat small SMC runs across seeds and particle counts before drawing conclusions.", className="orca-help")], className="orca-result-section"),
             html.Div([html.H3("Posterior summaries"), data_table(display_summary, max_rows=15)], className="orca-result-section"),
             recovery_component,
             html.Div([html.H3("Posterior distributions"), dcc.Tabs(tabs, className="orca-tabs")], className="orca-result-section"),
@@ -813,7 +813,7 @@ def render_validation_results(
         [
             note(
                 "Inference complete",
-                "The figures use paired posterior draws from the fitted PyMC models. Dashed rust lines and stars mark the known generating values.",
+                "The figures use paired posterior draws from the completed PyMC inference runs. Dashed rust lines and stars mark the known generating values.",
                 tone="teal",
             ),
             html.Section(
@@ -867,7 +867,7 @@ def render_validation_results(
                         ],
                         className="orca-posterior-filter",
                         role="group",
-                        **{"aria-label": "Choose fitted models for the joint posterior plot"},
+                        **{"aria-label": "Choose inference results for the joint posterior plot"},
                     ),
                     html.Div(
                         dcc.Graph(
@@ -889,7 +889,7 @@ def render_validation_results(
                         className="orca-joint-plot-scroll",
                     ),
                     html.P(
-                        "The PNG, PDF and CSV buttons above export all fitted models. The Plotly camera button exports the current on-screen selection.",
+                        "The PNG, PDF and CSV buttons above export all completed model results. The Plotly camera button exports the current on-screen selection.",
                         className="orca-help orca-export-scope",
                     ),
                 ],
@@ -910,7 +910,7 @@ def render_validation_results(
                         className="orca-result-heading",
                     ),
                     html.P(
-                        "Bars use the untransformed linear log₁₀ BF(best model / fitted model) scale computed from the SMC log marginal likelihoods. The highest-evidence model is labelled Best model and sits at zero by definition. The background boundaries are exactly log₁₀(3) ≈ 0.477, 1 and 2, corresponding to Bayes factors of 3, 10 and 100.",
+                        "Bars use the untransformed linear log₁₀ BF(best model / candidate model) scale computed from the SMC log marginal likelihoods. The highest-evidence model is labelled Best model and sits at zero by definition. The background boundaries are exactly log₁₀(3) ≈ 0.477, 1 and 2, corresponding to Bayes factors of 3, 10 and 100.",
                         className="orca-help",
                     ),
                     dcc.Graph(
@@ -954,7 +954,7 @@ def render_validation_results(
                 primary=True,
             ),
             html.P(
-                "The ZIP contains one ArviZ InferenceData .nc file per fitted model, all CSV tables, both figures as PNG and PDF, the input data, exact settings and software versions.",
+                "The ZIP contains one ArviZ InferenceData .nc file per model, all CSV tables, both figures as PNG and PDF, the input data, exact settings and software versions.",
                 className="orca-help",
             ),
             html.Details(
@@ -1002,7 +1002,7 @@ def read_uploaded_csv(contents: str | None) -> pd.DataFrame:
     except Exception as exc:
         raise ValueError("The uploaded file could not be decoded.") from exc
     if len(payload) > 1_000_000:
-        raise ValueError("The demo accepts CSV files up to 1 MB.")
+        raise ValueError("This web application accepts CSV files up to 1 MB.")
     try:
         raw = payload.decode("utf-8-sig")
     except UnicodeDecodeError as exc:

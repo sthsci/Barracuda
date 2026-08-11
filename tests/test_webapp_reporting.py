@@ -279,7 +279,7 @@ def test_posterior_filter_callback_rebuilds_and_compacts_the_plot() -> None:
     empty, empty_style, empty_summary = callback([], payload)
     assert empty.layout.height == 430
     assert empty_style == {"height": "430px"}
-    assert empty_summary == "Select at least one fitted model."
+    assert empty_summary == "Select at least one inference result."
 
 
 def test_validation_results_hide_tables_and_offer_plot_csv_and_idata_exports() -> None:
@@ -333,7 +333,7 @@ def test_validation_results_hide_tables_and_offer_plot_csv_and_idata_exports() -
         "orca_ground_truth_recovery.csv",
         "orca_synthetic_validation.zip",
     } <= filenames
-    assert ".nc file per fitted model" in _text(downloads)
+    assert ".nc file per model" in _text(downloads)
 
 
 def test_static_exports_finish_inside_a_background_worker() -> None:

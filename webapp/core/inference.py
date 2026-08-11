@@ -746,7 +746,7 @@ def build_results_zip(
             "```\n"
             "\n"
             "The Bayes factor column `log10_BF_best_vs_model` compares the "
-            "largest SMC log evidence with each fitted model. Posterior "
+            "largest SMC log evidence with each candidate model. Posterior "
             "intervals in `posterior_summary.csv` are 95% HDIs. Prior settings "
             "and software versions are recorded in `run_metadata.json`.\n",
         )

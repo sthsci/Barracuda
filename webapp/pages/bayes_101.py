@@ -918,7 +918,7 @@ def layout() -> html.Div:
                                     html.P("The prior is a probability density over parameter pairs before the five measurements are used."),
                                     markdown(r"$$\mu\sim\operatorname{Normal}(5.45,0.15^2),\qquad \sigma\sim\operatorname{HalfNormal}(0.45)$$", class_name="orca-equation small", mathjax=True),
                                     dcc.Graph(id="prior-surface", figure=_parameter_surface_figure("prior", "Prior density"), config={"displaylogo": False, "responsive": True}, className="orca-surface-plot", style={"height": "300px"}),
-                                    html.P("The prior can favour some pairs even before their fit to the observations is considered.", className="orca-help"),
+                                    html.P("The prior can favour some pairs even before the likelihood is applied.", className="orca-help"),
                                 ],
                                 className="orca-surface-card",
                             ),

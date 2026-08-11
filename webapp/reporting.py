@@ -176,7 +176,7 @@ def posterior_draws_from_store(
     chosen = {str(key) for key in model_keys}
     selected = [key for key in model_order if key in chosen and key in MODEL_PARAMETERS]
     if not selected:
-        raise ValueError("select at least one fitted model")
+        raise ValueError("select at least one inference result")
 
     frames: list[pd.DataFrame] = []
     for model_key in selected:
@@ -263,7 +263,7 @@ def joint_posterior_figure_from_draws(
 
     selected_models = list(dict.fromkeys(str(key) for key in model_keys))
     if not selected_models:
-        raise ValueError("select at least one fitted model")
+        raise ValueError("select at least one inference result")
     if not isinstance(draws, pd.DataFrame) or draws.empty:
         raise ValueError("no scalar event count posterior draws are available")
     available_models = set(draws["model_key"].astype(str))
@@ -560,7 +560,7 @@ def bayes_factor_figure(
         title={"text": _truth_title(truth), "x": 0.01, "xanchor": "left", "font": {"size": 16}},
         margin={"l": 96, "r": 74, "t": 118 if truth else 88, "b": 76},
         xaxis_title="log₁₀ BF(𝓜<sub>best</sub> / 𝓜)",
-        yaxis_title="Fitted model",
+        yaxis_title="Candidate model",
         showlegend=True,
         legend={
             "orientation": "h",
@@ -785,7 +785,7 @@ def _matplotlib_bayes_factor(
     axis.set_xlabel(
         r"$\log_{10}\mathrm{BF}(\mathcal{M}_{\mathrm{best}}/\mathcal{M})$"
     )
-    axis.set_ylabel("Fitted model")
+    axis.set_ylabel("Candidate model")
     axis.grid(axis="x", alpha=0.25, zorder=1)
     axis.axvline(0, color=INK, linewidth=1.2)
     title = _truth_title(truth)
