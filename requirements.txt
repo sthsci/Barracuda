@@ -1,3 +1,4 @@
+bayesorca @ https://github.com/sthsci/Orca/archive/refs/heads/pypackage.zip
 dash[diskcache]==4.2.0
 dash-ag-grid==35.3.0
 plotly==6.9.0

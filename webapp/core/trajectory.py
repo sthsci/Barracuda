@@ -767,12 +767,7 @@ def simulate_trajectory_frame(
             f"mean contact rate, or observation time to stay within {MAX_EVENTS:,}"
         )
 
-    try:
-        simulator = import_module("bayesorca._backends.trajectories.simulator")
-    except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
-            raise
-        simulator = import_module("section_3.src.simulator")
+    simulator = import_module("bayesorca._backends.trajectories.simulator")
     frames: list[pd.DataFrame] = []
     truths: dict[str, dict[str, Any]] = {}
     for config in configurations:
@@ -856,23 +851,13 @@ def _condition_model_seed(
 
 
 def _load_trajectory_backend():
-    try:
-        return import_module("bayesorca._backends.trajectories.inference")
-    except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
-            raise
-        return import_module("section_3.src.inference")
+    return import_module("bayesorca._backends.trajectories.inference")
 
 
 def _run_with_native_smc_progress(callback, operation):
-    try:
-        progress = import_module(
-            "bayesorca._backends.event_counts.smc_progress"
-        )
-    except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
-            raise
-        progress = import_module("section_1.src.smc_progress")
+    progress = import_module(
+        "bayesorca._backends.event_counts.smc_progress"
+    )
     return progress.run_with_smc_progress(callback, operation)
 
 

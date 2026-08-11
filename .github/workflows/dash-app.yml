@@ -2,7 +2,7 @@ name: Dash application checks
 
 on:
   push:
-    branches: [main, codex/dash-app]
+    branches: [webpage]
   pull_request:
     paths:
       - "dash_app.py"
@@ -12,8 +12,6 @@ on:
       - "Dockerfile"
       - ".dockerignore"
       - ".github/workflows/dash-app.yml"
-      - "section_1/src/inference.py"
-      - "section_2/src/inference_donor_relative.py"
 
 jobs:
   test:
@@ -26,7 +24,7 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install dependencies
-        run: pip install -r requirements-dev.txt && pip install -e . --no-deps
+        run: pip install -r requirements-dev.txt
       - name: Run fast tests
         run: pytest -q
         env:

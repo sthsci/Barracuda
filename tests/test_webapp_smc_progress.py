@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pymc.smc.sampling as smc_sampling
 
-from section_1.src import inference as backend
+from bayesorca._backends.event_counts import inference as backend
 
 
 def test_pymc_stage_and_beta_are_forwarded_to_the_web_progress_callback() -> None:

@@ -1,7 +1,7 @@
 """Pure reporting helpers for donor-aware event-count inference.
 
 The donor-aware notebooks fit every condition independently with the hierarchy
-in :mod:`section_2.src.inference_donor_relative`.  This module keeps the
+in :mod:`bayesorca._backends.donor.inference_donor_relative`. This module keeps the
 scientific rules used by those notebooks separate from Dash callbacks:
 
 * donor-level draws from one fit remain paired by ``chain`` and ``draw``;
