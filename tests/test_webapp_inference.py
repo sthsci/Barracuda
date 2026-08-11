@@ -155,6 +155,24 @@ def test_count_models_run_sequentially_with_none_seed_and_progress(fake_backend)
     assert all(result.model is None for result in results.values())
 
 
+def test_count_sampler_progress_includes_pymc_chain_stage_and_beta(fake_backend) -> None:
+    events: list[tuple[int, int, str, int, int, float]] = []
+    run_count_models(
+        sample_count_frame(),
+        1.0,
+        InferenceSettings(draws=8, chains=3, cores=1),
+        ["homo"],
+        sampler_progress_callback=lambda *event: events.append(event),
+    )
+
+    backend_callback = fake_backend.calls[0][2]["progress_callback"]
+    backend_callback(2, 4, 0.625)
+
+    assert events == [
+        (1, 1, "𝓜_homo · Homogeneous Poisson", 2, 4, 0.625)
+    ]
+
+
 def test_model_specs_use_the_paper_symbols_names_and_donor_prior_defaults() -> None:
     assert {key: spec.notation for key, spec in facade.MODEL_SPECS.items()} == {
         "homo": "𝓜_homo",
@@ -193,6 +211,24 @@ def test_donor_wrapper_encodes_all_donors_and_uses_relative_prior_shapes(fake_ba
     assert fake_backend.calls[1][2]["deviation_prior"] == (0.11, 0.22)
     assert fake_backend.calls[2][2]["deviation_prior"] == (0.11, 0.22, 0.33)
     assert results["z2p"].donor_labels == ("donor_A", "donor_B", "donor_C")
+
+
+def test_donor_sampler_progress_uses_the_same_pymc_event_bridge(fake_backend) -> None:
+    events: list[tuple[int, int, str, int, int, float]] = []
+    run_donor_models(
+        sample_donor_frame(),
+        1.0,
+        InferenceSettings(draws=8, chains=2, cores=1),
+        ["z2p"],
+        sampler_progress_callback=lambda *event: events.append(event),
+    )
+
+    backend_callback = fake_backend.calls[0][2]["progress_callback"]
+    backend_callback(1, 2, 0.375)
+
+    assert events == [
+        (1, 1, "𝓜_ZI · Zero inflated Poisson", 1, 2, 0.375)
+    ]
 
 
 def _result(

@@ -91,6 +91,7 @@ def test_dash_layout_contains_upload_edit_inference_and_download_surfaces() -> N
         "synthetic-pymc-progress-bar",
         "synthetic-pymc-progress-label",
         "synthetic-pymc-progress-meta",
+        "synthetic-chain-progress",
         "counts-upload",
         "counts-table",
         "counts-run",
@@ -215,6 +216,7 @@ def test_synthetic_inference_uses_a_background_callback_with_live_progress() -> 
         "synthetic-pymc-progress-bar.value",
         "synthetic-pymc-progress-label.children",
         "synthetic-pymc-progress-meta.children",
+        "synthetic-chain-progress.children",
     }
 
 

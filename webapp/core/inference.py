@@ -28,7 +28,10 @@ from .data import (
 
 
 ProgressCallback = Callable[[int, int, str], None]
-SamplerProgressCallback = Callable[[int, int, str, int, float], None]
+SamplerProgressCallback = Callable[
+    [int, int, str, int, int, float],
+    None,
+]
 
 
 @dataclass(frozen=True)
@@ -330,12 +333,13 @@ def _fit_models(
             settings,
             donor_aware=donor_aware,
         )
-        if sampler_progress_callback is not None and not donor_aware:
+        if sampler_progress_callback is not None:
             kwargs["progress_callback"] = (
-                lambda stage, beta, *, _index=index, _total=total, _label=spec.label: sampler_progress_callback(
+                lambda chain, stage, beta, *, _index=index, _total=total, _label=spec.label: sampler_progress_callback(
                     _index,
                     _total,
                     _label,
+                    int(chain),
                     int(stage),
                     float(beta),
                 )
@@ -407,6 +411,7 @@ def run_donor_models(
     settings: InferenceSettings | None = None,
     model_keys: Sequence[str] | None = None,
     progress_callback: ProgressCallback | None = None,
+    sampler_progress_callback: SamplerProgressCallback | None = None,
 ) -> dict[str, InferenceResult]:
     """Validate and fit the canonical donor-relative models sequentially."""
 
@@ -422,7 +427,7 @@ def run_donor_models(
         specs=_selected_specs(model_keys),
         donor_aware=True,
         progress_callback=progress_callback,
-        sampler_progress_callback=None,
+        sampler_progress_callback=sampler_progress_callback,
     )
 
 

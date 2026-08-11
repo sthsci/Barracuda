@@ -23,6 +23,10 @@ from .inference import (
 
 ConditionResults = dict[str, dict[str, InferenceResult]]
 ConditionProgressCallback = Callable[[int, int, str, int, int, str], None]
+ConditionSamplerProgressCallback = Callable[
+    [int, int, str, int, int, str, int, int, float],
+    None,
+]
 UINT32_MODULUS: Final[int] = 2**32
 
 
@@ -40,6 +44,7 @@ def run_condition_models(
     model_keys: Sequence[str] | None,
     donor_aware: bool,
     progress_callback: ConditionProgressCallback | None = None,
+    sampler_progress_callback: ConditionSamplerProgressCallback | None = None,
 ) -> ConditionResults:
     """Fit each condition separately with identical settings and model set.
 
@@ -80,12 +85,37 @@ def run_condition_models(
                     label,
                 )
 
+        def sampler_progress(
+            model_index: int,
+            total_models: int,
+            label: str,
+            chain: int,
+            stage: int,
+            beta: float,
+            *,
+            _condition_index: int = condition_index,
+            _condition: str = condition,
+        ) -> None:
+            if sampler_progress_callback is not None:
+                sampler_progress_callback(
+                    _condition_index,
+                    total_conditions,
+                    _condition,
+                    model_index,
+                    total_models,
+                    label,
+                    int(chain),
+                    int(stage),
+                    float(beta),
+                )
+
         output[condition] = runner(
             condition_frame,
             observation_time,
             settings=condition_settings,
             model_keys=model_keys,
             progress_callback=model_started,
+            sampler_progress_callback=sampler_progress,
         )
     return output
 

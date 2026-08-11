@@ -25,6 +25,11 @@ from webapp.core.conditions import (
     split_condition_frame,
     validate_condition_frame,
 )
+from webapp.progress_ui import (
+    pymc_progress,
+    sampling_complete_payload,
+    sampling_progress_payload,
+)
 from webapp.ui import hero, note
 
 
@@ -265,11 +270,19 @@ def layout(
                 [
                     html.Span("Step B", className="orca-section-label"),
                     html.H2("Configure and run donor aware inference" if donor_aware else "Configure and run donor ignorant inference"),
-                    model_selector(prefix, default_models),
-                    inference_controls(prefix, donor_aware=donor_aware),
-                    html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
-                    html.Button("Run inference for selected models", id=f"{prefix}-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                    html.Fieldset(
+                        [
+                            model_selector(prefix, default_models),
+                            inference_controls(prefix, donor_aware=donor_aware),
+                            html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
+                            html.Button("Run inference for selected models", id=f"{prefix}-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                        ],
+                        id=f"{prefix}-inference-controls",
+                        disabled=False,
+                        className="orca-inference-fieldset",
+                    ),
                     html.Div(id=f"{prefix}-run-status", role="status", **{"aria-live": "polite"}),
+                    pymc_progress(prefix),
                     dcc.Loading(html.Div(id=f"{prefix}-results"), type="circle", color="#304B3D", className="orca-loading"),
                     html.Div(id=f"{prefix}-download", className="orca-download-slot"),
                 ],
@@ -428,8 +441,44 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
         Input(f"{prefix}-run", "n_clicks"),
         *states,
         prevent_initial_call=True,
+        background=True,
+        interval=350,
+        progress=[
+            Output(f"{prefix}-pymc-progress-bar", "value"),
+            Output(f"{prefix}-pymc-progress-label", "children"),
+            Output(f"{prefix}-pymc-progress-meta", "children"),
+            Output(f"{prefix}-chain-progress", "children"),
+        ],
+        progress_default=[
+            0,
+            "PyMC SMC sampler",
+            "Start inference to see each chain's SMC stage and tempering value β.",
+            [],
+        ],
+        running=[
+            (
+                Output(f"{prefix}-pymc-progress", "className"),
+                "orca-pymc-progress is-active",
+                "orca-pymc-progress is-hidden",
+            ),
+            (
+                Output(f"{prefix}-inference", "aria-busy"),
+                "true",
+                "false",
+            ),
+            (
+                Output(f"{prefix}-inference-controls", "disabled"),
+                True,
+                False,
+            ),
+            (
+                Output(f"{prefix}-run", "className"),
+                "orca-button primary full is-running",
+                "orca-button primary full",
+            ),
+        ],
     )
-    def run_inference(_clicks, records, observation_time, models, particles, chains, cores, seed, threshold, correlation, prior_bounds, sigma_prior, *extra_states):
+    def run_inference(set_progress, _clicks, records, observation_time, models, particles, chains, cores, seed, threshold, correlation, prior_bounds, sigma_prior, *extra_states):
         try:
             if not records:
                 raise ValueError("Provide a valid dataset first.")
@@ -471,12 +520,92 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
                 donor_aware=donor_aware,
                 donor_scales=donor_scales,
             )
+            selected_models = list(models)
+            total_chains = int(settings.chains)
+            chain_states: dict[int, tuple[int, float]] = {}
+
+            def publish_progress(
+                condition_index: int,
+                total_conditions: int,
+                condition_label: str,
+                model_index: int,
+                total_models: int,
+                model_label: str,
+            ) -> None:
+                set_progress(
+                    sampling_progress_payload(
+                        condition_index=condition_index,
+                        total_conditions=total_conditions,
+                        condition_label=condition_label,
+                        model_index=model_index,
+                        total_models=total_models,
+                        model_label=model_label,
+                        chains=total_chains,
+                        particles=int(settings.draws),
+                        chain_states=chain_states,
+                    )
+                )
+
+            def model_started(
+                condition_index: int,
+                total_conditions: int,
+                condition_label: str,
+                model_index: int,
+                total_models: int,
+                model_label: str,
+            ) -> None:
+                chain_states.clear()
+                publish_progress(
+                    condition_index,
+                    total_conditions,
+                    condition_label,
+                    model_index,
+                    total_models,
+                    model_label,
+                )
+
+            def sampler_progress(
+                condition_index: int,
+                total_conditions: int,
+                condition_label: str,
+                model_index: int,
+                total_models: int,
+                model_label: str,
+                chain: int,
+                stage: int,
+                beta: float,
+            ) -> None:
+                chain_index = int(chain)
+                if not 0 <= chain_index < total_chains:
+                    return
+                chain_states[chain_index] = (
+                    max(0, int(stage)),
+                    min(1.0, max(0.0, float(beta))),
+                )
+                publish_progress(
+                    condition_index,
+                    total_conditions,
+                    condition_label,
+                    model_index,
+                    total_models,
+                    model_label,
+                )
+
             results = run_condition_models(
                 frame,
                 float(observation_time),
                 settings=settings,
-                model_keys=models,
+                model_keys=selected_models,
                 donor_aware=donor_aware,
+                progress_callback=model_started,
+                sampler_progress_callback=sampler_progress,
+            )
+            set_progress(
+                sampling_complete_payload(
+                    chains=total_chains,
+                    particles=int(settings.draws),
+                    chain_states=chain_states,
+                )
             )
             if donor_aware:
                 from webapp.donor_reporting import render_donor_condition_results
@@ -500,7 +629,16 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
                 )
         except Exception as exc:
             return html.Div(), html.Div(), note("Inference did not complete", str(exc), tone="amber")
-        return content, download, html.Div()
+        return (
+            content,
+            download,
+            note(
+                "Inference complete",
+                f"PyMC completed {len(condition_labels)} condition{'s' if len(condition_labels) != 1 else ''} "
+                f"across {len(selected_models)} model{'s' if len(selected_models) != 1 else ''}.",
+                tone="teal",
+            ),
+        )
 
     @app.callback(
         Output(

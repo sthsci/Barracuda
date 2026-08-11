@@ -33,6 +33,11 @@ import numpy as np
 import pymc as pm
 import pytensor.tensor as pt
 
+from section_1.src.smc_progress import (
+    SMCProgressCallback,
+    run_with_smc_progress,
+)
+
 
 @dataclass(frozen=True)
 class _DonorData:
@@ -595,16 +600,20 @@ def _sample_smc(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
-    trace = pm.sample_smc(
-        draws=int(draws),
-        chains=int(chains),
-        cores=_resolve_cores(cores),
-        random_seed=random_seed,
-        progressbar=True,
-        return_inferencedata=False,
-        threshold=float(threshold),
-        correlation_threshold=float(correlation_threshold),
+    trace = run_with_smc_progress(
+        progress_callback,
+        lambda: pm.sample_smc(
+            draws=int(draws),
+            chains=int(chains),
+            cores=_resolve_cores(cores),
+            random_seed=random_seed,
+            progressbar=True,
+            return_inferencedata=False,
+            threshold=float(threshold),
+            correlation_threshold=float(correlation_threshold),
+        ),
     )
     to_idata = getattr(pm, "to_inferencedata", None) or getattr(
         pm,
@@ -662,6 +671,7 @@ def _infer_model(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     with model:
         idata = _sample_smc(
@@ -671,6 +681,7 @@ def _infer_model(
             random_seed=random_seed,
             threshold=threshold,
             correlation_threshold=correlation_threshold,
+            progress_callback=progress_callback,
         )
     print(az.summary(idata, hdi_prob=0.95))
     return {"idata": idata, "model": model}
@@ -693,6 +704,7 @@ def inference_homo(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     model = _build_model(
         contacts_per_cell,
@@ -710,6 +722,7 @@ def inference_homo(
         random_seed=random_seed,
         threshold=threshold,
         correlation_threshold=correlation_threshold,
+        progress_callback=progress_callback,
     )
 
 
@@ -728,6 +741,7 @@ def inference_Z2P(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     if len(deviation_prior) != 2:
         raise ValueError("deviation_prior must contain two scales")
@@ -749,6 +763,7 @@ def inference_Z2P(
         random_seed=random_seed,
         threshold=threshold,
         correlation_threshold=correlation_threshold,
+        progress_callback=progress_callback,
     )
 
 
@@ -767,6 +782,7 @@ def inference_Dis2P(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     if len(deviation_prior) != 2:
         raise ValueError("deviation_prior must contain two scales")
@@ -788,6 +804,7 @@ def inference_Dis2P(
         random_seed=random_seed,
         threshold=threshold,
         correlation_threshold=correlation_threshold,
+        progress_callback=progress_callback,
     )
 
 
@@ -807,6 +824,7 @@ def inference_hetero3(
     random_seed: Optional[int] = None,
     threshold: float = 0.5,
     correlation_threshold: float = 0.01,
+    progress_callback: SMCProgressCallback | None = None,
 ):
     model = build_model(
         contacts_per_cell,
@@ -826,4 +844,5 @@ def inference_hetero3(
         random_seed=random_seed,
         threshold=threshold,
         correlation_threshold=correlation_threshold,
+        progress_callback=progress_callback,
     )

@@ -6,6 +6,8 @@ import pandas as pd
 import pytest
 
 from webapp.condition_reporting import condition_bayes_factor_figure
+from webapp.core import condition_inference
+from webapp.core.condition_inference import run_condition_models
 from webapp.core.conditions import (
     APPLE_COLOUR_PRESETS,
     normalize_condition_frame,
@@ -14,7 +16,7 @@ from webapp.core.conditions import (
     split_condition_frame,
     validate_condition_frame,
 )
-from webapp.core.inference import InferenceResult
+from webapp.core.inference import InferenceResult, InferenceSettings
 from webapp.reporting import BF3_LOG10
 
 
@@ -73,6 +75,49 @@ def test_condition_colours_have_presets_and_validate_custom_hex() -> None:
     assert len(APPLE_COLOUR_PRESETS) >= 8
     assert colours["Control"] == "#123ABC"
     assert colours["Treatment"].startswith("#")
+
+
+def test_condition_sampler_progress_keeps_condition_model_and_pymc_chain(
+    monkeypatch,
+) -> None:
+    model_events: list[tuple] = []
+    sampler_events: list[tuple] = []
+
+    def fake_runner(
+        _frame,
+        _observation_time,
+        *,
+        settings,
+        model_keys,
+        progress_callback,
+        sampler_progress_callback,
+    ):
+        assert settings.chains == 2
+        assert model_keys == ["homo", "z2p"]
+        progress_callback(1, 2, "model one")
+        sampler_progress_callback(1, 2, "model one", 1, 3, 0.75)
+        return {}
+
+    monkeypatch.setattr(condition_inference, "run_count_models", fake_runner)
+    results = run_condition_models(
+        sample_condition_frame(donor_aware=False),
+        1.0,
+        settings=InferenceSettings(draws=8, chains=2, cores=1),
+        model_keys=["homo", "z2p"],
+        donor_aware=False,
+        progress_callback=lambda *event: model_events.append(event),
+        sampler_progress_callback=lambda *event: sampler_events.append(event),
+    )
+
+    assert list(results) == ["Control", "Treatment"]
+    assert model_events == [
+        (1, 2, "Control", 1, 2, "model one"),
+        (2, 2, "Treatment", 1, 2, "model one"),
+    ]
+    assert sampler_events == [
+        (1, 2, "Control", 1, 2, "model one", 1, 3, 0.75),
+        (2, 2, "Treatment", 1, 2, "model one", 1, 3, 0.75),
+    ]
 
 
 def _result(key: str, log_evidence: float) -> InferenceResult:

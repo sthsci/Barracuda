@@ -589,10 +589,18 @@ a:hover { color: var(--orca-rust); }
 .orca-posterior-panel h4 { margin-top: 0; text-transform: capitalize; }
 .orca-download-slot { display: flex; width: 100%; justify-content: stretch; }
 .orca-loading { min-height: 2rem; }
+.orca-inference-fieldset { min-width: 0; margin: 0; padding: 0; border: 0; }
+.orca-inference-fieldset:disabled { pointer-events: none; opacity: 0.62; }
 .orca-pymc-progress { display: grid; grid-template-columns: minmax(180px, 0.42fr) minmax(0, 0.58fr); gap: 1rem; align-items: center; margin: 0.9rem 0; padding: 0.85rem 1rem; color: var(--orca-ink); background: var(--orca-paper-warm); border: 1px solid var(--orca-line); border-left: 0.3rem solid var(--orca-primary); }
 .orca-pymc-progress progress { width: 100%; height: 0.9rem; overflow: hidden; accent-color: var(--orca-primary); }
+.orca-pymc-progress-overall, .orca-pymc-progress-summary { min-width: 0; }
 .orca-pymc-progress strong { display: block; font-family: var(--orca-sans); font-size: 0.78rem; }
 .orca-pymc-progress p { margin: 0.2rem 0 0; color: var(--orca-ink-soft); font-size: 0.78rem; line-height: 1.4; }
+.orca-pymc-chain-list { display: grid; grid-column: 1 / -1; gap: 0.42rem; padding-top: 0.72rem; border-top: 1px solid var(--orca-line-soft); }
+.orca-pymc-chain-row { display: grid; grid-template-columns: minmax(5rem, 0.2fr) minmax(9rem, 1fr) minmax(9.5rem, auto); gap: 0.7rem; align-items: center; min-width: 0; }
+.orca-pymc-chain-name, .orca-pymc-chain-state { font-family: var(--orca-mono); font-size: 0.7rem; font-variant-numeric: tabular-nums; }
+.orca-pymc-chain-name { color: var(--orca-ink); font-weight: 800; }
+.orca-pymc-chain-state { color: var(--orca-ink-soft); text-align: right; }
 .orca-button.is-running { pointer-events: none; opacity: 0.62; }
 .orca-results-placeholder { margin: 1rem 0 0; padding: 1rem 1.1rem; background: var(--orca-paper-warm); border: 1px dashed var(--orca-line); }
 .orca-results-placeholder strong { display: block; margin-bottom: 0.2rem; font-family: var(--orca-sans); font-size: 0.82rem; }
@@ -664,6 +672,8 @@ a:hover { color: var(--orca-rust); }
   .orca-download-grid { grid-template-columns: 1fr; }
   .orca-posterior-model-options { grid-template-columns: 1fr; }
   .orca-joint-posterior-plot { min-width: 700px; }
+  .orca-pymc-chain-row { grid-template-columns: minmax(4.5rem, auto) minmax(0, 1fr); gap: 0.35rem 0.65rem; }
+  .orca-pymc-chain-state { grid-column: 1 / -1; text-align: left; }
   .orca-segmented { display: grid; width: 100%; }
   .orca-plot { min-height: 320px; }
   .orca-toc-list, .orca-coin-lab-grid, .orca-parameter-grid, .orca-dimension-contrast, .orca-bf-flow, .orca-bayes-history-grid { grid-template-columns: 1fr; }

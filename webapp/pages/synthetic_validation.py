@@ -30,6 +30,11 @@ from webapp.reporting import (
     posterior_draws_from_store,
     posterior_parameters_for_models,
 )
+from webapp.progress_ui import (
+    pymc_progress,
+    sampling_complete_payload,
+    sampling_progress_payload,
+)
 from webapp.ui import hero, note, schematic_figure
 
 
@@ -156,29 +161,7 @@ def layout() -> html.Div:
                     html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
                     html.Button("Run inference for selected models", id="synthetic-run", n_clicks=0, disabled=True, className="orca-button primary full"),
                     html.Div(id="synthetic-run-status", role="status", **{"aria-live": "polite"}),
-                    html.Div(
-                        [
-                            html.Progress(
-                                id="synthetic-pymc-progress-bar",
-                                max=1,
-                                value=0,
-                                **{"aria-label": "PyMC Sequential Monte Carlo sampling in progress"},
-                            ),
-                            html.Div(
-                                [
-                                    html.Strong("PyMC SMC is ready", id="synthetic-pymc-progress-label"),
-                                    html.P(
-                                        "The sampler will report its current model, stage and tempering value β here.",
-                                        id="synthetic-pymc-progress-meta",
-                                    ),
-                                ]
-                            ),
-                        ],
-                        id="synthetic-pymc-progress",
-                        className="orca-pymc-progress is-hidden",
-                        role="status",
-                        **{"aria-live": "polite"},
-                    ),
+                    pymc_progress("synthetic"),
                     dcc.Loading(
                         html.Div(
                             html.Div(
@@ -437,11 +420,13 @@ def register_callbacks(app) -> None:
             Output("synthetic-pymc-progress-bar", "value"),
             Output("synthetic-pymc-progress-label", "children"),
             Output("synthetic-pymc-progress-meta", "children"),
+            Output("synthetic-chain-progress", "children"),
         ],
         progress_default=[
             0,
-            "PyMC SMC is ready",
-            "The sampler will report its current model, stage and tempering value β here.",
+            "PyMC SMC sampler",
+            "Start inference to see each chain's SMC stage and tempering value β.",
+            [],
         ],
         running=[
             (
@@ -470,13 +455,19 @@ def register_callbacks(app) -> None:
             frame = validate_count_frame(pd.DataFrame(records))
             settings = settings_from_values(particles, chains, cores, seed, threshold, correlation, prior_bounds, sigma_prior)
             selected_models = list(models)
+            total_chains = int(settings.chains)
+            chain_states: dict[int, tuple[int, float]] = {}
 
             def model_started(index: int, total: int, label: str) -> None:
+                chain_states.clear()
                 set_progress(
-                    (
-                        (index - 1) / total,
-                        f"Model {index} of {total}: {label}",
-                        "Initialising the PyMC Sequential Monte Carlo sampler.",
+                    sampling_progress_payload(
+                        model_index=index,
+                        total_models=total,
+                        model_label=label,
+                        chains=total_chains,
+                        particles=int(settings.draws),
+                        chain_states=chain_states,
                     )
                 )
 
@@ -484,16 +475,25 @@ def register_callbacks(app) -> None:
                 index: int,
                 total: int,
                 label: str,
+                chain: int,
                 stage: int,
                 beta: float,
             ) -> None:
-                bounded_beta = min(1.0, max(0.0, float(beta)))
-                overall = min(0.999, ((index - 1) + bounded_beta) / total)
+                chain_index = int(chain)
+                if not 0 <= chain_index < total_chains:
+                    return
+                chain_states[chain_index] = (
+                    max(0, int(stage)),
+                    min(1.0, max(0.0, float(beta))),
+                )
                 set_progress(
-                    (
-                        overall,
-                        f"Model {index} of {total}: {label}",
-                        f"PyMC SMC stage {stage} · β = {bounded_beta:.3f}",
+                    sampling_progress_payload(
+                        model_index=index,
+                        total_models=total,
+                        model_label=label,
+                        chains=total_chains,
+                        particles=int(settings.draws),
+                        chain_states=chain_states,
                     )
                 )
 
@@ -505,7 +505,13 @@ def register_callbacks(app) -> None:
                 progress_callback=model_started,
                 sampler_progress_callback=sampler_progress,
             )
-            set_progress((1.0, "Sampling complete", "Preparing figures and downloadable files."))
+            set_progress(
+                sampling_complete_payload(
+                    chains=total_chains,
+                    particles=int(settings.draws),
+                    chain_states=chain_states,
+                )
+            )
             content, download = render_validation_results(
                 results,
                 data=frame,
