@@ -2,15 +2,11 @@ name: bayesorca package checks
 
 on:
   push:
-    branches: [main, codex/bayesorca-package]
+    branches: [pypackage]
     paths:
       - "pyproject.toml"
       - "PACKAGE_README.md"
       - "src/bayesorca/**"
-      - "webapp/core/**"
-      - "section_1/src/**"
-      - "section_2/src/**"
-      - "section_3/src/**"
       - "tests/test_bayesorca_package.py"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
@@ -19,10 +15,6 @@ on:
       - "pyproject.toml"
       - "PACKAGE_README.md"
       - "src/bayesorca/**"
-      - "webapp/core/**"
-      - "section_1/src/**"
-      - "section_2/src/**"
-      - "section_3/src/**"
       - "tests/test_bayesorca_package.py"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"

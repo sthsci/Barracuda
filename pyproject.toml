@@ -53,23 +53,9 @@ Homepage = "https://github.com/sthsci/Orca"
 Repository = "https://github.com/sthsci/Orca"
 Issues = "https://github.com/sthsci/Orca/issues"
 
-[tool.setuptools]
-packages = [
-  "bayesorca",
-  "bayesorca._backends",
-  "bayesorca._backends.event_counts",
-  "bayesorca._backends.donor",
-  "bayesorca._backends.trajectories",
-  "bayesorca._core",
-]
-
-[tool.setuptools.package-dir]
-"bayesorca" = "src/bayesorca"
-"bayesorca._backends" = "src/bayesorca/_backends"
-"bayesorca._backends.event_counts" = "section_1/src"
-"bayesorca._backends.donor" = "section_2/src"
-"bayesorca._backends.trajectories" = "section_3/src"
-"bayesorca._core" = "webapp/core"
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["bayesorca*"]
 
 [tool.setuptools.package-data]
 bayesorca = ["py.typed"]
