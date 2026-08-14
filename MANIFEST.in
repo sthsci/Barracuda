@@ -2,3 +2,5 @@ include CITATION.cff
 include LICENSE
 include PACKAGE_README.md
 include README.md
+include mkdocs.yml
+recursive-include docs *.css *.md

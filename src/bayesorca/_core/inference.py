@@ -132,7 +132,7 @@ def _finite(value: float, name: str) -> float:
 
 @dataclass(frozen=True)
 class InferenceSettings:
-    """Validated PyMC SMC controls and prior settings used by the demo."""
+    """Validated PyMC SMC controls and prior settings for event-count fits."""
 
     draws: int = 256
     chains: int = 1

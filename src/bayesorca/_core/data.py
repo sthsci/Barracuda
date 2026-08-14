@@ -15,10 +15,10 @@ DONOR_COLUMNS: Final[tuple[str, str, str]] = (
     "count",
 )
 MIN_CELLS: Final[int] = 5
-MAX_CELLS: Final[int] = 1_000
-MAX_EVENT_COUNT: Final[int] = 100
+MAX_CELLS: Final[int] = 1_000_000
+MAX_EVENT_COUNT: Final[int] = np.iinfo(np.int32).max
 MIN_DONORS: Final[int] = 2
-MAX_DONORS: Final[int] = 12
+MAX_DONORS: Final[int] = 10_000
 MIN_CELLS_PER_DONOR: Final[int] = 3
 
 
@@ -86,8 +86,12 @@ def _validate_unique_cells(frame: pd.DataFrame) -> None:
         raise ValueError(f"cell_id values must be unique (duplicate: {duplicate})")
 
 
-def _validate_demo_scope(frame: pd.DataFrame) -> None:
-    """Apply bounded public-demo constraints before model construction."""
+def _validate_analysis_scope(frame: pd.DataFrame) -> None:
+    """Apply broad package safety bounds before model construction.
+
+    Interactive applications should enforce their own tighter upload and
+    compute limits before calling the package.
+    """
 
     if len(frame) < MIN_CELLS:
         raise ValueError(f"data must contain at least {MIN_CELLS} cells")
@@ -95,7 +99,7 @@ def _validate_demo_scope(frame: pd.DataFrame) -> None:
         raise ValueError(f"data may contain at most {MAX_CELLS:,} cells")
     if int(frame["count"].max()) > MAX_EVENT_COUNT:
         raise ValueError(
-            f"count may not exceed {MAX_EVENT_COUNT} in this web application"
+            f"count may not exceed {MAX_EVENT_COUNT:,}"
         )
     if not frame["count"].gt(0).any():
         raise ValueError("data must contain at least one positive event count")
@@ -112,7 +116,7 @@ def validate_count_frame(frame: pd.DataFrame) -> pd.DataFrame:
     validated["cell_id"] = _clean_identifier(validated["cell_id"], "cell_id")
     validated["count"] = _clean_counts(validated["count"])
     _validate_unique_cells(validated)
-    _validate_demo_scope(validated)
+    _validate_analysis_scope(validated)
     return validated.reset_index(drop=True)
 
 
@@ -151,7 +155,7 @@ def validate_donor_frame(frame: pd.DataFrame) -> pd.DataFrame:
             )
     if validated.groupby("donor_id", sort=False, observed=True).size().le(0).any():
         raise ValueError("every donor must have at least one cell")
-    _validate_demo_scope(validated)
+    _validate_analysis_scope(validated)
 
     donor_sizes = validated.groupby(
         "donor_id",

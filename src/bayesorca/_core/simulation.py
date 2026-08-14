@@ -273,7 +273,7 @@ def simulate_event_counts(
     cells = _positive_integer(n_cells, "n_cells")
     if not MIN_CELLS <= cells <= MAX_CELLS:
         raise ValueError(
-            f"n_cells must be between {MIN_CELLS} and {MAX_CELLS:,} for this web application"
+            f"n_cells must be between {MIN_CELLS} and {MAX_CELLS:,}"
         )
     observation_time = validate_observation_time(obs_time)
     mean_rate = _finite_float(mu_lambda, "mu_lambda")

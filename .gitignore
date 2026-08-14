@@ -21,6 +21,7 @@ __pycache__/
 htmlcov/
 build/
 dist/
+site/
 *.egg-info/
 
 # Jupyter

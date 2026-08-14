@@ -5,19 +5,31 @@ on:
     branches: [pypackage]
     paths:
       - "pyproject.toml"
+      - "README.md"
       - "PACKAGE_README.md"
+      - "CITATION.cff"
+      - "MANIFEST.in"
+      - "mkdocs.yml"
+      - "docs/**"
       - "src/bayesorca/**"
-      - "tests/test_bayesorca_package.py"
+      - "tests/**"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
+      - ".github/workflows/docs.yml"
   pull_request:
     paths:
       - "pyproject.toml"
+      - "README.md"
       - "PACKAGE_README.md"
+      - "CITATION.cff"
+      - "MANIFEST.in"
+      - "mkdocs.yml"
+      - "docs/**"
       - "src/bayesorca/**"
-      - "tests/test_bayesorca_package.py"
+      - "tests/**"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
+      - ".github/workflows/docs.yml"
 
 jobs:
   build-and-test:
@@ -32,7 +44,7 @@ jobs:
       - name: Install package and test tools
         run: python -m pip install --upgrade pip && python -m pip install -e ".[test,build]"
       - name: Run package tests
-        run: python -m pytest -q tests/test_bayesorca_package.py
+        run: python -m pytest -q
       - name: Build wheel and source distribution
         run: python -m build
       - name: Validate distributions
@@ -41,4 +53,4 @@ jobs:
         run: |
           python -m venv /tmp/bayesorca-wheel-test
           /tmp/bayesorca-wheel-test/bin/python -m pip install dist/*.whl
-          /tmp/bayesorca-wheel-test/bin/python -c "import bayesorca; print(bayesorca.__version__)"
+          /tmp/bayesorca-wheel-test/bin/python -c "import bayesorca; from bayesorca import diagnostics, donors, evidence, io, plotting, scans, validation; print(bayesorca.__version__)"

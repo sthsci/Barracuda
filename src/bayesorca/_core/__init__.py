@@ -1,4 +1,4 @@
-"""Stable, UI-independent API for the Orca web application."""
+"""Stable, UI-independent implementation for the :mod:`bayesorca` package."""
 
 from .data import (
     sample_count_frame,

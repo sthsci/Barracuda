@@ -1,0 +1,22 @@
+:root {
+  --md-primary-fg-color: #3156a3;
+  --md-accent-fg-color: #087f8c;
+}
+
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.md-typeset code {
+  border-radius: 0.2rem;
+}
+
+.md-typeset .admonition,
+.md-typeset details {
+  border-radius: 0.35rem;
+}
+
+.api-summary td:first-child {
+  white-space: nowrap;
+}

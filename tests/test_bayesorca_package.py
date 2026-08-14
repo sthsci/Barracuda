@@ -2,19 +2,25 @@ from __future__ import annotations
 
 import importlib
 
+import numpy as np
 import pandas as pd
+import pytest
 
 import bayesorca
 from bayesorca import event_counts, trajectories
 
 
 def test_top_level_package_exposes_the_three_public_workflows():
-    assert bayesorca.__version__ == "0.1.0"
+    assert bayesorca.__version__ == "0.2.0"
     assert callable(bayesorca.run_count_models)
     assert callable(bayesorca.run_donor_models)
     assert bayesorca.run_donor_ignorant_models is bayesorca.run_count_models
     assert bayesorca.run_donor_aware_models is bayesorca.run_donor_models
     assert callable(bayesorca.run_trajectory_conditions)
+    assert callable(bayesorca.run_count_bf_scan)
+    assert callable(bayesorca.run_trajectory_validation)
+    assert callable(bayesorca.pairwise_bayes_factors)
+    assert callable(bayesorca.simulate_donor_event_counts)
     assert set(event_counts.MODEL_SPECS) == {"homo", "z2p", "dis2p", "hetero3"}
     assert len(trajectories.TRAJECTORY_MODEL_SPECS) == 4
 
@@ -104,3 +110,12 @@ def test_packaged_backend_module_names_resolve_after_install_or_mapping():
     assert callable(event_backend.inference_homo)
     assert callable(donor_backend.inference_homo)
     assert callable(trajectory_backend.build_model)
+
+
+def test_trajectory_quadrature_ceiling_remains_numerically_finite():
+    settings = trajectories.TrajectorySettings(n_quad=80)
+    _nodes, weights = np.polynomial.hermite.hermgauss(settings.n_quad)
+    assert np.isfinite(weights).all()
+    assert (weights > 0).all()
+    with pytest.raises(ValueError, match="n_quad must be at most 80"):
+        trajectories.TrajectorySettings(n_quad=81)

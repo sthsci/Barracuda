@@ -22,7 +22,7 @@ from .data import (
 
 
 CONDITION_COLUMN: Final[str] = "condition"
-MAX_CONDITIONS: Final[int] = 4
+MAX_CONDITIONS: Final[int] = 1_000
 
 # Apple system colours are familiar defaults on macOS.  Users can replace
 # every value with the native colour input before running an analysis.
@@ -100,7 +100,7 @@ def validate_condition_frame(
     labels = list(dict.fromkeys(working[CONDITION_COLUMN].tolist()))
     if len(labels) > MAX_CONDITIONS:
         raise ValueError(
-            f"this release supports at most {MAX_CONDITIONS} experimental conditions"
+            f"an analysis may contain at most {MAX_CONDITIONS:,} experimental conditions"
         )
 
     validator = validate_donor_frame if donor_aware else validate_count_frame

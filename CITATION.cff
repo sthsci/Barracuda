@@ -2,7 +2,7 @@ cff-version: 1.2.0
 message: "If you use bayesorca, please cite the ORCA manuscript and this software."
 title: "bayesorca: Bayesian inference for heterogeneity in immune cell cytotoxicity"
 type: software
-version: 0.1.0
+version: 0.2.0
 license: MIT
 repository-code: "https://github.com/sthsci/Orca"
 authors:

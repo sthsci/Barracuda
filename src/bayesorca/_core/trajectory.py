@@ -33,14 +33,18 @@ CANONICAL_COLUMNS: Final[tuple[str, ...]] = (
     "history",
 )
 DEFAULT_CONDITION: Final[str] = "Condition 1"
-MAX_CONDITIONS: Final[int] = 4
-MAX_CELLS: Final[int] = 1_000
-MAX_EVENTS: Final[int] = 20_000
-MAX_EVENTS_PER_CELL: Final[int] = 250
-MAX_CSV_DRAWS_PER_RESULT: Final[int] = 10_000
-MAX_SMC_DRAWS: Final[int] = 2_000
-MAX_SMC_CHAINS: Final[int] = 4
-MAX_SMC_CORES: Final[int] = 4
+MAX_CONDITIONS: Final[int] = 1_000
+MAX_CELLS: Final[int] = 1_000_000
+MAX_EVENTS: Final[int] = 100_000_000
+MAX_EVENTS_PER_CELL: Final[int] = 1_000_000
+MAX_CSV_DRAWS_PER_RESULT: Final[int] = 1_000_000
+MAX_SMC_DRAWS: Final[int] = 1_000_000
+MAX_SMC_CHAINS: Final[int] = 128
+MAX_SMC_CORES: Final[int] = 128
+# ``numpy.polynomial.hermite.hermgauss`` becomes numerically unstable at high
+# degree with the supported NumPy release.  Keep the public ceiling within the
+# range exercised by the trajectory backend rather than accepting settings
+# that can silently generate non-finite quadrature weights.
 MAX_QUADRATURE_NODES: Final[int] = 80
 UINT32_MODULUS: Final[int] = 2**32
 
@@ -167,7 +171,7 @@ def _finite(value: Any, name: str) -> float:
 
 @dataclass(frozen=True)
 class TrajectorySettings:
-    """Validated SMC and prior controls for a web trajectory run."""
+    """Validated SMC and prior controls for trajectory inference."""
 
     draws: int = 256
     chains: int = 1
