@@ -10,10 +10,10 @@ import psutil
 from dash import Dash, DiskcacheManager, Input, Output, dcc, html
 
 from webapp.analysis_ui import PROFILE_VALUES
-from webapp.pages import bayes_101, donor_aware, event_counts, event_counts_overview, home, synthetic_validation, trajectory
+from webapp.pages import bayes_101, donor_aware, event_counts, event_counts_overview, home, notebooks, synthetic_validation, trajectory
 
 
-PAGES = [home, bayes_101, event_counts_overview, event_counts, donor_aware, trajectory]
+PAGES = [home, bayes_101, notebooks, event_counts_overview, event_counts, donor_aware, trajectory]
 PAGE_BY_PATH = {page.PATH: page for page in PAGES}
 # The former standalone validation URL now opens the merged donor ignorant
 # workflow. Keeping the alias avoids breaking saved links without restoring a
@@ -22,6 +22,7 @@ PAGE_BY_PATH[synthetic_validation.PATH] = event_counts
 PAGE_BY_PATH["/donor-aware"] = donor_aware
 NAV_GROUPS = [
     ("Overview", [(home, False), (bayes_101, False)]),
+    ("Notebooks", [(notebooks, False)]),
     (
         "Event counts",
         [
@@ -35,6 +36,7 @@ NAV_GROUPS = [
 NAV_LABELS = {
     home.PATH: "Home",
     bayes_101.PATH: "Bayesian inference 101",
+    notebooks.PATH: "Google Colab notebooks",
     event_counts_overview.PATH: "Event count analysis",
     event_counts.PATH: "Donor ignorant · Data and validation",
     donor_aware.PATH: "Donor aware · Condition analysis",

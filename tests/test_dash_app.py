@@ -9,7 +9,7 @@ from dash.development.base_component import Component
 
 from webapp.analysis_ui import read_uploaded_csv
 from webapp.dashapp import OrcaDiskcacheManager, PAGE_BY_PATH, PAGES, create_app
-from webapp.pages import bayes_101
+from webapp.pages import bayes_101, notebooks
 
 
 def _walk(component):
@@ -51,6 +51,7 @@ def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:
     expected = {
         "/": "One question, three levels of information",
         "/bayesian-101": "The update at the heart of Bayesian inference",
+        "/notebooks": "Learn and analyse in Google Colab",
         "/event-counts": "Choose an analysis",
         "/event-counts/donor-ignorant": "Which data do you want to use?",
         "/event-counts/donor-aware": "Provide counts with donor labels",
@@ -61,6 +62,34 @@ def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:
         content = page.layout()
         assert expected[page.PATH] in _text(content)
     assert PAGE_BY_PATH["/synthetic-validation"].PATH == "/event-counts/donor-ignorant"
+
+
+def test_colab_notebook_hub_links_every_workflow_from_the_home_page() -> None:
+    expected = {
+        f"{notebooks.COLAB_ROOT}/{path}"
+        for path in (
+            "notebooks/00_run_the_orca_web_app.ipynb",
+            "notebooks/01_bayesian_inference_101.ipynb",
+            "notebooks/02_event_count_model_tutorial.ipynb",
+            "notebooks/03_trajectory_model_tutorial.ipynb",
+            "notebooks/04_event_count_analysis.ipynb",
+            "notebooks/05_donor_aware_analysis.ipynb",
+            "notebooks/06_trajectory_analysis.ipynb",
+        )
+    }
+    links = [
+        component
+        for component in _walk(notebooks.layout())
+        if component.__class__.__name__ == "A"
+    ]
+
+    assert {link.href for link in links} == expected
+    assert all(link.target == "_blank" and link.rel == "noreferrer" for link in links)
+    assert all(category in _text(notebooks.layout()) for category in ("Start here", "Teaching", "Analysis"))
+    assert any(
+        getattr(component, "href", None) == notebooks.PATH
+        for component in _walk(PAGE_BY_PATH["/"].layout())
+    )
 
 
 def test_dash_layout_contains_upload_edit_inference_and_download_surfaces() -> None:

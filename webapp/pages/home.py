@@ -92,6 +92,18 @@ def layout() -> html.Div:
             ),
             html.Div(
                 [
+                    html.Div(
+                        [
+                            html.Span("Prefer a notebook?", className="orca-section-label"),
+                            html.P("Run the teaching and analysis workflows directly in Google Colab."),
+                        ]
+                    ),
+                    dcc.Link("Browse Colab notebooks", href="/notebooks", className="orca-button secondary"),
+                ],
+                className="orca-primer-callout",
+            ),
+            html.Div(
+                [
                     html.H2("Explore ORCA"),
                     html.P(
                         "Choose the data view that matches your question.",

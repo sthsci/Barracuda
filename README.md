@@ -31,6 +31,26 @@ The simplest introduction is [`section_1/notebook/demo_validation_1.ipynb`](sect
 
 The scientific stack is built around Python, PyMC, PyTensor, ArviZ, NumPy, pandas, SciPy, Matplotlib, and xarray. The analyses are computationally intensive: manuscript-scale SMC runs use substantially more particles and chains than exploratory checks.
 
+## Jupyter and Google Colab
+
+The curated [notebook collection](notebooks/README.md) mirrors the main
+teaching and analysis workflows. Each notebook uses synthetic data by default,
+requires Python 3.12, and leaves computationally intensive SMC fitting off
+until the user enables it.
+
+| Category | Notebook | Google Colab |
+|---|---|---|
+| Start here | [`00_run_the_orca_web_app.ipynb`](notebooks/00_run_the_orca_web_app.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/00_run_the_orca_web_app.ipynb) |
+| Teaching | [`01_bayesian_inference_101.ipynb`](notebooks/01_bayesian_inference_101.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/01_bayesian_inference_101.ipynb) |
+| Teaching | [`02_event_count_model_tutorial.ipynb`](notebooks/02_event_count_model_tutorial.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/02_event_count_model_tutorial.ipynb) |
+| Teaching | [`03_trajectory_model_tutorial.ipynb`](notebooks/03_trajectory_model_tutorial.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/03_trajectory_model_tutorial.ipynb) |
+| Analysis | [`04_event_count_analysis.ipynb`](notebooks/04_event_count_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/04_event_count_analysis.ipynb) |
+| Analysis | [`05_donor_aware_analysis.ipynb`](notebooks/05_donor_aware_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/05_donor_aware_analysis.ipynb) |
+| Analysis | [`06_trajectory_analysis.ipynb`](notebooks/06_trajectory_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/06_trajectory_analysis.ipynb) |
+
+See the catalog for input schemas, runtime expectations, privacy guidance, and
+reproducibility notes.
+
 ## Python package
 
 The reusable scientific API is packaged as `bayesorca`. It covers donor
