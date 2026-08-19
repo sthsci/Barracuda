@@ -36,6 +36,7 @@ classifiers = [
 ]
 dependencies = [
   "arviz==0.22.0",
+  "h5py==3.13.0",
   "numpy==1.26.4",
   "pandas==2.2.3",
   "pymc==5.25.1",

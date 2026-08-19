@@ -5,6 +5,7 @@ gunicorn==23.0.0
 pymc==5.25.1
 pytensor==2.31.7
 arviz==0.22.0
+h5py==3.13.0
 numpy==1.26.4
 pandas==2.2.3
 scipy==1.14.1
