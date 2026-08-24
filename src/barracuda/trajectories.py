@@ -25,7 +25,7 @@ try:
         validate_trajectory_frame,
     )
 except ModuleNotFoundError as exc:
-    if not exc.name or not exc.name.startswith("bayesorca._core"):
+    if not exc.name or not exc.name.startswith("barracuda._core"):
         raise
     from webapp.core.trajectory import (
         BACKEND_TO_PUBLIC_PARAMETER,

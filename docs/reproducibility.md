@@ -4,7 +4,7 @@
 
 Preserve these items for every result:
 
-1. `bayesorca` version and commit, Python version, operating system, and core
+1. `barracuda` version and commit, Python version, operating system, and core
    dependency versions;
 2. validated input data or an approved checksum plus data provenance;
 3. workflow, model keys, observation time, and candidate-set rationale;

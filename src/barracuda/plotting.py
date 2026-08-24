@@ -1,4 +1,4 @@
-"""Matplotlib plots for ORCA's tidy result tables.
+"""Matplotlib plots for BARRACUDA's tidy result tables.
 
 Matplotlib is imported only when a plotting function is called, so simulation
 and inference users avoid its import-time cost.  Every function returns an
@@ -39,7 +39,7 @@ def _matplotlib():
         import matplotlib.pyplot as plt
     except ImportError as exc:  # pragma: no cover - depends on user environment
         raise ImportError(
-            "Matplotlib is a required bayesorca dependency; reinstall bayesorca"
+            "Matplotlib is a required barracuda dependency; reinstall barracuda"
         ) from exc
     return plt
 
@@ -158,7 +158,7 @@ def plot_model_evidence(
     ax: Any = None,
     title: str | None = None,
 ) -> "Axes":
-    """Plot positive ``log10 BF(best / model)`` from any ORCA evidence table."""
+    """Plot positive ``log10 BF(best / model)`` from any BARRACUDA evidence table."""
 
     if not isinstance(evidence, pd.DataFrame) or evidence.empty:
         raise ValueError("evidence must be a non-empty pandas DataFrame")

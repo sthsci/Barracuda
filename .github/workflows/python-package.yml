@@ -1,4 +1,4 @@
-name: bayesorca package checks
+name: barracuda package checks
 
 on:
   push:
@@ -11,7 +11,7 @@ on:
       - "MANIFEST.in"
       - "mkdocs.yml"
       - "docs/**"
-      - "src/bayesorca/**"
+      - "src/barracuda/**"
       - "tests/**"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
@@ -25,7 +25,7 @@ on:
       - "MANIFEST.in"
       - "mkdocs.yml"
       - "docs/**"
-      - "src/bayesorca/**"
+      - "src/barracuda/**"
       - "tests/**"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
@@ -51,6 +51,6 @@ jobs:
         run: python -m twine check dist/*
       - name: Test wheel in a clean environment
         run: |
-          python -m venv /tmp/bayesorca-wheel-test
-          /tmp/bayesorca-wheel-test/bin/python -m pip install dist/*.whl
-          /tmp/bayesorca-wheel-test/bin/python -c "import bayesorca; from bayesorca import diagnostics, donors, evidence, io, plotting, scans, validation; print(bayesorca.__version__)"
+          python -m venv /tmp/barracuda-wheel-test
+          /tmp/barracuda-wheel-test/bin/python -m pip install dist/*.whl
+          /tmp/barracuda-wheel-test/bin/python -c "import barracuda; from barracuda import diagnostics, donors, evidence, io, plotting, scans, validation; print(barracuda.__version__)"

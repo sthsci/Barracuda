@@ -199,7 +199,7 @@ def normalize_condition_frame(
         if CONDITION_COLUMN in named.columns:
             insert_at = 2 if donor_aware else 1
             mapped.insert(insert_at, CONDITION_COLUMN, named[CONDITION_COLUMN])
-            message = "Recognised the Orca cell, condition and count columns."
+            message = "Recognised the BARRACUDA cell, condition and count columns."
         else:
             insert_at = 2 if donor_aware else 1
             mapped.insert(insert_at, CONDITION_COLUMN, "Group 1")

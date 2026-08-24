@@ -2,7 +2,7 @@
 
 ## Event-count likelihoods
 
-For cell `i`, ORCA observes a non-negative event count `n_i` over a positive
+For cell `i`, BARRACUDA observes a non-negative event count `n_i` over a positive
 observation time `T`. The models distinguish sampling variation, a structural
 non-engaging fraction, and continuous cell-to-cell rate heterogeneity.
 

@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from bayesorca.diagnostics import (
+from barracuda import (
     diagnostic_flags,
     population_p0_draws,
     population_p0_summary,
@@ -17,7 +17,7 @@ from bayesorca.diagnostics import (
     smc_log_evidence_by_chain,
     trajectory_state_summary,
 )
-from bayesorca.evidence import (
+from barracuda import (
     bayes_factor,
     classify_bayes_factor,
     combine_independent_evidence,
@@ -228,7 +228,7 @@ def test_trajectory_state_summary_uses_precontact_history():
 def test_matplotlib_plot_helpers_return_axes():
     matplotlib = pytest.importorskip("matplotlib")
     matplotlib.use("Agg")
-    from bayesorca.plotting import (
+    from barracuda import (
         plot_bayes_factor_scan,
         plot_event_count_distribution,
         plot_model_evidence,

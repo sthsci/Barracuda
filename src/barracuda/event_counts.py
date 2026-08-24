@@ -45,7 +45,7 @@ try:
         simulate_event_counts,
     )
 except ModuleNotFoundError as exc:
-    if not exc.name or not exc.name.startswith("bayesorca._core"):
+    if not exc.name or not exc.name.startswith("barracuda._core"):
         raise
     from webapp.core.condition_inference import (
         ConditionResults,

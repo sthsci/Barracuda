@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from bayesorca.io import (
+from barracuda import (
     build_scan_archive,
     canonical_json,
     configuration_fingerprint,

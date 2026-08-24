@@ -1,13 +1,45 @@
-"""Public Python interface for the ORCA Bayesian modelling framework."""
+"""Public Python interface for the BARRACUDA Bayesian modelling framework."""
 
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("bayesorca")
+    __version__ = version("barracuda")
 except PackageNotFoundError:  # Source checkout without installed metadata.
     __version__ = "0.2.0"
 
 from . import diagnostics, donors, evidence, io, plotting, scans, validation  # noqa: E402
+
+from .diagnostics import (  # noqa: E402
+    diagnostic_flags,
+    population_p0_draws,
+    population_p0_summary,
+    posterior_diagnostics,
+    smc_evidence_summary,
+    smc_log_evidence_by_chain,
+    trajectory_state_summary,
+)
+from .io import (  # noqa: E402
+    ScanBundle,
+    build_scan_archive,
+    canonical_json,
+    configuration_fingerprint,
+    dataframe_checksum,
+    load_inference_data,
+    load_scan_bundle,
+    save_inference_data,
+    save_scan_bundle,
+)
+from .plotting import (  # noqa: E402
+    plot_bayes_factor_scan,
+    plot_event_count_distribution,
+    plot_model_evidence,
+    plot_parameter_recovery,
+    plot_posterior_intervals,
+    plot_posterior_pair,
+    plot_rate_distribution,
+    plot_trajectory_state_map,
+)
+from .progress import SMCProgressCallback, run_with_smc_progress  # noqa: E402
 
 from .event_counts import (  # noqa: E402
     MODEL_SPECS,
@@ -55,7 +87,9 @@ from .trajectories import (  # noqa: E402
     validate_trajectory_frame,
 )
 from .donors import (  # noqa: E402
+    DONOR_MODEL_KEYS,
     DonorSimulationSpec,
+    canonical_donor_model_key,
     cartesian_contrast_draws,
     condition_contrast_frame,
     donor_posterior_frame,
@@ -107,6 +141,7 @@ from .validation import (  # noqa: E402
 
 __all__ = [
     "COUNT_SCENARIOS",
+    "DONOR_MODEL_KEYS",
     "MODEL_SPECS",
     "TRAJECTORY_MODEL_SPECS",
     "TRAJECTORY_SCENARIOS",
@@ -119,6 +154,8 @@ __all__ = [
     "ModelSpec",
     "PosteriorProbabilityResult",
     "SavageDickeyResult",
+    "ScanBundle",
+    "SMCProgressCallback",
     "TrajectoryModelSpec",
     "TrajectoryResult",
     "TrajectoryScenario",
@@ -130,12 +167,18 @@ __all__ = [
     "boundary_recovery_summary",
     "build_condition_results_zip",
     "build_results_zip",
+    "build_scan_archive",
     "build_trajectory_archive",
     "cartesian_contrast_draws",
+    "canonical_json",
+    "canonical_donor_model_key",
     "classify_bayes_factor",
     "combine_independent_evidence",
     "condition_contrast_frame",
+    "configuration_fingerprint",
     "coverage_summary",
+    "dataframe_checksum",
+    "diagnostic_flags",
     "diagnostics",
     "donor_posterior_frame",
     "donors",
@@ -148,15 +191,28 @@ __all__ = [
     "io",
     "leave_one_donor_out_moments",
     "log_bayes_factor",
+    "load_inference_data",
+    "load_scan_bundle",
     "normalize_condition_frame",
     "normalize_trajectory_frame",
     "pairwise_bayes_factors",
     "plan_count_ground_truth_grid",
     "plotting",
+    "plot_bayes_factor_scan",
+    "plot_event_count_distribution",
+    "plot_model_evidence",
+    "plot_parameter_recovery",
+    "plot_posterior_intervals",
+    "plot_posterior_pair",
+    "plot_rate_distribution",
+    "plot_trajectory_state_map",
+    "population_p0_draws",
+    "population_p0_summary",
     "population_posterior_frame",
     "population_variance_decomposition",
     "posterior_draw_table",
     "posterior_model_probabilities",
+    "posterior_diagnostics",
     "posterior_recovery_table",
     "posterior_rope_probabilities",
     "posterior_superiority_probability",
@@ -172,14 +228,19 @@ __all__ = [
     "run_trajectory_bf_scan",
     "run_trajectory_conditions",
     "run_trajectory_validation",
+    "run_with_smc_progress",
     "sample_count_frame",
     "sample_donor_frame",
+    "save_inference_data",
+    "save_scan_bundle",
     "savage_dickey_ratio",
     "scans",
     "simulate_event_counts",
     "simulate_donor_event_counts",
     "simulate_trajectory_frame",
     "smc_log_evidence",
+    "smc_evidence_summary",
+    "smc_log_evidence_by_chain",
     "split_condition_frame",
     "stable_seed",
     "summary_table",
@@ -188,6 +249,7 @@ __all__ = [
     "trajectory_evidence_frame",
     "trajectory_posterior_draws",
     "trajectory_recovery_table",
+    "trajectory_state_summary",
     "trajectory_summary_frame",
     "truth_model_key",
     "validate_condition_frame",

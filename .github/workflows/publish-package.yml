@@ -1,4 +1,4 @@
-name: Publish bayesorca to PyPI
+name: Publish barracuda to PyPI
 
 on:
   workflow_dispatch:
@@ -32,7 +32,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/bayesorca/
+      url: https://pypi.org/project/barracuda/
     permissions:
       id-token: write
     steps:

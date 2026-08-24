@@ -6,21 +6,21 @@ import numpy as np
 import pandas as pd
 import pytest
 
-import bayesorca
-from bayesorca import event_counts, trajectories
+import barracuda
+from barracuda import event_counts, trajectories
 
 
 def test_top_level_package_exposes_the_three_public_workflows():
-    assert bayesorca.__version__ == "0.2.0"
-    assert callable(bayesorca.run_count_models)
-    assert callable(bayesorca.run_donor_models)
-    assert bayesorca.run_donor_ignorant_models is bayesorca.run_count_models
-    assert bayesorca.run_donor_aware_models is bayesorca.run_donor_models
-    assert callable(bayesorca.run_trajectory_conditions)
-    assert callable(bayesorca.run_count_bf_scan)
-    assert callable(bayesorca.run_trajectory_validation)
-    assert callable(bayesorca.pairwise_bayes_factors)
-    assert callable(bayesorca.simulate_donor_event_counts)
+    assert barracuda.__version__ == "0.2.0"
+    assert callable(barracuda.run_count_models)
+    assert callable(barracuda.run_donor_models)
+    assert barracuda.run_donor_ignorant_models is barracuda.run_count_models
+    assert barracuda.run_donor_aware_models is barracuda.run_donor_models
+    assert callable(barracuda.run_trajectory_conditions)
+    assert callable(barracuda.run_count_bf_scan)
+    assert callable(barracuda.run_trajectory_validation)
+    assert callable(barracuda.pairwise_bayes_factors)
+    assert callable(barracuda.simulate_donor_event_counts)
     assert set(event_counts.MODEL_SPECS) == {"homo", "z2p", "dis2p", "hetero3"}
     assert len(trajectories.TRAJECTORY_MODEL_SPECS) == 4
 
@@ -98,13 +98,13 @@ def test_trajectory_simulation_preserves_public_paper_notation():
 
 def test_packaged_backend_module_names_resolve_after_install_or_mapping():
     event_backend = importlib.import_module(
-        "bayesorca._backends.event_counts.inference"
+        "barracuda._backends.event_counts.inference"
     )
     donor_backend = importlib.import_module(
-        "bayesorca._backends.donor.inference_donor_relative"
+        "barracuda._backends.donor.inference_donor_relative"
     )
     trajectory_backend = importlib.import_module(
-        "bayesorca._backends.trajectories.inference"
+        "barracuda._backends.trajectories.inference"
     )
 
     assert callable(event_backend.inference_homo)

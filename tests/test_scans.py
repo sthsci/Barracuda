@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from bayesorca import scans, validation
+from barracuda import scans, validation
 
 
 def test_count_ground_truth_grid_is_one_at_a_time_and_deduplicates_baseline():

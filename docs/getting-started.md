@@ -5,7 +5,7 @@
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install bayesorca
+python -m pip install barracuda
 ```
 
 For a source checkout, use `python -m pip install -e ".[test,build,docs]"`.
@@ -13,7 +13,7 @@ For a source checkout, use `python -m pip install -e ".[test,build,docs]"`.
 ## Run a small event-count workflow
 
 ```python
-from bayesorca.event_counts import (
+from barracuda import (
     InferenceSettings,
     evidence_table,
     run_count_models,
@@ -59,7 +59,7 @@ Use package transformations instead of reaching into backend-specific variable
 names:
 
 ```python
-from bayesorca.event_counts import posterior_draw_table, summary_table
+from barracuda import posterior_draw_table, summary_table
 
 draws = posterior_draw_table(fits)
 summary = summary_table(fits, hdi_prob=0.95)
@@ -68,8 +68,8 @@ summary = summary_table(fits, hdi_prob=0.95)
 ## Check and plot
 
 ```python
-from bayesorca.diagnostics import posterior_diagnostics, smc_evidence_summary
-from bayesorca.plotting import plot_model_evidence
+from barracuda import posterior_diagnostics, smc_evidence_summary
+from barracuda import plot_model_evidence
 
 idata = fits["hetero3"].idata
 print(smc_evidence_summary(idata))

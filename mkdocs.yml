@@ -1,10 +1,10 @@
-site_name: bayesorca
-site_description: Bayesian simulation, inference, validation, and model comparison for immune-cell event counts and contact-kill trajectories.
-site_url: https://sthsci.github.io/Orca/
-repo_url: https://github.com/sthsci/Orca
-repo_name: sthsci/Orca
+site_name: BARRACUDA
+site_description: Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity.
+site_url: https://sthsci.github.io/Barracuda/
+repo_url: https://github.com/sthsci/Barracuda
+repo_name: sthsci/Barracuda
 edit_uri: edit/pypackage/docs/
-copyright: Copyright &copy; the bayesorca authors. Released under the MIT License.
+copyright: Copyright &copy; the BARRACUDA authors. Released under the MIT License.
 
 strict: true
 
@@ -111,5 +111,5 @@ extra_css:
 extra:
   social:
     - icon: fontawesome/brands/github
-      link: https://github.com/sthsci/Orca
-      name: bayesorca on GitHub
+      link: https://github.com/sthsci/Barracuda
+      name: BARRACUDA on GitHub

@@ -10,7 +10,7 @@ BF_A_vs_B     = p(data | A) / p(data | B)
 ```
 
 Positive log Bayes factors support `A`; negative values support `B`. The model
-named before `_vs_` is always the numerator. ORCA retains natural-log and
+named before `_vs_` is always the numerator. BARRACUDA retains natural-log and
 base-10 values because raw Bayes factors can overflow.
 
 Tables comparing every candidate to the best model use two explicit columns:
@@ -23,7 +23,7 @@ Do not infer direction from a plot title alone; preserve the column name.
 ## Pairwise comparisons
 
 ```python
-from bayesorca.evidence import pairwise_bayes_factors
+from barracuda import pairwise_bayes_factors
 
 table = pairwise_bayes_factors(
     {"homo": -120.4, "dis2p": -103.1, "hetero3": -101.8}

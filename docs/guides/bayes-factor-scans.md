@@ -31,9 +31,9 @@ at every sample size.
 ## Run a count scan
 
 ```python
-from bayesorca.event_counts import InferenceSettings
-from bayesorca.scans import run_count_bf_scan, summarize_bf_scan
-from bayesorca.validation import COUNT_SCENARIOS
+from barracuda import InferenceSettings
+from barracuda import run_count_bf_scan, summarize_bf_scan
+from barracuda import COUNT_SCENARIOS
 
 scan = run_count_bf_scan(
     [25, 50, 100],
@@ -74,7 +74,7 @@ independent neighboring sample sizes.
 ## Persistence and resume safety
 
 ```python
-from bayesorca.io import load_scan_bundle, save_scan_bundle
+from barracuda import load_scan_bundle, save_scan_bundle
 
 configuration = {
     "workflow": "event_count",

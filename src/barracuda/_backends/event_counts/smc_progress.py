@@ -1,8 +1,8 @@
-"""Forward PyMC's native SMC progress events to Orca callers.
+"""Forward PyMC's native SMC progress events to BARRACUDA callers.
 
 PyMC 5.25 runs every SMC chain in a worker process.  The workers publish
 ``stage`` and ``beta`` through a multiprocessing manager, and PyMC's parent
-process turns those values into ``CustomProgress.update`` calls.  Orca hooks
+process turns those values into ``CustomProgress.update`` calls.  BARRACUDA hooks
 that parent-process update, so no callback (or ``ContextVar``) has to cross a
 process boundary and no progress values are estimated by the web application.
 """

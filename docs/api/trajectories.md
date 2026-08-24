@@ -1,8 +1,8 @@
-# `bayesorca.trajectories`
+# `barracuda.trajectories`
 
 Public input, simulation, inference, table, and archive APIs for ordered
 contact-kill histories.
 
-::: bayesorca.trajectories
+::: barracuda.trajectories
     options:
       members: true

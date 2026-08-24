@@ -1,11 +1,13 @@
-# bayesorca
+# BARRACUDA
 
-`bayesorca` is the reusable Python implementation of ORCA: a Bayesian framework
-for studying heterogeneity and history dependence in immune-cell cytotoxicity.
+`barracuda` is the reusable Python implementation of **BARRACUDA: Bayesian
+Analysis Resolving Randomness and Alternative Causes Underlying Differential
+Activity**, a framework for studying heterogeneity and history dependence in
+immune-cell cytotoxicity.
 It provides simulation, PyMC inference, model evidence, donor-aware hierarchy,
 ordered contact-kill trajectories, scientific validation, Bayes-factor scans,
 diagnostics, plotting, and reproducible result export without requiring the
-ORCA web application.
+BARRACUDA web application.
 
 > **Research-software status:** version 0.2 is an alpha API accompanying a
 > manuscript in preparation. Pin the exact package version and record priors,
@@ -13,9 +15,9 @@ ORCA web application.
 > any reproducible analysis.
 
 The complete documentation, including generated signatures and return types,
-is published at **<https://sthsci.github.io/Orca/>** after GitHub Pages is
+is published at **<https://sthsci.github.io/Barracuda/>** after GitHub Pages is
 enabled for the repository. The source for those pages is in
-[`docs/`](https://github.com/sthsci/Orca/tree/pypackage/docs).
+[`docs/`](https://github.com/sthsci/Barracuda/tree/pypackage/docs).
 
 ## What is included
 
@@ -33,25 +35,25 @@ enabled for the repository. The source for those pages is in
 | Reproducible export | `build_results_zip`, `build_condition_results_zip`, `build_trajectory_archive` | deterministic ZIP bytes |
 
 The package code is entirely under
-[`src/bayesorca`](https://github.com/sthsci/Orca/tree/pypackage/src/bayesorca).
+[`src/barracuda`](https://github.com/sthsci/Barracuda/tree/pypackage/src/barracuda).
 The standalone `pypackage` branch deliberately excludes manuscript figures,
 private data, notebooks, Dash components, and generated posterior files.
 
-The installed distribution version is available as `bayesorca.__version__`.
+The installed distribution version is available as `barracuda.__version__`.
 
 ## Installation
 
-ORCA currently supports Python 3.12.
+BARRACUDA currently supports Python 3.12.
 
 ```bash
-python -m pip install bayesorca
+python -m pip install barracuda
 ```
 
 For package development and documentation:
 
 ```bash
-git clone --branch pypackage https://github.com/sthsci/Orca.git
-cd Orca
+git clone --branch pypackage https://github.com/sthsci/Barracuda.git
+cd Barracuda
 python3.12 -m venv .venv
 source .venv/bin/activate
 python -m pip install -e ".[test,build,docs]"
@@ -95,13 +97,13 @@ contacts and `beta_s` for previous successful/lethal contacts.
 | `heterogeneous_history_dependent` | Yes | Yes | `mu_eta`, `sigma_eta`, `beta_f`, `beta_s` |
 
 Every trajectory model also estimates contact-rate population parameters. See
-the [model catalog](https://sthsci.github.io/Orca/concepts/model-catalog/) for assumptions and
+the [model catalog](https://sthsci.github.io/Barracuda/concepts/model-catalog/) for assumptions and
 parameter notation.
 
 ## Event-count quick start
 
 ```python
-from bayesorca.event_counts import (
+from barracuda import (
     InferenceSettings,
     evidence_table,
     run_count_models,
@@ -155,7 +157,7 @@ observation time must be finite and positive.
 ```python
 import pandas as pd
 
-from bayesorca.event_counts import (
+from barracuda import (
     InferenceSettings,
     run_condition_models,
     run_donor_aware_models,
@@ -205,7 +207,7 @@ requires an explicit scientific independence assumption.
 ```python
 import pandas as pd
 
-from bayesorca.trajectories import (
+from barracuda import (
     TrajectorySettings,
     run_trajectory_conditions,
     trajectory_evidence_frame,
@@ -247,7 +249,7 @@ representations and return the canonical three-column form. Use
 
 ## Evidence and Bayes-factor direction
 
-ORCA records log marginal likelihoods from PyMC SMC and performs arithmetic in
+BARRACUDA records log marginal likelihoods from PyMC SMC and performs arithmetic in
 log space. For two models `A` and `B`:
 
 ```text
@@ -263,12 +265,12 @@ log_BF_A_vs_B = log p(data | A) - log p(data | B)
 ```python
 import pandas as pd
 
-from bayesorca.evidence import (
+from barracuda import (
     combine_independent_evidence,
     pairwise_bayes_factors,
     posterior_model_probabilities,
 )
-from bayesorca.event_counts import evidence_table
+from barracuda import evidence_table
 
 log_evidence = {key: result.log_evidence for key, result in fits.items()}
 pairs = pairwise_bayes_factors(log_evidence)
@@ -298,7 +300,7 @@ Input validation (`validate_*`) checks schemas. Scientific validation asks
 whether simulated ground truth can be recovered and whether the correct model
 is selected under repeated datasets.
 
-The `bayesorca.validation` module provides:
+The `barracuda.validation` module provides:
 
 - typed `EventCountScenario` and `TrajectoryScenario` definitions;
 - `run_event_count_validation` and `run_trajectory_validation`;
@@ -316,14 +318,14 @@ containers, not pass/fail certificates. Coverage estimates need enough
 independent replicates to be meaningful, and non-identifiability near
 nested-model boundaries should be reported rather than hidden.
 
-See the [validation guide](https://sthsci.github.io/Orca/guides/validation/) and
-generated [`bayesorca.validation` reference](https://sthsci.github.io/Orca/api/validation/).
+See the [validation guide](https://sthsci.github.io/Barracuda/guides/validation/) and
+generated [`barracuda.validation` reference](https://sthsci.github.io/Barracuda/api/validation/).
 
 ## Cumulative Bayes-factor scans
 
 ```python
-from bayesorca.scans import run_count_bf_scan, summarize_bf_scan
-from bayesorca.validation import COUNT_SCENARIOS
+from barracuda import run_count_bf_scan, summarize_bf_scan
+from barracuda import COUNT_SCENARIOS
 
 scan = run_count_bf_scan(
     [25, 50, 100],
@@ -363,7 +365,7 @@ the long table and configuration metadata together.
 ## Diagnostics
 
 ```python
-from bayesorca.diagnostics import (
+from barracuda import (
     diagnostic_flags,
     posterior_diagnostics,
     smc_evidence_summary,
@@ -392,8 +394,8 @@ Plotting functions import Matplotlib lazily, return a `matplotlib.axes.Axes`,
 and never call `show()` or write files.
 
 ```python
-from bayesorca.plotting import plot_model_evidence, plot_posterior_intervals
-from bayesorca.trajectories import trajectory_summary_frame
+from barracuda import plot_model_evidence, plot_posterior_intervals
+from barracuda import trajectory_summary_frame
 
 ax = plot_model_evidence(evidence_table(fits))
 ax.figure.savefig("model-evidence.svg", bbox_inches="tight")
@@ -410,7 +412,7 @@ Matplotlib.
 
 ## Public API map
 
-### `bayesorca.event_counts`
+### `barracuda.event_counts`
 
 | API | Purpose |
 |---|---|
@@ -426,7 +428,7 @@ Matplotlib.
 | `evidence_table`, `summary_table`, `posterior_draw_table` | Convert fits to tidy tables |
 | `build_results_zip`, `build_condition_results_zip` | Build deterministic result archives |
 
-### `bayesorca.trajectories`
+### `barracuda.trajectories`
 
 | API | Purpose |
 |---|---|
@@ -441,7 +443,7 @@ Matplotlib.
 | `trajectory_evidence_frame`, `trajectory_summary_frame`, `trajectory_posterior_draws` | Tidy result extraction |
 | `build_trajectory_archive` | Reproducible trajectory export |
 
-### `bayesorca.donors`
+### `barracuda.donors`
 
 | API | Purpose |
 |---|---|
@@ -454,7 +456,7 @@ Matplotlib.
 | `cartesian_contrast_draws`, `condition_contrast_frame` | Compare independently fitted posterior populations |
 | `summarize_contrast_draws` | Tidy HDIs and sign probabilities for contrasts |
 
-### `bayesorca.evidence`
+### `barracuda.evidence`
 
 | API | Purpose |
 |---|---|
@@ -468,7 +470,7 @@ Matplotlib.
 | `SavageDickeyResult`, `savage_dickey_ratio` | Point-null density-ratio evidence |
 | `history_effect_bayes_factors` | Point-null evidence for `beta_f` and `beta_s` |
 
-### `bayesorca.validation` and `bayesorca.scans`
+### `barracuda.validation` and `barracuda.scans`
 
 | API | Purpose |
 |---|---|
@@ -486,7 +488,7 @@ Matplotlib.
 | `validate_bf_scan_schema`, `summarize_bf_scan` | Validate and summarize long scan tables |
 | `ScanProgressCallback` | Callback signature for scan task progress |
 
-### `bayesorca.diagnostics`, `bayesorca.plotting`, and `bayesorca.progress`
+### `barracuda.diagnostics`, `barracuda.plotting`, and `barracuda.progress`
 
 | API | Purpose |
 |---|---|
@@ -501,7 +503,7 @@ Matplotlib.
 | `plot_trajectory_state_map` | Empirical trajectory state map |
 | `SMCProgressCallback`, `run_with_smc_progress` | Genuine per-chain PyMC SMC tempering progress |
 
-### `bayesorca.io`
+### `barracuda.io`
 
 | API | Purpose |
 |---|---|
@@ -512,7 +514,7 @@ Matplotlib.
 | `build_scan_archive` | Deterministic portable scan ZIP bytes |
 
 Generated signatures, public docstrings, workflow contracts, return conventions,
-and error guidance are in the [API reference](https://sthsci.github.io/Orca/api/).
+and error guidance are in the [API reference](https://sthsci.github.io/Barracuda/api/).
 
 ## Return types and errors
 
@@ -542,7 +544,7 @@ exception should not be interpreted as a valid negative scientific result.
 
 For every reported analysis, preserve:
 
-1. exact `bayesorca`, Python, PyMC, PyTensor, ArviZ, NumPy, and SciPy versions;
+1. exact `barracuda`, Python, PyMC, PyTensor, ArviZ, NumPy, and SciPy versions;
 2. validated input data or an approved content hash;
 3. model keys and observation time;
 4. the full settings dataclass and priors;
@@ -551,14 +553,14 @@ For every reported analysis, preserve:
 7. evidence direction and whether datasets were assumed independent;
 8. failures, interrupted fits, exclusions, and convergence limitations.
 
-`bayesorca` runs locally and does not transmit data. That is not permission to
+`barracuda` runs locally and does not transmit data. That is not permission to
 publish sensitive material. Do not put names, clinical identifiers, dates,
 unapproved donor metadata, raw microscopy, or private paths into examples,
 notebooks, archives, issue reports, CI logs, or public Pages builds. Use
 anonymous study identifiers and follow the applicable ethics, retention, and
 data-access agreements.
 
-See [Reproducibility and privacy](https://sthsci.github.io/Orca/reproducibility/) for the full
+See [Reproducibility and privacy](https://sthsci.github.io/Barracuda/reproducibility/) for the full
 checklist.
 
 ## Development, packaging, and documentation
@@ -571,7 +573,7 @@ python -m mkdocs build --strict
 ```
 
 GitHub Pages deployment is defined in
-[`docs.yml`](https://github.com/sthsci/Orca/blob/pypackage/.github/workflows/docs.yml).
+[`docs.yml`](https://github.com/sthsci/Barracuda/blob/pypackage/.github/workflows/docs.yml).
 A repository administrator must first
 open **Settings → Pages** and set **Build and deployment → Source** to
 **GitHub Actions**. The workflow builds strictly on pull requests and pushes,
@@ -583,12 +585,12 @@ The complete research repository remains on `main`; manuscript assets live on
 should be developed against `pypackage` and synchronized deliberately with the
 research implementation to avoid backend drift.
 
-See [Development](https://sthsci.github.io/Orca/development/) and the
-[changelog](https://sthsci.github.io/Orca/changelog/).
+See [Development](https://sthsci.github.io/Barracuda/development/) and the
+[changelog](https://sthsci.github.io/Barracuda/changelog/).
 
 ## Citation and license
 
-Use [`CITATION.cff`](https://github.com/sthsci/Orca/blob/pypackage/CITATION.cff)
-when citing the software and cite the ORCA manuscript for the scientific
-framework. `bayesorca` is released under the
-[MIT License](https://github.com/sthsci/Orca/blob/pypackage/LICENSE).
+Use [`CITATION.cff`](https://github.com/sthsci/Barracuda/blob/pypackage/CITATION.cff)
+when citing the software and cite the BARRACUDA manuscript for the scientific
+framework. `barracuda` is released under the
+[MIT License](https://github.com/sthsci/Barracuda/blob/pypackage/LICENSE).

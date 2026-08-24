@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from bayesorca import validation
+from barracuda import validation
 
 
 def _idata(**posterior):

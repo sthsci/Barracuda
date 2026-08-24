@@ -174,7 +174,7 @@ def save_inference_data(
 
 
 def load_inference_data(path: str | Path):
-    """Load an ArviZ ``InferenceData`` NetCDF written by ORCA."""
+    """Load an ArviZ ``InferenceData`` NetCDF written by BARRACUDA."""
 
     source = Path(path).expanduser().resolve()
     if not source.is_file():
@@ -338,7 +338,7 @@ def build_scan_archive(
             archive,
             "README.txt",
             (
-                "bayesorca Bayes-factor scan\n\n"
+                "barracuda Bayes-factor scan\n\n"
                 "scan_results.csv is the tidy long-form scan table.\n"
                 "scan_manifest.json records the exact configuration and checksums.\n"
                 "Adjacent sample sizes may be cumulative prefixes; consult the configuration.\n"

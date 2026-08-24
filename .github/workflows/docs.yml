@@ -1,4 +1,4 @@
-name: bayesorca documentation
+name: barracuda documentation
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
       - "docs/**"
       - "README.md"
       - "pyproject.toml"
-      - "src/bayesorca/**"
+      - "src/barracuda/**"
       - ".github/workflows/docs.yml"
   pull_request:
     paths:
@@ -16,7 +16,7 @@ on:
       - "docs/**"
       - "README.md"
       - "pyproject.toml"
-      - "src/bayesorca/**"
+      - "src/barracuda/**"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
 

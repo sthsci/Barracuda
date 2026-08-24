@@ -1,4 +1,4 @@
-"""Stable, UI-independent implementation for the :mod:`bayesorca` package."""
+"""Stable, UI-independent implementation for the :mod:`barracuda` package."""
 
 from .data import (
     sample_count_frame,

@@ -6,16 +6,16 @@ mkdocstrings. Public modules are intentionally separated from `_core` and
 
 | Module | Scope |
 |---|---|
-| [`bayesorca.event_counts`](event-counts.md) | Count/donor/condition validation, simulation, inference, tables, archives |
-| [`bayesorca.trajectories`](trajectories.md) | Trajectory I/O, simulation, inference, tables, archives |
-| [`bayesorca.donors`](donors.md) | Donor simulation, posterior extraction, mixture moments, contrasts |
-| [`bayesorca.evidence`](evidence.md) | Directed Bayes factors, model probabilities, independent aggregation, Savage–Dickey |
-| [`bayesorca.validation`](validation.md) | Typed scenarios, recovery, coverage, superiority/ROPE, validation runners |
-| [`bayesorca.scans`](scans.md) | Cumulative-prefix count and trajectory Bayes-factor scans |
-| [`bayesorca.diagnostics`](diagnostics.md) | SMC, posterior, population, and trajectory diagnostics |
-| [`bayesorca.plotting`](plotting.md) | Optional Matplotlib figures returning axes |
-| [`bayesorca.io`](io.md) | Checksummed inference and scan persistence |
-| [`bayesorca.progress`](progress.md) | Per-chain SMC stage/tempering progress bridge |
+| [`barracuda.event_counts`](event-counts.md) | Count/donor/condition validation, simulation, inference, tables, archives |
+| [`barracuda.trajectories`](trajectories.md) | Trajectory I/O, simulation, inference, tables, archives |
+| [`barracuda.donors`](donors.md) | Donor simulation, posterior extraction, mixture moments, contrasts |
+| [`barracuda.evidence`](evidence.md) | Directed Bayes factors, model probabilities, independent aggregation, Savage–Dickey |
+| [`barracuda.validation`](validation.md) | Typed scenarios, recovery, coverage, superiority/ROPE, validation runners |
+| [`barracuda.scans`](scans.md) | Cumulative-prefix count and trajectory Bayes-factor scans |
+| [`barracuda.diagnostics`](diagnostics.md) | SMC, posterior, population, and trajectory diagnostics |
+| [`barracuda.plotting`](plotting.md) | Optional Matplotlib figures returning axes |
+| [`barracuda.io`](io.md) | Checksummed inference and scan persistence |
+| [`barracuda.progress`](progress.md) | Per-chain SMC stage/tempering progress bridge |
 
 ## Stability
 
@@ -31,7 +31,7 @@ trajectory, donor, evidence, validation, and scan functions. Complete donor
 analysis, diagnostics, persistence, plotting, and lower-frequency helpers remain
 organized in the named modules above.
 
-::: bayesorca
+::: barracuda
     options:
       members: true
 

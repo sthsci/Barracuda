@@ -1,4 +1,4 @@
-# `bayesorca.donors`
+# `barracuda.donors`
 
 UI-neutral donor simulation, posterior extraction, variance decomposition,
 sensitivity, and independent-condition contrasts.
@@ -8,6 +8,6 @@ sensitivity, and independent-condition contrasts.
     `leave_one_donor_out_moments` reweights fitted posterior mixtures. It is a
     sensitivity summary, not predictive cross-validation.
 
-::: bayesorca.donors
+::: barracuda.donors
     options:
       members: true

@@ -2,7 +2,7 @@
 
 The functions in this module are deliberately independent of the web UI and
 filesystem layout used by the research scripts.  Validation runs use the same
-public simulators and inference entry points as the rest of :mod:`bayesorca`.
+public simulators and inference entry points as the rest of :mod:`barracuda`.
 """
 
 from __future__ import annotations
@@ -308,7 +308,7 @@ def _json_default(value: Any) -> Any:
     raise TypeError(f"cannot derive a stable seed from {type(value).__name__}")
 
 
-def stable_seed(*parts: Any, namespace: str = "bayesorca") -> int:
+def stable_seed(*parts: Any, namespace: str = "barracuda") -> int:
     """Derive a reproducible non-zero uint32 seed from structured values.
 
     Unlike Python's built-in ``hash``, this value is stable across processes.

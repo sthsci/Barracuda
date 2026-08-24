@@ -40,7 +40,7 @@ def _probability(value: Any, name: str, *, inclusive: bool = False) -> float:
 def smc_log_evidence_by_chain(idata: Any) -> pd.DataFrame:
     """Extract the final finite SMC log marginal likelihood for every chain.
 
-    ORCA stores one final value per chain, but this parser also accepts older
+    BARRACUDA stores one final value per chain, but this parser also accepts older
     inference files containing a stage dimension or an attribute fallback.
     Chains with no finite value are retained with ``NaN`` so incomplete output
     cannot silently masquerade as a lower-chain run.
@@ -294,7 +294,7 @@ def trajectory_state_summary(frame: pd.DataFrame) -> pd.DataFrame:
     """Aggregate observed lethal decisions at every pre-contact state.
 
     ``frame`` may be any compact/wide/long trajectory format accepted by
-    :func:`bayesorca.trajectories.normalize_trajectory_frame`, or an already
+    :func:`barracuda.trajectories.normalize_trajectory_frame`, or an already
     expanded frame returned by ``expanded_trajectory_frame``.
     """
 

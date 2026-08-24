@@ -7,7 +7,7 @@ possible without a display server.
 ## SMC evidence diagnostics
 
 ```python
-from bayesorca.diagnostics import smc_evidence_summary, smc_log_evidence_by_chain
+from barracuda import smc_evidence_summary, smc_log_evidence_by_chain
 
 per_chain = smc_log_evidence_by_chain(idata)
 summary = smc_evidence_summary(idata)
@@ -20,7 +20,7 @@ are accepted. Chains without a finite final estimate remain visible with
 ## Posterior diagnostics
 
 ```python
-from bayesorca.diagnostics import diagnostic_flags, posterior_diagnostics
+from barracuda import diagnostic_flags, posterior_diagnostics
 
 table = posterior_diagnostics(idata, hdi_prob=0.95)
 flagged = diagnostic_flags(
@@ -47,7 +47,7 @@ tidy empirical probability table.
 
 ## Optional plotting contract
 
-Matplotlib is installed with `bayesorca`. Every plotting function:
+Matplotlib is installed with `barracuda`. Every plotting function:
 
 - accepts an optional existing `ax`;
 - returns a Matplotlib `Axes`;
@@ -57,7 +57,7 @@ Matplotlib is installed with `bayesorca`. Every plotting function:
 - preserves explicitly directed Bayes-factor labels.
 
 ```python
-from bayesorca.plotting import plot_bayes_factor_scan, plot_parameter_recovery
+from barracuda import plot_bayes_factor_scan, plot_parameter_recovery
 
 ax = plot_bayes_factor_scan(scan, scenario="No1")
 ax.figure.savefig("scan.svg", bbox_inches="tight")

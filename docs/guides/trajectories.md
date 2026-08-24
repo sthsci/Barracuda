@@ -5,7 +5,7 @@
 ```python
 import pandas as pd
 
-from bayesorca.trajectories import validate_trajectory_frame
+from barracuda import validate_trajectory_frame
 
 frame = validate_trajectory_frame(
     pd.DataFrame(
@@ -28,7 +28,7 @@ the contact-rate component.
 ## Simulate known mechanisms
 
 ```python
-from bayesorca.trajectories import TrajectorySimulationSpec, simulate_trajectory_frame
+from barracuda import TrajectorySimulationSpec, simulate_trajectory_frame
 
 spec = TrajectorySimulationSpec(
     condition="Synthetic",
@@ -51,7 +51,7 @@ frame, truth = simulate_trajectory_frame([spec])
 ## Configure and fit
 
 ```python
-from bayesorca.trajectories import TrajectorySettings, run_trajectory_conditions
+from barracuda import TrajectorySettings, run_trajectory_conditions
 
 settings = TrajectorySettings(
     draws=256,
@@ -84,7 +84,7 @@ not workload advice; frontends should enforce smaller operational limits.
 ## Extract and diagnose
 
 ```python
-from bayesorca.trajectories import (
+from barracuda import (
     trajectory_evidence_frame,
     trajectory_posterior_draws,
     trajectory_summary_frame,

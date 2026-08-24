@@ -8,7 +8,7 @@ recovery, and enough independent replicates.
 ## Typed scenarios
 
 ```python
-from bayesorca.validation import EventCountScenario
+from barracuda import EventCountScenario
 
 scenario = EventCountScenario(
     scenario="moderate_heterogeneity",
@@ -27,8 +27,8 @@ canonical nested mechanisms for each workflow.
 ## Run one complete validation
 
 ```python
-from bayesorca.event_counts import InferenceSettings
-from bayesorca.validation import run_event_count_validation
+from barracuda import InferenceSettings
+from barracuda import run_event_count_validation
 
 result = run_event_count_validation(
     scenario,
@@ -67,7 +67,7 @@ coverage, and finite draw count.
 ```python
 import pandas as pd
 
-from bayesorca.validation import coverage_summary
+from barracuda import coverage_summary
 
 all_recovery = pd.concat([run.recovery for run in validation_runs])
 coverage = coverage_summary(
@@ -90,7 +90,7 @@ zero heterogeneity or zero history effect often produce asymmetric posteriors.
 ## Superiority and ROPE probabilities
 
 ```python
-from bayesorca.validation import (
+from barracuda import (
     posterior_rope_probabilities,
     posterior_superiority_probability,
 )

@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from bayesorca.donors import (
+from barracuda import (
     DONOR_MODEL_KEYS,
     DonorSimulationSpec,
     canonical_donor_model_key,

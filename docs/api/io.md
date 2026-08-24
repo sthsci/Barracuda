@@ -1,8 +1,8 @@
-# `bayesorca.io`
+# `barracuda.io`
 
 Atomic, checksummed persistence for inference data and Bayes-factor scans.
 Existing files are not overwritten unless explicitly requested.
 
-::: bayesorca.io
+::: barracuda.io
     options:
       members: true

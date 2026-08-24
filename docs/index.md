@@ -1,7 +1,8 @@
-# bayesorca
+# BARRACUDA
 
-`bayesorca` is the reusable scientific API for the ORCA Bayesian framework. It
-supports event-count and ordered-trajectory simulation, PyMC inference,
+`barracuda` is the reusable scientific API for **BARRACUDA: Bayesian Analysis
+Resolving Randomness and Alternative Causes Underlying Differential Activity**.
+It supports event-count and ordered-trajectory simulation, PyMC inference,
 donor-aware hierarchies, marginal-likelihood model comparison, validation,
 cumulative Bayes-factor scans, diagnostics, plotting, and reproducible export.
 
@@ -26,10 +27,10 @@ cumulative Bayes-factor scans, diagnostics, plotting, and reproducible export.
 ## Install
 
 ```bash
-python -m pip install bayesorca
+python -m pip install barracuda
 ```
 
-ORCA currently supports Python 3.12. Inference uses PyMC Sequential Monte Carlo
+BARRACUDA currently supports Python 3.12. Inference uses PyMC Sequential Monte Carlo
 (SMC); runtime and memory can increase steeply with particles, chains, cells,
 quadrature nodes, fitted models, scenarios, and replicates.
 
@@ -54,4 +55,4 @@ site strictly; only pushes to `pypackage` deploy it. Repository visibility and
 organization policy determine who can view the published site.
 
 Continue with [Getting started](getting-started.md), or read the canonical
-[package README](https://github.com/sthsci/Orca/blob/pypackage/README.md).
+[package README](https://github.com/sthsci/Barracuda/blob/pypackage/README.md).

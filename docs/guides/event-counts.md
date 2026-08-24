@@ -6,7 +6,7 @@ For observed data, start with `validate_count_frame`. For a known synthetic
 truth, use `simulate_event_counts`:
 
 ```python
-from bayesorca.event_counts import simulate_event_counts, validate_count_frame
+from barracuda import simulate_event_counts, validate_count_frame
 
 frame, truth = simulate_event_counts(
     model_key="dis2p",
@@ -29,7 +29,7 @@ display grid. It is a plotting aid, not posterior inference.
 ## 2. Configure inference
 
 ```python
-from bayesorca.event_counts import InferenceSettings
+from barracuda import InferenceSettings
 
 settings = InferenceSettings(
     draws=256,
@@ -46,7 +46,7 @@ entire dataclass rather than only the particle count.
 ## 3. Fit a declared candidate set
 
 ```python
-from bayesorca.event_counts import run_count_models
+from barracuda import run_count_models
 
 fits = run_count_models(
     frame,
@@ -63,7 +63,7 @@ quietly omitted after seeing its result.
 ## 4. Extract evidence and posterior information
 
 ```python
-from bayesorca.event_counts import (
+from barracuda import (
     evidence_table,
     posterior_draw_table,
     summary_table,
@@ -83,7 +83,7 @@ fit. Its model-versus-best log Bayes factors are zero or negative.
 ```python
 from pathlib import Path
 
-from bayesorca.event_counts import build_results_zip
+from barracuda import build_results_zip
 
 archive = build_results_zip(
     fits,

@@ -7,7 +7,7 @@ meaningful and approved for the analysis.
 ## Simulate heterogeneous donors
 
 ```python
-from bayesorca.donors import DonorSimulationSpec, simulate_donor_event_counts
+from barracuda import DonorSimulationSpec, simulate_donor_event_counts
 
 spec = DonorSimulationSpec(
     donor_sizes={"D1": 40, "D2": 55, "D3": 35},
@@ -28,7 +28,7 @@ example, `homo` requires zero dispersion and zero structural-zero probability.
 ## Fit donor-aware models
 
 ```python
-from bayesorca.event_counts import InferenceSettings, run_donor_aware_models
+from barracuda import InferenceSettings, run_donor_aware_models
 
 settings = InferenceSettings(draws=256, chains=1, cores=1, seed=73)
 fits = run_donor_aware_models(
@@ -45,7 +45,7 @@ fits, with `donor_aware=True` and ordered `donor_labels`.
 ## Extract paired posterior draws
 
 ```python
-from bayesorca.donors import donor_posterior_frame, population_posterior_frame
+from barracuda import donor_posterior_frame, population_posterior_frame
 
 fit = fits["hetero3"]
 population = population_posterior_frame(fit, max_draws=5_000)
@@ -59,7 +59,7 @@ older backend stores `phi_0_*`.
 ## Variance decomposition
 
 ```python
-from bayesorca.donors import population_variance_decomposition
+from barracuda import population_variance_decomposition
 
 moments = population_variance_decomposition(
     fit,
@@ -77,7 +77,7 @@ weights, and a different weighting target answers a different question.
 ## Leave-one-donor-out sensitivity
 
 ```python
-from bayesorca.donors import leave_one_donor_out_moments
+from barracuda import leave_one_donor_out_moments
 
 sensitivity = leave_one_donor_out_moments(fit, [40, 55, 35])
 ```
@@ -97,7 +97,7 @@ Cartesian comparisons:
 ```python
 import pandas as pd
 
-from bayesorca.donors import condition_contrast_frame, summarize_contrast_draws
+from barracuda import condition_contrast_frame, summarize_contrast_draws
 
 all_draws = pd.concat([control_draws, treatment_draws], ignore_index=True)
 contrasts = condition_contrast_frame(
