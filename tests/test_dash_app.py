@@ -75,7 +75,7 @@ def test_python_api_page_documents_the_install_and_complete_public_surface() -> 
     assert "python -m pip install cyto-barracuda" in page_text
     assert "from barracuda import" in page_text
     assert set(python_api.DOCUMENTED_NAMES) == set(barracuda.__all__)
-    assert {python_api.PYPI_URL, python_api.SOURCE_URL} <= {
+    assert {python_api.DOCS_URL, python_api.PYPI_URL, python_api.SOURCE_URL} <= {
         component.href
         for component in _walk(content)
         if component.__class__.__name__ == "A"

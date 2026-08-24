@@ -9,6 +9,7 @@ from webapp.ui import hero, note
 
 PATH = "/python-api"
 TITLE = "Python package API"
+DOCS_URL = "https://sthsci.github.io/Barracuda/"
 PYPI_URL = "https://pypi.org/project/cyto-barracuda/"
 SOURCE_URL = "https://github.com/sthsci/Barracuda/tree/main/src/barracuda"
 
@@ -228,11 +229,18 @@ def layout() -> html.Div:
                     html.Div(
                         [
                             html.A(
+                                "Open the full Python API documentation",
+                                href=DOCS_URL,
+                                target="_blank",
+                                rel="noreferrer",
+                                className="barracuda-button primary",
+                            ),
+                            html.A(
                                 "View cyto-barracuda on PyPI",
                                 href=PYPI_URL,
                                 target="_blank",
                                 rel="noreferrer",
-                                className="barracuda-button primary",
+                                className="barracuda-button secondary",
                             ),
                             html.A(
                                 "Browse the Python source",
@@ -254,6 +262,7 @@ def layout() -> html.Div:
 
 __all__ = [
     "API_GROUPS",
+    "DOCS_URL",
     "DOCUMENTED_NAMES",
     "PATH",
     "PYPI_URL",
