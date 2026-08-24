@@ -1,8 +1,8 @@
-# Orca
+# BARRACUDA
 
-**Bayesian inference for heterogeneity in immune cell decision making**
+**Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity**
 
-Research code supporting the manuscript *A Bayesian framework reveals heterogeneous and stochastic decision-making in NK cell cytotoxicity*. Orca uses single-cell contact and kill histories to ask whether variation in natural killer (NK) cell behaviour arises from stochastic events, stable cell-to-cell differences, donor effects, interaction history, or a combination of these mechanisms.
+Research code supporting the manuscript *A Bayesian framework reveals heterogeneous and stochastic decision-making in NK cell cytotoxicity*. BARRACUDA uses single-cell contact and kill histories to ask whether variation in natural killer (NK) cell behaviour arises from stochastic events, stable cell-to-cell differences, donor effects, interaction history, or a combination of these mechanisms.
 
 ## Framework
 
@@ -40,20 +40,20 @@ until the user enables it.
 
 | Category | Notebook | Google Colab |
 |---|---|---|
-| Start here | [`00_run_the_orca_web_app.ipynb`](notebooks/00_run_the_orca_web_app.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/00_run_the_orca_web_app.ipynb) |
-| Teaching | [`01_bayesian_inference_101.ipynb`](notebooks/01_bayesian_inference_101.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/01_bayesian_inference_101.ipynb) |
-| Teaching | [`02_event_count_model_tutorial.ipynb`](notebooks/02_event_count_model_tutorial.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/02_event_count_model_tutorial.ipynb) |
-| Teaching | [`03_trajectory_model_tutorial.ipynb`](notebooks/03_trajectory_model_tutorial.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/03_trajectory_model_tutorial.ipynb) |
-| Analysis | [`04_event_count_analysis.ipynb`](notebooks/04_event_count_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/04_event_count_analysis.ipynb) |
-| Analysis | [`05_donor_aware_analysis.ipynb`](notebooks/05_donor_aware_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/05_donor_aware_analysis.ipynb) |
-| Analysis | [`06_trajectory_analysis.ipynb`](notebooks/06_trajectory_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Orca/blob/main/notebooks/06_trajectory_analysis.ipynb) |
+| Start here | [`00_run_the_barracuda_web_app.ipynb`](notebooks/00_run_the_barracuda_web_app.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/00_run_the_barracuda_web_app.ipynb) |
+| Teaching | [`01_bayesian_inference_101.ipynb`](notebooks/01_bayesian_inference_101.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/01_bayesian_inference_101.ipynb) |
+| Teaching | [`02_event_count_model_tutorial.ipynb`](notebooks/02_event_count_model_tutorial.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/02_event_count_model_tutorial.ipynb) |
+| Teaching | [`03_trajectory_model_tutorial.ipynb`](notebooks/03_trajectory_model_tutorial.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/03_trajectory_model_tutorial.ipynb) |
+| Analysis | [`04_event_count_analysis.ipynb`](notebooks/04_event_count_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/04_event_count_analysis.ipynb) |
+| Analysis | [`05_donor_aware_analysis.ipynb`](notebooks/05_donor_aware_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/05_donor_aware_analysis.ipynb) |
+| Analysis | [`06_trajectory_analysis.ipynb`](notebooks/06_trajectory_analysis.ipynb) | [Open in Colab](https://colab.research.google.com/github/sthsci/Barracuda/blob/main/notebooks/06_trajectory_analysis.ipynb) |
 
 See the catalog for input schemas, runtime expectations, privacy guidance, and
 reproducibility notes.
 
 ## Python package
 
-The reusable scientific API is packaged as `bayesorca`. It covers donor
+The reusable scientific API is packaged as `barracuda`. It covers donor
 ignorant and donor aware event count inference, condition-wise analysis,
 synthetic data generation, ordered trajectory inference, evidence tables,
 posterior draw tables, and reproducible result archives.
@@ -61,7 +61,7 @@ posterior draw tables, and reproducible result archives.
 Install a released version with:
 
 ```bash
-python -m pip install bayesorca
+python -m pip install barracuda
 ```
 
 For development from this repository:
@@ -75,13 +75,14 @@ examples. The Python package deliberately excludes the Dash presentation layer.
 
 ## Dash web application
 
-The `codex/dash-app` branch contains a focused Dash interface for learning and testing the framework:
+The repository contains a focused Dash interface for learning and testing the framework:
 
 1. A project home page and guide to the available sections.
 2. Bayesian inference 101, including Bayes' theorem, MCMC, SMC, marginal likelihoods, and Bayes factors.
 3. Donor ignorant event count inference, beginning with a choice between synthetic validation and the user's own data. Inference can run independently for one to four experimental conditions.
 4. Donor aware hierarchical inference for one to four conditions, including Bayes factors, within-versus-between donor heterogeneity, population and donor posterior views, and particle-level condition contrasts.
 5. Donor ignorant trajectory inference from synthetic or uploaded ordered contact histories, with empirical state maps, model evidence, marginal posteriors, and full joint posteriors.
+6. An optional workspace for account registration, deliberately saved CSV files, and expiring read-only spreadsheet links. All scientific analysis remains available without registration.
 
 The application intentionally defaults to small SMC settings. Preview results are illustrative and are not publication-grade. The scientific simulation, validation, inference, and result-export functions are kept separate from the Dash interface.
 
@@ -94,11 +95,23 @@ pip install -r requirements.txt
 python dash_app.py
 ```
 
+To enable the optional workspace locally, start the Django service in a second
+terminal:
+
+```bash
+cd platform/api
+../../.venv/bin/python manage.py migrate
+../../.venv/bin/python manage.py runserver 127.0.0.1:8000
+```
+
+Then open <http://127.0.0.1:8501/workspace>. CSV saving is opt-in; the account
+service does not accept raw microscopy files.
+
 Alternatively, build the included container:
 
 ```bash
-docker build -t orca-dash-app .
-docker run --rm -p 8501:8501 orca-dash-app
+docker build -t barracuda-dash-app .
+docker run --rm -p 8501:8501 barracuda-dash-app
 ```
 
 ### Input schemas

@@ -1,4 +1,4 @@
-"""Run the Orca count models independently across experimental conditions."""
+"""Run the Barracuda count models independently across experimental conditions."""
 
 from __future__ import annotations
 
@@ -147,7 +147,7 @@ def build_condition_results_zip(
     *,
     donor_aware: bool,
 ) -> bytes:
-    """Bundle one complete Orca result archive per experimental condition."""
+    """Bundle one complete Barracuda result archive per experimental condition."""
 
     if not results:
         raise ValueError("at least one experimental condition is required")
@@ -174,7 +174,7 @@ def build_condition_results_zip(
             )
             _write_bytes(
                 archive,
-                f"conditions/{slug}/orca_results.zip",
+                f"conditions/{slug}/barracuda_results.zip",
                 condition_archive,
             )
             manifest_rows.append(
@@ -194,9 +194,9 @@ def build_condition_results_zip(
             archive,
             "README.txt",
             (
-                "Orca multi-condition analysis\n\n"
+                "Barracuda multi-condition analysis\n\n"
                 "Inference was run independently for each experimental condition with the "
-                "same model and prior settings. Open the nested orca_results.zip "
+                "same model and prior settings. Open the nested barracuda_results.zip "
                 "inside each condition folder for evidence tables, posterior "
                 "summaries and ArviZ NetCDF files.\n"
             ).encode("utf-8"),

@@ -14,8 +14,8 @@ from webapp.core.inference import (
 
 @pytest.mark.smc
 @pytest.mark.skipif(
-    os.environ.get("ORCA_RUN_SMC_SMOKE") != "1",
-    reason="set ORCA_RUN_SMC_SMOKE=1 to run the optional PyMC SMC smoke test",
+    os.environ.get("BARRACUDA_RUN_SMC_SMOKE") != "1",
+    reason="set BARRACUDA_RUN_SMC_SMOKE=1 to run the optional PyMC SMC smoke test",
 )
 def test_real_homogeneous_smc_smoke() -> None:
     """Opt-in integration helper; deliberately excluded from routine tests."""
@@ -34,8 +34,8 @@ def test_real_homogeneous_smc_smoke() -> None:
 
 @pytest.mark.smc
 @pytest.mark.skipif(
-    os.environ.get("ORCA_RUN_SMC_SMOKE") != "1",
-    reason="set ORCA_RUN_SMC_SMOKE=1 to run the optional PyMC SMC smoke test",
+    os.environ.get("BARRACUDA_RUN_SMC_SMOKE") != "1",
+    reason="set BARRACUDA_RUN_SMC_SMOKE=1 to run the optional PyMC SMC smoke test",
 )
 def test_real_donor_aware_homogeneous_smc_smoke() -> None:
     """Exercise the donor-relative backend used by the Dash application."""

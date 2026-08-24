@@ -9,14 +9,14 @@ from webapp.ui import hero
 
 PATH = "/notebooks"
 TITLE = "Colab notebooks"
-COLAB_ROOT = "https://colab.research.google.com/github/sthsci/Orca/blob/main"
+COLAB_ROOT = "https://colab.research.google.com/github/sthsci/Barracuda/blob/main"
 
 NOTEBOOKS = (
     {
         "category": "Start here",
-        "title": "Run the ORCA web app",
-        "path": "notebooks/00_run_the_orca_web_app.ipynb",
-        "description": "Launch the complete interactive ORCA website inside Google Colab.",
+        "title": "Run the BARRACUDA web app",
+        "path": "notebooks/00_run_the_barracuda_web_app.ipynb",
+        "description": "Launch the complete interactive BARRACUDA website inside Google Colab.",
     },
     {
         "category": "Teaching",
@@ -69,29 +69,29 @@ def layout() -> html.Div:
         sections.append(
             html.Section(
                 [
-                    html.Span("Notebook collection", className="orca-section-label"),
+                    html.Span("Notebook collection", className="barracuda-section-label"),
                     html.H2(category),
-                    html.P(introductions[category], className="orca-section-lead"),
+                    html.P(introductions[category], className="barracuda-section-lead"),
                     html.Div(
                         [
                             html.A(
                                 [
-                                    html.Span("Google Colab", className="orca-section-label"),
+                                    html.Span("Google Colab", className="barracuda-section-label"),
                                     html.H3(item["title"]),
                                     html.P(item["description"]),
-                                    html.Span("Open notebook →", className="orca-workflow-choice-action"),
+                                    html.Span("Open notebook →", className="barracuda-workflow-choice-action"),
                                 ],
                                 href=f"{COLAB_ROOT}/{item['path']}",
                                 target="_blank",
                                 rel="noreferrer",
-                                className="orca-workflow-choice",
+                                className="barracuda-workflow-choice",
                             )
                             for item in items
                         ],
-                        className="orca-workflow-choice-grid",
+                        className="barracuda-workflow-choice-grid",
                     ),
                 ],
-                className="orca-workflow-panel",
+                className="barracuda-workflow-panel",
             )
         )
     return html.Div(
@@ -99,7 +99,7 @@ def layout() -> html.Div:
             hero(
                 "Interactive notebooks",
                 "Learn and analyse in Google Colab",
-                "Run ORCA without a local installation, follow the teaching material, or adapt an analysis workflow to your own approved data.",
+                "Run BARRACUDA without a local installation, follow the teaching material, or adapt an analysis workflow to your own approved data.",
                 badge="Seven notebooks · Opens in a new tab",
             ),
             *sections,

@@ -380,3 +380,12 @@ def test_joint_figures_use_paired_joint_contours_for_requested_grouping() -> Non
         for trace in donor_figure.data
         if trace.showlegend
     } == {"D1", "D2"}
+    axis_titles = {
+        axis.title.text
+        for name in donor_figure.layout
+        if (name.startswith("xaxis") or name.startswith("yaxis"))
+        and (axis := donor_figure.layout[name]).title.text
+    }
+    assert "μλ,d" in axis_titles
+    assert "σλ,d" in axis_titles
+    assert all("Within-donor" not in title for title in axis_titles)

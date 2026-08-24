@@ -34,7 +34,7 @@ import pymc as pm
 import pytensor.tensor as pt
 
 try:
-    from bayesorca._backends.event_counts.smc_progress import (
+    from barracuda._backends.event_counts.smc_progress import (
         SMCProgressCallback,
         run_with_smc_progress,
     )

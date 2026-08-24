@@ -29,14 +29,14 @@ def _without_hero(component: html.Div) -> list:
     return [
         child
         for child in children
-        if getattr(child, "className", None) != "orca-hero"
+        if getattr(child, "className", None) != "barracuda-hero"
     ]
 
 
 def _workflow_option(title: str, description: str) -> html.Div:
     return html.Div(
         [html.Strong(title), html.Small(description)],
-        className="orca-model-option-copy",
+        className="barracuda-model-option-copy",
     )
 
 
@@ -74,11 +74,11 @@ def layout() -> html.Div:
             ),
             html.Section(
                 [
-                    html.Span("Start here", className="orca-section-label"),
+                    html.Span("Start here", className="barracuda-section-label"),
                     html.H2("Which data do you want to use?"),
                     html.P(
                         "The choice changes the input workflow only. Provide a small dataset or generate one from a known truth; both routes run inference with the same four donor ignorant event count models.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     dcc.RadioItems(
                         id=WORKFLOW_ID,
@@ -99,19 +99,19 @@ def layout() -> html.Div:
                             },
                         ],
                         value=None,
-                        className="orca-model-checklist",
-                        inputClassName="orca-check-input",
-                        labelClassName="orca-model-option",
+                        className="barracuda-model-checklist",
+                        inputClassName="barracuda-check-input",
+                        labelClassName="barracuda-model-option",
                     ),
                     html.P(
                         "Choose one option to continue.",
                         id="donor-ignorant-workflow-status",
-                        className="orca-help",
+                        className="barracuda-help",
                         role="status",
                         **{"aria-live": "polite"},
                     ),
                 ],
-                className="orca-workflow-panel",
+                className="barracuda-workflow-panel",
             ),
             html.Div(
                 _synthetic_body(),
@@ -136,9 +136,9 @@ def register_callbacks(app) -> None:
     )
     def choose_workflow(workflow: str | None):
         if workflow == "synthetic":
-            return "orca-merged-workflow", "is-hidden", "Synthetic validation selected."
+            return "barracuda-merged-workflow", "is-hidden", "Synthetic validation selected."
         if workflow == "own-data":
-            return "is-hidden", "orca-merged-workflow", "Own data analysis selected."
+            return "is-hidden", "barracuda-merged-workflow", "Own data analysis selected."
         return "is-hidden", "is-hidden", "Choose one option to continue."
 
     # Retain the established ``counts-*`` callback contract for the complete

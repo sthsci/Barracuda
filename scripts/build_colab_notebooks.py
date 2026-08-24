@@ -1,4 +1,4 @@
-"""Build the Colab-ready ORCA teaching and analysis notebooks."""
+"""Build the Colab-ready BARRACUDA teaching and analysis notebooks."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import nbformat as nbf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 NOTEBOOK_DIR = PROJECT_ROOT / "notebooks"
-COLAB_ROOT = "https://colab.research.google.com/github/sthsci/Orca/blob/main"
+COLAB_ROOT = "https://colab.research.google.com/github/sthsci/Barracuda/blob/main"
 
 
 def markdown(source: str):
@@ -25,6 +25,8 @@ def heading(filename: str, title: str, category: str, summary: str):
     return markdown(
         f"""
         # {title}
+
+        **BARRACUDA: Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity**
 
         [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)]({COLAB_ROOT}/notebooks/{filename})
 
@@ -44,20 +46,20 @@ import subprocess
 import sys
 
 
-def find_orca_checkout():
+def find_barracuda_checkout():
     start = Path.cwd().resolve()
     for candidate in (start, *start.parents):
-        if (candidate / "src" / "bayesorca").is_dir():
+        if (candidate / "src" / "barracuda").is_dir():
             return candidate
     return None
 
 
-ORCA_ROOT = find_orca_checkout()
-if ORCA_ROOT is not None:
-    sys.path[:0] = [str(ORCA_ROOT), str(ORCA_ROOT / "src")]
-elif importlib.util.find_spec("bayesorca") is None:
+BARRACUDA_ROOT = find_barracuda_checkout()
+if BARRACUDA_ROOT is not None:
+    sys.path[:0] = [str(BARRACUDA_ROOT), str(BARRACUDA_ROOT / "src")]
+elif importlib.util.find_spec("barracuda") is None:
     if sys.version_info[:2] != (3, 12):
-        raise RuntimeError("ORCA currently requires a Python 3.12 Colab runtime.")
+        raise RuntimeError("BARRACUDA currently requires a Python 3.12 Colab runtime.")
     subprocess.check_call(
         [
             sys.executable,
@@ -65,23 +67,23 @@ elif importlib.util.find_spec("bayesorca") is None:
             "pip",
             "install",
             "-q",
-            "git+https://github.com/sthsci/Orca.git@main",
+            "git+https://github.com/sthsci/Barracuda.git@main",
         ]
     )
 
-import bayesorca
+import barracuda
 
-print("bayesorca", bayesorca.__version__)
+print("barracuda", barracuda.__version__)
 print("Python", sys.version.split()[0])
 """
 
 
 def build_web_app_notebook():
-    filename = "00_run_the_orca_web_app.ipynb"
+    filename = "00_run_the_barracuda_web_app.ipynb"
     return filename, [
         heading(
             filename,
-            "Run the complete Bayesian ORCA webpage in Jupyter",
+            "Run the complete BARRACUDA webpage in Jupyter",
             "Start here",
             "Launch the same Dash learning and analysis interface used by the project website inside a Google Colab output cell.",
         ),
@@ -102,7 +104,7 @@ def build_web_app_notebook():
             import sys
 
 
-            def find_orca_checkout():
+            def find_barracuda_checkout():
                 start = Path.cwd().resolve()
                 for candidate in (start, *start.parents):
                     if (candidate / "webapp" / "dashapp.py").is_file():
@@ -111,21 +113,21 @@ def build_web_app_notebook():
 
 
             IN_COLAB = importlib.util.find_spec("google.colab") is not None
-            ORCA_ROOT = find_orca_checkout()
+            BARRACUDA_ROOT = find_barracuda_checkout()
 
-            if ORCA_ROOT is None and IN_COLAB:
+            if BARRACUDA_ROOT is None and IN_COLAB:
                 if sys.version_info[:2] != (3, 12):
-                    raise RuntimeError("ORCA currently requires a Python 3.12 Colab runtime.")
-                ORCA_ROOT = Path("/content/Orca")
-                if not (ORCA_ROOT / ".git").is_dir():
+                    raise RuntimeError("BARRACUDA currently requires a Python 3.12 Colab runtime.")
+                BARRACUDA_ROOT = Path("/content/Barracuda")
+                if not (BARRACUDA_ROOT / ".git").is_dir():
                     subprocess.check_call(
                         [
                             "git",
                             "clone",
                             "--depth",
                             "1",
-                            "https://github.com/sthsci/Orca.git",
-                            str(ORCA_ROOT),
+                            "https://github.com/sthsci/Barracuda.git",
+                            str(BARRACUDA_ROOT),
                         ]
                     )
                 subprocess.check_call(
@@ -136,15 +138,15 @@ def build_web_app_notebook():
                         "install",
                         "-q",
                         "-r",
-                        str(ORCA_ROOT / "requirements.txt"),
+                        str(BARRACUDA_ROOT / "requirements.txt"),
                     ]
                 )
 
-            if ORCA_ROOT is None:
-                raise RuntimeError("Run this notebook in Colab or from an ORCA checkout.")
+            if BARRACUDA_ROOT is None:
+                raise RuntimeError("Run this notebook in Colab or from an BARRACUDA checkout.")
 
-            sys.path[:0] = [str(ORCA_ROOT), str(ORCA_ROOT / "src")]
-            print("ORCA checkout:", ORCA_ROOT)
+            sys.path[:0] = [str(BARRACUDA_ROOT), str(BARRACUDA_ROOT / "src")]
+            print("BARRACUDA checkout:", BARRACUDA_ROOT)
             print("Python:", sys.version.split()[0])
             """
         ),
@@ -179,7 +181,7 @@ def build_web_app_notebook():
             if RUN_WEB_APP:
                 app.run(jupyter_mode="inline", debug=False, port=8050)
             else:
-                print("Ready. Set RUN_WEB_APP = True to display Bayesian ORCA here.")
+                print("Ready. Set RUN_WEB_APP = True to display BARRACUDA here.")
             """
         ),
         markdown(
@@ -300,13 +302,13 @@ def build_bayesian_101_notebook():
         ),
         markdown(
             """
-            ## 3. Why ORCA uses SMC
+            ## 3. Why BARRACUDA uses SMC
 
-            The coin posterior is available in closed form. ORCA's hierarchical and trajectory models are not, so it represents the posterior with samples.
+            The coin posterior is available in closed form. BARRACUDA's hierarchical and trajectory models are not, so it represents the posterior with samples.
 
             - **MCMC** constructs a correlated chain whose long-run distribution is the posterior.
             - **Sequential Monte Carlo (SMC)** moves a population of particles from the prior toward the posterior through intermediate distributions.
-            - ORCA uses PyMC SMC because the same run supplies posterior particles and an estimate of the marginal likelihood used for Bayes factors.
+            - BARRACUDA uses PyMC SMC because the same run supplies posterior particles and an estimate of the marginal likelihood used for Bayes factors.
 
             More particles and independent chains usually improve stability but cost more computation. Bayes factors are sensitive to prior choices, so report priors and check whether the scientific conclusion survives reasonable alternatives.
 
@@ -321,7 +323,7 @@ def build_event_count_tutorial():
     return filename, [
         heading(
             filename,
-            "Teaching the four ORCA event-count models",
+            "Teaching the four BARRACUDA event-count models",
             "Teaching notebook",
             "Simulate the four population structures, inspect their observable signatures, and optionally recover the generating model with SMC Bayes factors.",
         ),
@@ -350,7 +352,7 @@ def build_event_count_tutorial():
             import numpy as np
             import pandas as pd
 
-            from bayesorca.event_counts import (
+            from barracuda import (
                 MODEL_SPECS,
                 InferenceSettings,
                 evidence_table,
@@ -464,7 +466,7 @@ def build_trajectory_tutorial():
     return filename, [
         heading(
             filename,
-            "Teaching ORCA trajectory models",
+            "Teaching BARRACUDA trajectory models",
             "Teaching notebook",
             "Simulate ordered successful and unsuccessful contacts, summarise decision states, and optionally compare stable heterogeneity with history dependence.",
         ),
@@ -472,7 +474,7 @@ def build_trajectory_tutorial():
             r"""
             ## 1. Why order matters
 
-            Total kills discard the order of contacts. A history such as `0,0,1,0` records two unsuccessful contacts, one successful contact, then another unsuccessful contact. ORCA trajectory models ask two different questions:
+            Total kills discard the order of contacts. A history such as `0,0,1,0` records two unsuccessful contacts, one successful contact, then another unsuccessful contact. BARRACUDA trajectory models ask two different questions:
 
             - **Stable heterogeneity:** do cells have persistently different baseline killing propensities ($\sigma_\eta>0$)?
             - **History dependence:** does the probability of the next success change after previous failures ($\beta_f$) or successes ($\beta_s$)?
@@ -486,7 +488,7 @@ def build_trajectory_tutorial():
             import matplotlib.pyplot as plt
             import pandas as pd
 
-            from bayesorca.trajectories import (
+            from barracuda import (
                 TRAJECTORY_MODEL_SPECS,
                 TrajectorySettings,
                 expanded_trajectory_frame,
@@ -597,7 +599,7 @@ def build_event_count_analysis():
             filename,
             "Analyse event counts without donor labels",
             "Analysis notebook",
-            "Upload one to four experimental conditions, validate the public ORCA schema, explore the counts, fit population models, and export a reproducible result archive.",
+            "Upload one to four experimental conditions, validate the public BARRACUDA schema, explore the counts, fit population models, and export a reproducible result archive.",
         ),
         markdown(
             """
@@ -624,7 +626,7 @@ def build_event_count_analysis():
             import matplotlib.pyplot as plt
             import pandas as pd
 
-            from bayesorca.event_counts import (
+            from barracuda import (
                 MODEL_SPECS,
                 InferenceSettings,
                 build_condition_results_zip,
@@ -732,7 +734,7 @@ def build_event_count_analysis():
                 display(evidence)
                 display(posterior_summary)
 
-                archive_path = Path("orca_event_count_analysis.zip")
+                archive_path = Path("barracuda_event_count_analysis.zip")
                 archive_path.write_bytes(
                     build_condition_results_zip(
                         results,
@@ -756,7 +758,7 @@ def build_event_count_analysis():
             """
             ## Report with the result
 
-            Record the event definition, observation-time units, inclusion/exclusion rules, cell count per condition, model keys, prior settings, SMC particles/chains, random seed, ORCA version, and any sensitivity runs. A Bayes factor ranks only the models that were compared; it does not establish that the best candidate is biologically complete.
+            Record the event definition, observation-time units, inclusion/exclusion rules, cell count per condition, model keys, prior settings, SMC particles/chains, random seed, BARRACUDA version, and any sensitivity runs. A Bayes factor ranks only the models that were compared; it does not establish that the best candidate is biologically complete.
             """
         ),
     ]
@@ -794,7 +796,7 @@ def build_donor_analysis():
             import matplotlib.pyplot as plt
             import pandas as pd
 
-            from bayesorca.event_counts import (
+            from barracuda import (
                 MODEL_SPECS,
                 InferenceSettings,
                 build_condition_results_zip,
@@ -896,7 +898,7 @@ def build_donor_analysis():
                 display(evidence)
                 display(posterior_summary)
 
-                archive_path = Path("orca_donor_aware_analysis.zip")
+                archive_path = Path("barracuda_donor_aware_analysis.zip")
                 archive_path.write_bytes(
                     build_condition_results_zip(
                         results,
@@ -920,7 +922,7 @@ def build_donor_analysis():
             """
             ## Report with the result
 
-            Include the number of donors and cells per donor/condition, whether donor labels repeat across conditions, event and time units, hierarchy and priors, SMC settings, seed, ORCA version, and sensitivity analyses. Population differences in this cohort should not be generalised beyond the sampled donor population without an appropriate study design.
+            Include the number of donors and cells per donor/condition, whether donor labels repeat across conditions, event and time units, hierarchy and priors, SMC settings, seed, BARRACUDA version, and sensitivity analyses. Population differences in this cohort should not be generalised beyond the sampled donor population without an appropriate study design.
             """
         ),
     ]
@@ -958,7 +960,7 @@ def build_trajectory_analysis():
             import matplotlib.pyplot as plt
             import pandas as pd
 
-            from bayesorca.trajectories import (
+            from barracuda import (
                 TRAJECTORY_MODEL_SPECS,
                 TrajectorySettings,
                 TrajectorySimulationSpec,
@@ -1083,7 +1085,7 @@ def build_trajectory_analysis():
                 display(trajectory_evidence_frame(results))
                 display(trajectory_summary_frame(results))
 
-                archive_path = Path("orca_trajectory_analysis.zip")
+                archive_path = Path("barracuda_trajectory_analysis.zip")
                 archive_path.write_bytes(
                     build_trajectory_archive(
                         results,
@@ -1107,7 +1109,7 @@ def build_trajectory_analysis():
             """
             ## Report with the result
 
-            Define successful/unsuccessful contacts, confirm chronological encoding, report cells and contacts per condition, observation-time units, candidate models and priors, SMC/quadrature settings, seed, ORCA version, and sensitivity runs. History coefficients describe the fitted association after the model's baseline structure; they do not alone demonstrate a causal biological memory mechanism.
+            Define successful/unsuccessful contacts, confirm chronological encoding, report cells and contacts per condition, observation-time units, candidate models and priors, SMC/quadrature settings, seed, BARRACUDA version, and sensitivity runs. History coefficients describe the fitted association after the model's baseline structure; they do not alone demonstrate a causal biological memory mechanism.
             """
         ),
     ]

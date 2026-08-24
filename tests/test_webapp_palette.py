@@ -39,11 +39,19 @@ def test_web_theme_reuses_manuscript_figure_palette() -> None:
 
 def test_dash_theme_uses_flat_print_neutrals_and_accessible_focus() -> None:
     css = Path("webapp/assets/styles.css").read_text(encoding="utf-8").upper()
-    assert "--ORCA-PRIMARY: #304B3D" in css
-    assert "--ORCA-PAPER: #FAF8F2" in css
-    assert "--ORCA-SHEET: #FFFEFA" in css
-    assert "--ORCA-MIST: #EFEAE1" in css
-    assert "--ORCA-INK: #25231F" in css
+    assert "--BARRACUDA-PRIMARY: #304B3D" in css
+    assert "--BARRACUDA-PAPER: #FAF8F2" in css
+    assert "--BARRACUDA-SHEET: #FFFEFA" in css
+    assert "--BARRACUDA-MIST: #EFEAE1" in css
+    assert "--BARRACUDA-INK: #25231F" in css
     assert "GRADIENT(" not in css
     assert ":FOCUS-VISIBLE" in css
     assert "PREFERS-REDUCED-MOTION" in css
+
+
+def test_dense_plot_layouts_have_explicit_containment_rules() -> None:
+    css = Path("webapp/assets/styles.css").read_text(encoding="utf-8")
+
+    assert ".barracuda-donor-posterior-stack" in css
+    assert "contain: layout paint" in css
+    assert "grid-template-rows: 280px auto auto" in css

@@ -83,6 +83,6 @@ def test_published_colab_notebooks_are_clean_and_portable() -> None:
         if needs_inference_guard:
             assert re.search(r"(?m)^RUN_INFERENCE\s*=\s*False\b", full_source), relative_path
 
-        if relative_path == "notebooks/00_run_the_orca_web_app.ipynb":
+        if relative_path == "notebooks/00_run_the_barracuda_web_app.ipynb":
             assert re.search(r"(?m)^RUN_WEB_APP\s*=\s*False\b", full_source)
             assert 'jupyter_mode="inline"' in full_source

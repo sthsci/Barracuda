@@ -1,4 +1,4 @@
-"""Build the standalone Orca synthetic-validation demonstration notebook."""
+"""Build the standalone BARRACUDA synthetic-validation demonstration notebook."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import nbformat as nbf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 SOURCE_NOTEBOOK = PROJECT_ROOT / "section_1" / "notebook" / "demo_validation_1.ipynb"
-WEB_NOTEBOOK = PROJECT_ROOT / "webapp" / "assets" / "downloads" / "orca_synthetic_validation_demo.ipynb"
+WEB_NOTEBOOK = PROJECT_ROOT / "webapp" / "assets" / "downloads" / "barracuda_synthetic_validation_demo.ipynb"
 
 
 def markdown(source: str):
@@ -34,7 +34,9 @@ def build_notebook():
     notebook["cells"] = [
         markdown(
             r"""
-            # Orca synthetic validation: one-file demonstration
+            # BARRACUDA synthetic validation: one-file demonstration
+
+            **Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity**
 
             This notebook contains the simulator, the four event-count models, PyMC Sequential Monte Carlo inference, the joint posterior figure and the Bayes-factor figure. It has no repository-relative imports and runs from top to bottom in one Jupyter session.
 
@@ -76,7 +78,7 @@ def build_notebook():
             import pytensor.tensor as pt
             from scipy.stats import gaussian_kde
 
-            OUTPUT_DIR = Path("orca_synthetic_validation_outputs")
+            OUTPUT_DIR = Path("barracuda_synthetic_validation_outputs")
             OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
             PROFILE = "quick"  # choose "quick" or "paper"
@@ -410,7 +412,7 @@ def build_notebook():
             r"""
             ## 5. Bayes factors from SMC marginal likelihoods
 
-            This uses the same convention as the Orca demo figure: $\log_{10}\mathrm{BF}(\mathcal{M}_{\mathrm{best}}/\mathcal{M})$. The best fitted model is at zero; larger bars indicate greater evidence in favour of the best fitted model over that candidate.
+            This uses the same convention as the BARRACUDA demo figure: $\log_{10}\mathrm{BF}(\mathcal{M}_{\mathrm{best}}/\mathcal{M})$. The best fitted model is at zero; larger bars indicate greater evidence in favour of the best fitted model over that candidate.
             """
         ),
         code(

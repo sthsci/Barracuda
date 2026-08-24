@@ -26,11 +26,11 @@ def layout() -> html.Div:
         3,
         html.Section(
             [
-                html.Span("How the hierarchy is read", className="orca-section-label"),
+                html.Span("How the hierarchy is read", className="barracuda-section-label"),
                 html.H2("Cells within donors, then donors within each condition"),
                 html.P(
                     "Inference is run independently for each experimental condition. Within a condition, donor parameters are estimated jointly around shared reference priors, while reported population parameters are cell-weighted moments of the donor mixture.",
-                    className="orca-section-lead",
+                    className="barracuda-section-lead",
                 ),
                 html.Div(
                     [
@@ -59,7 +59,7 @@ def layout() -> html.Div:
                             ]
                         ),
                     ],
-                    className="orca-bf-flow",
+                    className="barracuda-bf-flow",
                 ),
                 html.Details(
                     [
@@ -77,13 +77,13 @@ $$\bar\sigma_\lambda=\sqrt{V_{\mathrm{within}}+V_{\mathrm{between}}}.$$
 Inference runs for two experimental conditions are independent. A contrast therefore uses every possible particle pair when practical; for larger posteriors it uses a reproducible uniform sample of independent pairs. It does **not** subtract only the two posterior means.
 """,
                             mathjax=True,
-                            className="orca-model-equations",
+                            className="barracuda-model-equations",
                         ),
                     ],
-                    className="orca-details",
+                    className="barracuda-details",
                 ),
             ],
-            className="orca-workflow-panel orca-donor-method",
+            className="barracuda-workflow-panel barracuda-donor-method",
         ),
     )
     return html.Div(children)

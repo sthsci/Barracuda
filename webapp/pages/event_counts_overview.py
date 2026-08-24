@@ -16,13 +16,13 @@ TITLE = "Event count analysis"
 def _workflow_link(label: str, title: str, body: str, path: str) -> dcc.Link:
     return dcc.Link(
         [
-            html.Span(label, className="orca-section-label"),
+            html.Span(label, className="barracuda-section-label"),
             html.H3(title),
             html.P(body),
-            html.Span("Open analysis", className="orca-workflow-choice-action"),
+            html.Span("Open analysis", className="barracuda-workflow-choice-action"),
         ],
         href=path,
-        className="orca-workflow-choice",
+        className="barracuda-workflow-choice",
     )
 
 
@@ -46,10 +46,10 @@ def layout() -> html.Div:
                     html.H2("Choose an analysis"),
                     html.P(
                         "Choose whether donor labels are part of the model. Each analysis then guides you through the appropriate data and inference workflow.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                 ],
-                className="orca-section-intro",
+                className="barracuda-section-intro",
             ),
             html.Div(
                 [
@@ -66,15 +66,15 @@ def layout() -> html.Div:
                         "/event-counts/donor-aware",
                     ),
                 ],
-                className="orca-workflow-choice-grid two",
+                className="barracuda-workflow-choice-grid two",
             ),
             html.Section(
                 [
-                    html.Span("Models used in the paper", className="orca-section-label"),
+                    html.Span("Models used in the paper", className="barracuda-section-label"),
                     html.H2("Four population structures"),
                     html.P(
                         "Each model gives a different explanation for variation in the counts observed across cells.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     schematic_figure(
                         "/assets/event_count_models.png",
@@ -90,11 +90,11 @@ def layout() -> html.Div:
                                     html.P(MODEL_SPECS[key].description),
                                     html.Span(constraints[key]),
                                 ],
-                                className="orca-model-definition",
+                                className="barracuda-model-definition",
                             )
                             for key in ("hetero3", "z2p", "dis2p", "homo")
                         ],
-                        className="orca-model-definition-grid",
+                        className="barracuda-model-definition-grid",
                     ),
                     html.Details(
                         [
@@ -114,13 +114,13 @@ $$\lambda_i \sim \operatorname{Gamma}(\alpha,\beta),\qquad
 $\mu_\lambda$ is the mean event rate among engaging cells. $\sigma_\lambda$ measures continuous cell-to-cell heterogeneity in their event rates. $\phi_0$ is the fraction of nonengaging cells assigned $\lambda_i=0$ in the zero inflated models.
 """,
                                 mathjax=True,
-                                className="orca-model-equations",
+                                className="barracuda-model-equations",
                             ),
                         ],
-                        className="orca-details orca-model-equation-details",
+                        className="barracuda-details barracuda-model-equation-details",
                     ),
                 ],
-                className="orca-model-reference",
+                className="barracuda-model-reference",
             ),
         ]
     )

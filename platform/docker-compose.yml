@@ -1,0 +1,271 @@
+name: barracuda
+
+x-api-environment: &api-environment
+  BARRACUDA_API_DEBUG: ${BARRACUDA_API_DEBUG:-1}
+  BARRACUDA_API_SECRET_KEY: ${BARRACUDA_API_SECRET_KEY:?copy platform/.env.example to platform/.env}
+  BARRACUDA_API_ALLOWED_HOSTS: localhost,127.0.0.1,api
+  BARRACUDA_CAPABILITY_HMAC_KEY: ${BARRACUDA_CAPABILITY_HMAC_KEY:?set BARRACUDA_CAPABILITY_HMAC_KEY}
+  DATABASE_URL: postgresql://${POSTGRES_USER:-barracuda}:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-barracuda}
+  BARRACUDA_DB_CONN_MAX_AGE: "60"
+  BARRACUDA_CORS_ALLOWED_ORIGINS: http://127.0.0.1:8501,http://localhost:8501
+  BARRACUDA_CELERY_BROKER_URL: redis://:${REDIS_PASSWORD:?set REDIS_PASSWORD}@redis:6379/0
+  BARRACUDA_CELERY_RESULT_BACKEND: cache+memory://
+  BARRACUDA_TASK_ALWAYS_EAGER: "0"
+  BARRACUDA_TASK_TIME_LIMIT_SECONDS: ${BARRACUDA_TASK_TIME_LIMIT_SECONDS:-2700}
+  BARRACUDA_TASK_SOFT_TIME_LIMIT_SECONDS: ${BARRACUDA_TASK_SOFT_TIME_LIMIT_SECONDS:-2400}
+  BARRACUDA_ANALYSIS_ENGINE: ${BARRACUDA_ANALYSIS_ENGINE:-analyses.execution.MockAnalysisEngine}
+  BARRACUDA_GUEST_RETENTION_HOURS: ${BARRACUDA_GUEST_RETENTION_HOURS:-24}
+  BARRACUDA_DEFAULT_SHARE_LINK_HOURS: ${BARRACUDA_DEFAULT_SHARE_LINK_HOURS:-72}
+  BARRACUDA_MAX_SHARE_LINK_HOURS: ${BARRACUDA_MAX_SHARE_LINK_HOURS:-720}
+  BARRACUDA_MAX_DATASET_BYTES: ${BARRACUDA_MAX_DATASET_BYTES:-5242880}
+  BARRACUDA_MAX_DATASET_ROWS: "50000"
+  BARRACUDA_MAX_DATASET_COLUMNS: "100"
+  BARRACUDA_DATASET_STORAGE_BACKEND: storages.backends.s3.S3Storage
+  BARRACUDA_DATASET_STORAGE_OPTIONS: >-
+    {"bucket_name":"${MINIO_BUCKET:-barracuda-private}","endpoint_url":"http://minio:9000","access_key":"${MINIO_APP_USER:-barracuda-api}","secret_key":"${MINIO_APP_PASSWORD:?set MINIO_APP_PASSWORD}","region_name":"us-east-1","default_acl":null,"querystring_auth":true,"file_overwrite":false}
+  PYTHONDONTWRITEBYTECODE: "1"
+  PYTHONUNBUFFERED: "1"
+
+x-app-security: &app-security
+  init: true
+  restart: unless-stopped
+  read_only: true
+  cap_drop: [ALL]
+  security_opt:
+    - no-new-privileges:true
+
+services:
+  postgres:
+    image: ${POSTGRES_IMAGE:-postgres:16-alpine}
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-barracuda}
+      POSTGRES_USER: ${POSTGRES_USER:-barracuda}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [backend]
+    shm_size: 128mb
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+    restart: unless-stopped
+    command:
+      - redis-server
+      - --requirepass
+      - ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+      - --appendonly
+      - "no"
+      - --maxmemory
+      - 256mb
+      - --maxmemory-policy
+      - noeviction
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:?set REDIS_PASSWORD}
+    healthcheck:
+      test: ["CMD-SHELL", "redis-cli -a \"$${REDIS_PASSWORD}\" ping | grep PONG"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [backend]
+    tmpfs:
+      - /data:size=64m,mode=0700
+
+  minio:
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    restart: unless-stopped
+    command: server /data --console-address :9001
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-barracuda-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://127.0.0.1:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [backend]
+
+  minio-init:
+    image: ${MINIO_MC_IMAGE:-quay.io/minio/mc:RELEASE.2025-04-16T18-13-26Z}
+    restart: "no"
+    depends_on:
+      minio:
+        condition: service_healthy
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-barracuda-local}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?set MINIO_ROOT_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET:-barracuda-private}
+      MINIO_APP_USER: ${MINIO_APP_USER:-barracuda-api}
+      MINIO_APP_PASSWORD: ${MINIO_APP_PASSWORD:?set MINIO_APP_PASSWORD}
+    entrypoint:
+      - /bin/sh
+      - -ec
+      - |
+        mc alias set local http://minio:9000 "$${MINIO_ROOT_USER}" "$${MINIO_ROOT_PASSWORD}"
+        mc mb --ignore-existing "local/$${MINIO_BUCKET}"
+        mc anonymous set none "local/$${MINIO_BUCKET}"
+        cat > /tmp/barracuda-policy.json <<EOF
+        {"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:GetBucketLocation","s3:ListBucket"],"Resource":["arn:aws:s3:::$${MINIO_BUCKET}"]},{"Effect":"Allow","Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:AbortMultipartUpload"],"Resource":["arn:aws:s3:::$${MINIO_BUCKET}/*"]}]}
+        EOF
+        mc admin user add local "$${MINIO_APP_USER}" "$${MINIO_APP_PASSWORD}" || true
+        mc admin policy create local barracuda-private-rw /tmp/barracuda-policy.json || true
+        mc admin policy attach local barracuda-private-rw --user "$${MINIO_APP_USER}"
+    networks: [backend]
+    tmpfs:
+      - /tmp:size=8m,mode=0700
+
+  migrate:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    restart: "no"
+    entrypoint: []
+    environment: *api-environment
+    command: ["python", "manage.py", "migrate", "--noinput"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio-init:
+        condition: service_completed_successfully
+    networks: [backend]
+    tmpfs:
+      - /tmp:size=128m,mode=0700
+
+  api:
+    <<: *app-security
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    entrypoint: []
+    environment: *api-environment
+    command:
+      - gunicorn
+      - --bind=0.0.0.0:8000
+      - --workers=2
+      - --threads=2
+      - --timeout=120
+      - barracuda_api.wsgi:application
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health/', timeout=3)"
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    networks: [backend]
+    tmpfs:
+      - /tmp:size=256m,mode=0700
+    pids_limit: 256
+    mem_limit: 1g
+    cpus: 1.0
+
+  dash:
+    <<: *app-security
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    environment:
+      BARRACUDA_ACCOUNT_API_URL: http://api:8000/api/v1
+      BARRACUDA_PUBLIC_API_URL: ${BARRACUDA_PUBLIC_API_URL:-http://localhost:8000/api/v1}
+      BARRACUDA_PUBLIC_DASH_URL: ${BARRACUDA_PUBLIC_DASH_URL:-http://localhost:8501}
+      BARRACUDA_BACKGROUND_CACHE: /tmp/barracuda-dash-background
+      MPLCONFIGDIR: /tmp/matplotlib
+      XDG_CACHE_HOME: /tmp/cache
+      PYTHONDONTWRITEBYTECODE: "1"
+      PYTHONUNBUFFERED: "1"
+    ports:
+      - "127.0.0.1:8501:8501"
+    depends_on:
+      api:
+        condition: service_healthy
+    networks: [backend]
+    tmpfs:
+      - /tmp:size=1g,mode=0700
+    pids_limit: 512
+    mem_limit: 6g
+    cpus: 4.0
+
+  worker:
+    <<: *app-security
+    build:
+      context: ..
+      dockerfile: platform/worker/Dockerfile
+    entrypoint: []
+    environment:
+      <<: *api-environment
+      BARRACUDA_ANALYSIS_ENGINE: analyses.execution.BarracudaAnalysisEngine
+      BARRACUDA_RUNNER: worker.barracuda_runner.run_analysis
+      MPLCONFIGDIR: /work/cache/matplotlib
+      XDG_CACHE_HOME: /work/cache
+      OMP_NUM_THREADS: "1"
+      OPENBLAS_NUM_THREADS: "1"
+      MKL_NUM_THREADS: "1"
+    command:
+      - celery
+      - -A
+      - barracuda_api
+      - worker
+      - --loglevel=INFO
+      - --pool=solo
+      - --concurrency=1
+      - --queues=celery
+      - --without-gossip
+      - --without-mingle
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+    volumes:
+      - worker-scratch:/work
+    tmpfs:
+      - /tmp:size=512m,mode=0700
+    pids_limit: 512
+    mem_limit: 6g
+    cpus: 4.0
+    stop_grace_period: 20s
+
+  cleanup:
+    <<: *app-security
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    entrypoint: []
+    environment: *api-environment
+    command:
+      - /bin/sh
+      - -ec
+      - while true; do python manage.py purge_expired_guests; sleep 3600; done
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    networks: [backend]
+    tmpfs:
+      - /tmp:size=128m,mode=0700
+    pids_limit: 64
+    mem_limit: 256m
+    cpus: 0.25
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  minio-data:
+  worker-scratch:

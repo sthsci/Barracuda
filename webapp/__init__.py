@@ -1,1 +1,1 @@
-"""Dash interface for the Orca Bayesian event count framework."""
+"""Dash interface for the Barracuda Bayesian event count framework."""

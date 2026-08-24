@@ -289,7 +289,7 @@ def _coin_frequency_figure(
 def _recent_outcomes(outcomes: Sequence[int] | np.ndarray) -> list[html.Span]:
     recent = list(outcomes)[-24:]
     return [
-        html.Span("H" if outcome else "T", className=f"orca-outcome {'heads' if outcome else 'tails'}")
+        html.Span("H" if outcome else "T", className=f"barracuda-outcome {'heads' if outcome else 'tails'}")
         for outcome in recent
     ]
 
@@ -590,7 +590,7 @@ def _smc_figure() -> go.Figure:
 
 
 def _source_note(*children) -> html.P:
-    return html.P(children, className="orca-source-note")
+    return html.P(children, className="barracuda-source-note")
 
 
 def _contents() -> html.Nav:
@@ -603,13 +603,13 @@ def _contents() -> html.Nav:
     ]
     return html.Nav(
         [
-            html.Span("On this page", className="orca-section-label"),
+            html.Span("On this page", className="barracuda-section-label"),
             html.Ol(
                 [html.Li(html.A([html.Span(number), label], href=href)) for number, label, href in items],
-                className="orca-toc-list",
+                className="barracuda-toc-list",
             ),
         ],
-        className="orca-toc",
+        className="barracuda-toc",
         **{"aria-label": "Bayesian inference lesson contents"},
     )
 
@@ -642,62 +642,62 @@ def layout() -> html.Div:
             _contents(),
             html.Section(
                 [
-                    html.Span("01 · Bayes theorem", className="orca-section-label"),
+                    html.Span("01 · Bayes theorem", className="barracuda-section-label"),
                     html.H2("The update at the heart of Bayesian inference"),
                     html.P(
                         "Conditional probability describes how the probability of one event changes after another event is known. "
                         "Write the same joint event in two ways, then rearrange.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     html.Div(
                         [
                             html.Div(
                                 [
-                                    html.Span("1", className="orca-derivation-number"),
+                                    html.Span("1", className="barracuda-derivation-number"),
                                     html.H3("Condition on B"),
-                                    markdown(r"$$P(A\mid B)=\frac{P(A\cap B)}{P(B)}$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$P(A\mid B)=\frac{P(A\cap B)}{P(B)}$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
-                                className="orca-derivation-card",
+                                className="barracuda-derivation-card",
                             ),
                             html.Div(
                                 [
-                                    html.Span("2", className="orca-derivation-number"),
+                                    html.Span("2", className="barracuda-derivation-number"),
                                     html.H3("Reverse the condition"),
-                                    markdown(r"$$P(B\mid A)=\frac{P(A\cap B)}{P(A)}$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$P(B\mid A)=\frac{P(A\cap B)}{P(A)}$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
-                                className="orca-derivation-card",
+                                className="barracuda-derivation-card",
                             ),
                             html.Div(
                                 [
-                                    html.Span("3", className="orca-derivation-number"),
+                                    html.Span("3", className="barracuda-derivation-number"),
                                     html.H3("Use the joint probability"),
-                                    markdown(r"$$P(A\cap B)=P(B\mid A)P(A)$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$P(A\cap B)=P(B\mid A)P(A)$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
-                                className="orca-derivation-card",
+                                className="barracuda-derivation-card",
                             ),
                         ],
-                        className="orca-derivation-grid",
+                        className="barracuda-derivation-grid",
                     ),
                     html.Div(
                         [
-                            html.Span("Bayes’ theorem", className="orca-equation-label"),
+                            html.Span("Bayes’ theorem", className="barracuda-equation-label"),
                             markdown(
                                 r"$$P(A\mid B)=\frac{P(B\mid A)P(A)}{P(B)},\qquad P(B)>0$$",
-                                class_name="orca-equation orca-equation-feature",
+                                class_name="barracuda-equation barracuda-equation-feature",
                                 mathjax=True,
                             ),
-                            html.P("Updated probability = compatibility with the observation × initial probability ÷ probability of the observation.", className="orca-equation-caption"),
+                            html.P("Updated probability = compatibility with the observation × initial probability ÷ probability of the observation.", className="barracuda-equation-caption"),
                         ],
-                        className="orca-theorem-panel",
+                        className="barracuda-theorem-panel",
                     ),
                     html.H3("From events to model parameters"),
                     html.P(
                         "For data y, parameter θ and model M, the same rule becomes the Bayesian update used in statistics.",
-                        className="orca-copy",
+                        className="barracuda-copy",
                     ),
                     markdown(
                         r"$$p(\theta\mid y,M)=\frac{p(y\mid\theta,M)p(\theta\mid M)}{p(y\mid M)}$$",
-                        class_name="orca-equation",
+                        class_name="barracuda-equation",
                         mathjax=True,
                     ),
                     html.Div(
@@ -707,7 +707,7 @@ def layout() -> html.Div:
                             step_card("03", "Posterior", "The updated uncertainty after the prior and likelihood are combined."),
                             step_card("04", "Evidence", "The average likelihood under the prior. It normalises the posterior."),
                         ],
-                        className="orca-card-grid four orca-bayes-terms",
+                        className="barracuda-card-grid four barracuda-bayes-terms",
                     ),
                     _source_note(
                         "Sources: Miller and Miller, ",
@@ -718,23 +718,23 @@ def layout() -> html.Div:
                     ),
                 ],
                 id="bayes-theorem",
-                className="orca-lesson-section",
+                className="barracuda-lesson-section",
             ),
             html.Section(
                 [
-                    html.Span("02 · Coin experiment", className="orca-section-label"),
+                    html.Span("02 · Coin experiment", className="barracuda-section-label"),
                     html.H2("Learn the unknown bias of a coin"),
                     html.P(
                         "Suppose each toss is independent and has an unknown chance θ of heads. With a uniform Beta(1, 1) prior, h heads and t tails produce an exact Beta posterior.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     html.Div(
                         [
-                            markdown(r"$$h\mid\theta,n\sim\operatorname{Binomial}(n,\theta)$$", class_name="orca-equation small", mathjax=True),
-                            markdown(r"$$\theta\sim\operatorname{Beta}(1,1)$$", class_name="orca-equation small", mathjax=True),
-                            markdown(r"$$\theta\mid h,t\sim\operatorname{Beta}(1+h,1+t)$$", class_name="orca-equation small", mathjax=True),
+                            markdown(r"$$h\mid\theta,n\sim\operatorname{Binomial}(n,\theta)$$", class_name="barracuda-equation small", mathjax=True),
+                            markdown(r"$$\theta\sim\operatorname{Beta}(1,1)$$", class_name="barracuda-equation small", mathjax=True),
+                            markdown(r"$$\theta\mid h,t\sim\operatorname{Beta}(1+h,1+t)$$", class_name="barracuda-equation small", mathjax=True),
                         ],
-                        className="orca-equation-triptych",
+                        className="barracuda-equation-triptych",
                     ),
                     html.Div(
                         [
@@ -742,7 +742,7 @@ def layout() -> html.Div:
                                 [
                                     html.Label(
                                         [
-                                            html.Span("True probability of heads", className="orca-field-label"),
+                                            html.Span("True probability of heads", className="barracuda-field-label"),
                                             dcc.Slider(
                                                 id="coin-probability",
                                                 min=0,
@@ -753,12 +753,12 @@ def layout() -> html.Div:
                                                 tooltip={"placement": "bottom"},
                                             ),
                                         ],
-                                        className="orca-field",
+                                        className="barracuda-field",
                                     ),
-                                    html.Div(id="coin-ground-truth", children="Ground truth: P(head) = 0.50 · P(tail) = 0.50", className="orca-help"),
+                                    html.Div(id="coin-ground-truth", children="Ground truth: P(head) = 0.50 · P(tail) = 0.50", className="barracuda-help"),
                                     html.Label(
                                         [
-                                            html.Span("Number of tosses", className="orca-field-label"),
+                                            html.Span("Number of tosses", className="barracuda-field-label"),
                                             dcc.Slider(
                                                 id="coin-tosses",
                                                 min=1,
@@ -769,11 +769,11 @@ def layout() -> html.Div:
                                                 tooltip={"placement": "bottom"},
                                             ),
                                         ],
-                                        className="orca-field",
+                                        className="barracuda-field",
                                     ),
                                     html.Label(
                                         [
-                                            html.Span("Highest density interval", className="orca-field-label"),
+                                            html.Span("Highest density interval", className="barracuda-field-label"),
                                             dcc.Slider(
                                                 id="coin-hdi-percent",
                                                 min=50,
@@ -784,38 +784,38 @@ def layout() -> html.Div:
                                                 tooltip={"placement": "bottom"},
                                             ),
                                         ],
-                                        className="orca-field",
+                                        className="barracuda-field",
                                     ),
-                                    html.P("Choose how much posterior probability the HDI should contain.", className="orca-help"),
-                                    html.Div([html.Strong("Fixed prior"), html.Br(), "P(head) ~ Beta(1, 1)"], className="orca-fixed-prior"),
-                                    html.Button("Toss the coin again", id="coin-toss-again", n_clicks=0, className="orca-button primary full"),
+                                    html.P("Choose how much posterior probability the HDI should contain.", className="barracuda-help"),
+                                    html.Div([html.Strong("Fixed prior"), html.Br(), "P(head) ~ Beta(1, 1)"], className="barracuda-fixed-prior"),
+                                    html.Button("Toss the coin again", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
                                 ],
-                                className="orca-control-panel",
+                                className="barracuda-control-panel",
                             ),
                             html.Div(
                                 [
                                     html.Div(
                                         [
-                                            html.Span("✋", className="orca-toss-hand", **{"aria-hidden": "true"}),
-                                            html.Span("H" if initial_face == "Heads" else "T", id="coin-visual-face", className="orca-toss-coin", **{"aria-hidden": "true"}),
+                                            html.Span("✋", className="barracuda-toss-hand", **{"aria-hidden": "true"}),
+                                            html.Span("H" if initial_face == "Heads" else "T", id="coin-visual-face", className="barracuda-toss-coin", **{"aria-hidden": "true"}),
                                         ],
                                         id="coin-toss-scene",
-                                        className="orca-coin-stage",
+                                        className="barracuda-coin-stage",
                                         **{"aria-label": "Animated hand tossing a coin"},
                                     ),
-                                    html.Div([html.Span("Latest toss", className="orca-mini-label"), html.Strong(initial_face, id="coin-face")], className="orca-coin-result"),
+                                    html.Div([html.Span("Latest toss", className="barracuda-mini-label"), html.Strong(initial_face, id="coin-face")], className="barracuda-coin-result"),
                                     html.Div(
                                         [
-                                            html.Span("Most recent outcomes", className="orca-mini-label"),
-                                            html.Div(_recent_outcomes(initial_outcomes), id="coin-outcomes", className="orca-outcome-strip"),
+                                            html.Span("Most recent outcomes", className="barracuda-mini-label"),
+                                            html.Div(_recent_outcomes(initial_outcomes), id="coin-outcomes", className="barracuda-outcome-strip"),
                                         ],
-                                        className="orca-recent-outcomes",
+                                        className="barracuda-recent-outcomes",
                                     ),
                                 ],
-                                className="orca-coin-demo",
+                                className="barracuda-coin-demo",
                             ),
                         ],
-                        className="orca-coin-lab-grid",
+                        className="barracuda-coin-lab-grid",
                     ),
                     html.Div(id="coin-metrics", children=metrics(initial_metrics)),
                     html.Div(
@@ -823,19 +823,19 @@ def layout() -> html.Div:
                             html.Div(
                                 [
                                     html.H3("Prior and posterior for the chance of heads"),
-                                    dcc.Graph(id="coin-figure", figure=initial_figure, config={"displaylogo": False, "responsive": True}, className="orca-coin-plot"),
+                                    dcc.Graph(id="coin-figure", figure=initial_figure, config={"displaylogo": False, "responsive": True}, className="barracuda-coin-plot"),
                                 ],
-                                className="orca-coin-chart",
+                                className="barracuda-coin-chart",
                             ),
                             html.Div(
                                 [
                                     html.H3("Cumulative empirical frequencies"),
-                                    dcc.Graph(id="coin-frequency-figure", figure=initial_frequency, config={"displaylogo": False, "responsive": True}, className="orca-coin-plot"),
+                                    dcc.Graph(id="coin-frequency-figure", figure=initial_frequency, config={"displaylogo": False, "responsive": True}, className="barracuda-coin-plot"),
                                 ],
-                                className="orca-coin-chart",
+                                className="barracuda-coin-chart",
                             ),
                         ],
-                        className="orca-coin-plot-grid",
+                        className="barracuda-coin-plot-grid",
                     ),
                     note(
                         "How to read the HDI",
@@ -848,7 +848,7 @@ def layout() -> html.Div:
                             _external_link("Seeing Theory’s Bayesian inference lesson", SEEING_THEORY_URL),
                             ".",
                         ],
-                        className="orca-copy",
+                        className="barracuda-copy",
                     ),
                     _source_note(
                         "Sources: Miller and Miller, Ch. 5 §4 and Ch. 10 §9; Gelman et al., ",
@@ -857,97 +857,97 @@ def layout() -> html.Div:
                     ),
                 ],
                 id="coin-experiment",
-                className="orca-lesson-section orca-interactive-section orca-bayes-lab",
+                className="barracuda-lesson-section barracuda-interactive-section barracuda-bayes-lab",
             ),
             html.Section(
                 [
-                    html.Span("03 · Computation", className="orca-section-label"),
+                    html.Span("03 · Computation", className="barracuda-section-label"),
                     html.H2("The model defines the posterior; computation finds it"),
                     html.P(
                         "The coin example has a closed form posterior because its prior and likelihood are conjugate. Bayes’ theorem still defines a posterior when no familiar formula is available, but we then need a numerical way to explore it.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     html.Div(
                         [
                             html.Div(
                                 [
-                                    html.Span("Observed data", className="orca-mini-label"),
+                                    html.Span("Observed data", className="barracuda-mini-label"),
                                     html.Strong("y = 4.8, 4.9, 5.0, 5.1, 5.3"),
                                 ],
-                                className="orca-example-data",
+                                className="barracuda-example-data",
                             ),
                             html.Div(
                                 [
                                     html.P("Assume five measurements come from a Normal population with an unknown mean μ and unknown standard deviation σ."),
-                                    markdown(r"$$y_i\mid\mu,\sigma\sim\operatorname{Normal}(\mu,\sigma^2),\qquad \sigma>0$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$y_i\mid\mu,\sigma\sim\operatorname{Normal}(\mu,\sigma^2),\qquad \sigma>0$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
-                                className="orca-example-model",
+                                className="barracuda-example-model",
                             ),
                         ],
-                        className="orca-two-parameter-example",
+                        className="barracuda-two-parameter-example",
                     ),
                     html.Div(
                         [
                             html.Div([html.Strong("μ · mean"), html.P("Moves the centre of the population left or right.")]),
                             html.Div([html.Strong("σ · standard deviation"), html.P("Controls how tightly the measurements cluster around μ.")]),
                         ],
-                        className="orca-parameter-grid",
+                        className="barracuda-parameter-grid",
                     ),
                     html.H3("Four views of the same parameter space"),
                     html.P(
                         "Every point in the maps below is one candidate pair (μ, σ). The axes stay fixed so you can see exactly what the data, the prior and Bayes’ theorem each contribute.",
-                        className="orca-copy",
+                        className="barracuda-copy",
                     ),
                     html.Div(
                         [
                             html.Article(
                                 [
-                                    html.Span("1", className="orca-surface-step"),
+                                    html.Span("1", className="barracuda-surface-step"),
                                     html.H3("Likelihood: score each pair using the data"),
                                     html.P("Hold the observations fixed. For each candidate (μ, σ), ask how compatible those observations would be with that pair."),
-                                    markdown(r"$$L(\mu,\sigma;y)=\prod_i p(y_i\mid\mu,\sigma)$$", class_name="orca-equation small", mathjax=True),
-                                    dcc.Graph(id="likelihood-surface", figure=_parameter_surface_figure("likelihood", "Likelihood"), config={"displaylogo": False, "responsive": True}, className="orca-surface-plot", style={"height": "300px"}),
-                                    html.P("The likelihood uses the sampling model and these data. It does not use the prior.", className="orca-help"),
+                                    markdown(r"$$L(\mu,\sigma;y)=\prod_i p(y_i\mid\mu,\sigma)$$", class_name="barracuda-equation small", mathjax=True),
+                                    dcc.Graph(id="likelihood-surface", figure=_parameter_surface_figure("likelihood", "Likelihood"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
+                                    html.P("The likelihood uses the sampling model and these data. It does not use the prior.", className="barracuda-help"),
                                 ],
-                                className="orca-surface-card",
+                                className="barracuda-surface-card",
                             ),
                             html.Article(
                                 [
-                                    html.Span("2", className="orca-surface-step"),
+                                    html.Span("2", className="barracuda-surface-step"),
                                     html.H3("Prior: describe uncertainty before these data"),
                                     html.P("The prior is a probability density over parameter pairs before the five measurements are used."),
-                                    markdown(r"$$\mu\sim\operatorname{Normal}(5.45,0.15^2),\qquad \sigma\sim\operatorname{HalfNormal}(0.45)$$", class_name="orca-equation small", mathjax=True),
-                                    dcc.Graph(id="prior-surface", figure=_parameter_surface_figure("prior", "Prior density"), config={"displaylogo": False, "responsive": True}, className="orca-surface-plot", style={"height": "300px"}),
-                                    html.P("The prior can favour some pairs even before the likelihood is applied.", className="orca-help"),
+                                    markdown(r"$$\mu\sim\operatorname{Normal}(5.45,0.15^2),\qquad \sigma\sim\operatorname{HalfNormal}(0.45)$$", class_name="barracuda-equation small", mathjax=True),
+                                    dcc.Graph(id="prior-surface", figure=_parameter_surface_figure("prior", "Prior density"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
+                                    html.P("The prior can favour some pairs even before the likelihood is applied.", className="barracuda-help"),
                                 ],
-                                className="orca-surface-card",
+                                className="barracuda-surface-card",
                             ),
                             html.Article(
                                 [
-                                    html.Span("3", className="orca-surface-step"),
+                                    html.Span("3", className="barracuda-surface-step"),
                                     html.H3("Multiply: obtain the posterior shape"),
                                     html.P("Multiply the likelihood and prior at every pair. A pair remains prominent only when both sources support it."),
-                                    markdown(r"$$q(\mu,\sigma)=L(\mu,\sigma;y)\,p(\mu,\sigma)$$", class_name="orca-equation small", mathjax=True),
-                                    dcc.Graph(id="unnormalised-posterior-surface", figure=_parameter_surface_figure("unnormalised", "Unnormalised density q"), config={"displaylogo": False, "responsive": True}, className="orca-surface-plot", style={"height": "300px"}),
-                                    html.P("q has the correct posterior shape, but its total area is not generally one.", className="orca-help"),
+                                    markdown(r"$$q(\mu,\sigma)=L(\mu,\sigma;y)\,p(\mu,\sigma)$$", class_name="barracuda-equation small", mathjax=True),
+                                    dcc.Graph(id="unnormalised-posterior-surface", figure=_parameter_surface_figure("unnormalised", "Unnormalised density q"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
+                                    html.P("q has the correct posterior shape, but its total area is not generally one.", className="barracuda-help"),
                                 ],
-                                className="orca-surface-card",
+                                className="barracuda-surface-card",
                             ),
                             html.Article(
                                 [
-                                    html.Span("4", className="orca-surface-step"),
+                                    html.Span("4", className="barracuda-surface-step"),
                                     html.H3("Normalise: obtain the posterior distribution"),
                                     html.P("Integrate q to obtain the evidence Z, then divide by Z so the posterior density has total area one."),
-                                    markdown(r"$$Z=\iint q(\mu,\sigma)\,d\mu\,d\sigma,\qquad p(\mu,\sigma\mid y)=\frac{q(\mu,\sigma)}{Z}$$", class_name="orca-equation small", mathjax=True),
-                                    dcc.Graph(id="posterior-surface", figure=_parameter_surface_figure("posterior", "Posterior density"), config={"displaylogo": False, "responsive": True}, className="orca-surface-plot", style={"height": "300px"}),
-                                    html.P(f"On this finite grid, Z ≈ {evidence:.3g}. Normalisation changes the density scale, not the contour shape.", className="orca-help"),
+                                    markdown(r"$$Z=\iint q(\mu,\sigma)\,d\mu\,d\sigma,\qquad p(\mu,\sigma\mid y)=\frac{q(\mu,\sigma)}{Z}$$", class_name="barracuda-equation small", mathjax=True),
+                                    dcc.Graph(id="posterior-surface", figure=_parameter_surface_figure("posterior", "Posterior density"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
+                                    html.P(f"On this finite grid, Z ≈ {evidence:.3g}. Normalisation changes the density scale, not the contour shape.", className="barracuda-help"),
                                 ],
-                                className="orca-surface-card",
+                                className="barracuda-surface-card",
                             ),
                         ],
-                        className="orca-surface-grid",
+                        className="barracuda-surface-grid",
                     ),
-                    html.P("Darker regions have higher relative values within each panel. Hover over a map to inspect its numerical value.", className="orca-surface-legend"),
+                    html.P("Darker regions have higher relative values within each panel. Hover over a map to inspect its numerical value.", className="barracuda-surface-legend"),
                     note(
                         "Likelihood is not posterior probability",
                         "Once the observations are fixed, the likelihood ranks candidate parameter pairs. It does not have to integrate to one over μ and σ. The prior and posterior are probability densities over those parameters; the posterior combines both the likelihood and the prior.",
@@ -956,14 +956,14 @@ def layout() -> html.Div:
                     html.H3("Why a numerical method becomes necessary"),
                     html.P(
                         "With two parameters, a grid can approximate the normalising integral. A grid becomes impossible surprisingly quickly: checking K values for each of d parameters requires Kᵈ evaluations. Hierarchical models may also contain latent variables and parameter dependencies that prevent a closed form calculation.",
-                        className="orca-copy",
+                        className="barracuda-copy",
                     ),
                     html.Div(
                         [
                             html.Div([html.Strong("2 parameters"), html.Span("100² = 10,000 grid points")]),
                             html.Div([html.Strong("10 parameters"), html.Span("100¹⁰ = 10²⁰ grid points")]),
                         ],
-                        className="orca-dimension-contrast",
+                        className="barracuda-dimension-contrast",
                     ),
                     note(
                         "The posterior stays fixed",
@@ -974,7 +974,7 @@ def layout() -> html.Div:
                         [
                             html.Article(
                                 [
-                                    html.Span("MCMC", className="orca-sampler-tag"),
+                                    html.Span("MCMC", className="barracuda-sampler-tag"),
                                     html.H3("Explore one parameter pair at a time"),
                                     html.P(
                                         "MCMC moves a chain across the fixed posterior surface. Each computational update changes the chain’s current pair, not the posterior itself.",
@@ -986,30 +986,30 @@ def layout() -> html.Div:
                                             html.Li("Multiply by its prior density and compare the two q scores."),
                                             html.Li("Accept or reject, then repeat. Retained pairs form a posterior sample."),
                                         ],
-                                        className="orca-sampler-steps",
+                                        className="barracuda-sampler-steps",
                                     ),
-                                    markdown(r"$$a=\min\left(1,\frac{q(\mu',\sigma')}{q(\mu,\sigma)}\right)$$", class_name="orca-equation small", mathjax=True),
-                                    dcc.Graph(id="mcmc-animation", figure=_mcmc_figure(), config={"displaylogo": False, "responsive": True}, className="orca-sampler-plot", style={"height": "430px"}),
-                                    html.P("The unknown Z cancels in this ratio, so MCMC only needs the unnormalised posterior q.", className="orca-help"),
+                                    markdown(r"$$a=\min\left(1,\frac{q(\mu',\sigma')}{q(\mu,\sigma)}\right)$$", class_name="barracuda-equation small", mathjax=True),
+                                    dcc.Graph(id="mcmc-animation", figure=_mcmc_figure(), config={"displaylogo": False, "responsive": True}, className="barracuda-sampler-plot", style={"height": "430px"}),
+                                    html.P("The unknown Z cancels in this ratio, so MCMC only needs the unnormalised posterior q.", className="barracuda-help"),
                                     html.P(
                                         [
                                             "Explore several algorithms in the ",
                                             _external_link("interactive MCMC gallery", MCMC_GALLERY_URL),
                                             ".",
                                         ],
-                                        className="orca-help",
+                                        className="barracuda-help",
                                     ),
                                 ],
-                                className="orca-sampler-card",
+                                className="barracuda-sampler-card",
                             ),
                             html.Article(
                                 [
-                                    html.Span("SMC", className="orca-sampler-tag"),
+                                    html.Span("SMC", className="barracuda-sampler-tag"),
                                     html.H3("Turn on the likelihood for many pairs"),
                                     html.P(
                                         "SMC begins with a population drawn from the prior. It gradually increases the influence of the same likelihood until the particles represent the posterior.",
                                     ),
-                                    markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="barracuda-equation small", mathjax=True),
                                     html.Ol(
                                         [
                                             html.Li("At β = 0, particles represent the prior."),
@@ -1017,19 +1017,19 @@ def layout() -> html.Div:
                                             html.Li("Resample well weighted particles and move them to restore diversity."),
                                             html.Li("At β = 1, the population represents the posterior."),
                                         ],
-                                        className="orca-sampler-steps",
+                                        className="barracuda-sampler-steps",
                                     ),
-                                    dcc.Graph(id="smc-animation", figure=_smc_figure(), config={"displaylogo": False, "responsive": True}, className="orca-sampler-plot", style={"height": "430px"}),
-                                    html.P("The temperature stages are computational bridges, not additional observations.", className="orca-help"),
+                                    dcc.Graph(id="smc-animation", figure=_smc_figure(), config={"displaylogo": False, "responsive": True}, className="barracuda-sampler-plot", style={"height": "430px"}),
+                                    html.P("The temperature stages are computational bridges, not additional observations.", className="barracuda-help"),
                                     html.P(
                                         ["Read the implementation details in the ", _external_link("official PyMC SMC documentation", PYMC_SMC_URL), "."],
-                                        className="orca-help",
+                                        className="barracuda-help",
                                     ),
                                 ],
-                                className="orca-sampler-card",
+                                className="barracuda-sampler-card",
                             ),
                         ],
-                        className="orca-sampler-grid",
+                        className="barracuda-sampler-grid",
                     ),
                     note(
                         "What more computation can and cannot do",
@@ -1045,43 +1045,43 @@ def layout() -> html.Div:
                     ),
                 ],
                 id="computation",
-                className="orca-lesson-section",
+                className="barracuda-lesson-section",
             ),
             html.Section(
                 [
-                    html.Span("04 · Model comparison", className="orca-section-label"),
+                    html.Span("04 · Model comparison", className="barracuda-section-label"),
                     html.H2("Bayes factors from SMC"),
                     html.P(
                         "A marginal likelihood measures how well a model predicted the observed data on average over the parameter values allowed by its prior.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     html.Div(
                         [
                             html.Div(
                                 [
                                     html.H3("Evidence for one model"),
-                                    markdown(r"$$Z_M=p(y\mid M)=\int p(y\mid\theta,M)p(\theta\mid M)\,d\theta$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$Z_M=p(y\mid M)=\int p(y\mid\theta,M)p(\theta\mid M)\,d\theta$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
-                                className="orca-concept-panel",
+                                className="barracuda-concept-panel",
                             ),
                             html.Div(
                                 [
                                     html.H3("Compare two models"),
-                                    markdown(r"$$BF_{12}=\frac{Z_1}{Z_2},\qquad \log BF_{12}=\log Z_1-\log Z_2$$", class_name="orca-equation small", mathjax=True),
+                                    markdown(r"$$BF_{12}=\frac{Z_1}{Z_2},\qquad \log BF_{12}=\log Z_1-\log Z_2$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
-                                className="orca-concept-panel",
+                                className="barracuda-concept-panel",
                             ),
                         ],
-                        className="orca-card-grid two",
+                        className="barracuda-card-grid two",
                     ),
                     html.H3("How SMC estimates the evidence"),
                     html.P(
                         "Each change in temperature contributes an incremental likelihood weight. Adding those contributions on the log scale gives an estimate of the log marginal likelihood.",
-                        className="orca-copy",
+                        className="barracuda-copy",
                     ),
                     markdown(
                         r"$$\log \widehat Z_M=\sum_t\log\left[\frac{1}{N}\sum_{i=1}^{N}p(y\mid\theta_i,M)^{\,\beta_t-\beta_{t-1}}\right]$$",
-                        class_name="orca-equation",
+                        class_name="barracuda-equation",
                         mathjax=True,
                     ),
                     html.Div(
@@ -1091,7 +1091,7 @@ def layout() -> html.Div:
                             html.Div([html.Span("3"), html.Strong("Accumulate"), html.P("Add the normalising contributions to log Z.")]),
                             html.Div([html.Span("4"), html.Strong("Compare"), html.P("Subtract log evidences to obtain the log Bayes factor.")]),
                         ],
-                        className="orca-bf-flow",
+                        className="barracuda-bf-flow",
                     ),
                     html.Div(
                         [
@@ -1108,10 +1108,10 @@ def layout() -> html.Div:
                                         ]
                                     ),
                                 ],
-                                className="orca-simple-table",
+                                className="barracuda-simple-table",
                             )
                         ],
-                        className="orca-simple-table-wrap",
+                        className="barracuda-simple-table-wrap",
                     ),
                     note(
                         "Interpret with the priors in view",
@@ -1124,7 +1124,7 @@ def layout() -> html.Div:
                             _external_link("Bayes factor and marginal likelihood example", PYMC_BF_URL),
                             " for a worked calculation and practical cautions.",
                         ],
-                        className="orca-copy",
+                        className="barracuda-copy",
                     ),
                     _source_note(
                         "Sources: Gelman et al., ",
@@ -1137,11 +1137,11 @@ def layout() -> html.Div:
                     ),
                 ],
                 id="bayes-factors",
-                className="orca-lesson-section",
+                className="barracuda-lesson-section",
             ),
             html.Section(
                 [
-                    html.Span("05 · Historical context", className="orca-section-label"),
+                    html.Span("05 · Historical context", className="barracuda-section-label"),
                     html.H2("Thomas Bayes and the theorem that bears his name"),
                     html.Div(
                         [
@@ -1159,29 +1159,29 @@ def layout() -> html.Div:
                                         ]
                                     ),
                                 ],
-                                className="orca-bayes-portrait",
+                                className="barracuda-bayes-portrait",
                             ),
                             html.Div(
                                 [
                                     html.P(
                                         "Thomas Bayes (c. 1701–1761) was an English nonconformist minister and a Fellow of the Royal Society. His work on inverse probability was unfinished when he died. Richard Price edited and presented it, and the paper appeared in 1763.",
-                                        className="orca-bayes-biography",
+                                        className="barracuda-bayes-biography",
                                     ),
                                     html.P(
                                         "The familiar theorem is now written in a compact form that Bayes himself did not use. Its lasting idea is to reverse a probability statement by combining the observed evidence with what was plausible beforehand.",
-                                        className="orca-copy",
+                                        className="barracuda-copy",
                                     ),
                                     html.Div(
                                         [
-                                            _external_link("Read the Thomas Bayes biography", THOMAS_BAYES_URL, class_name="orca-button secondary"),
-                                            _external_link("Read the 1763 paper", THOMAS_BAYES_PAPER_URL, class_name="orca-button secondary"),
+                                            _external_link("Read the Thomas Bayes biography", THOMAS_BAYES_URL, class_name="barracuda-button secondary"),
+                                            _external_link("Read the 1763 paper", THOMAS_BAYES_PAPER_URL, class_name="barracuda-button secondary"),
                                         ],
-                                        className="orca-bayes-actions",
+                                        className="barracuda-bayes-actions",
                                     ),
                                 ]
                             ),
                         ],
-                        className="orca-bayes-history-grid",
+                        className="barracuda-bayes-history-grid",
                     ),
                     html.Div(
                         [
@@ -1195,11 +1195,11 @@ def layout() -> html.Div:
                                 ]
                             ),
                         ],
-                        className="orca-reference-box",
+                        className="barracuda-reference-box",
                     ),
                 ],
                 id="thomas-bayes",
-                className="orca-lesson-section",
+                className="barracuda-lesson-section",
             ),
         ]
     )
@@ -1235,7 +1235,7 @@ def register_callbacks(app) -> None:
         )
         frequency_figure = _coin_frequency_figure(probability, outcomes)
         face = "Heads" if outcomes[-1] else "Tails"
-        animation_class = f"orca-coin-stage is-tossing toss-{'a' if toss_round % 2 == 0 else 'b'}"
+        animation_class = f"barracuda-coin-stage is-tossing toss-{'a' if toss_round % 2 == 0 else 'b'}"
         ground_truth = f"Ground truth: P(head) = {probability:.2f} · P(tail) = {1 - probability:.2f}"
         return (
             figure,

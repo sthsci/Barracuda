@@ -768,9 +768,9 @@ def simulate_trajectory_frame(
         )
 
     try:
-        simulator = import_module("bayesorca._backends.trajectories.simulator")
+        simulator = import_module("barracuda._backends.trajectories.simulator")
     except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
+        if not exc.name or not exc.name.startswith("barracuda"):
             raise
         simulator = import_module("section_3.src.simulator")
     frames: list[pd.DataFrame] = []
@@ -857,9 +857,9 @@ def _condition_model_seed(
 
 def _load_trajectory_backend():
     try:
-        return import_module("bayesorca._backends.trajectories.inference")
+        return import_module("barracuda._backends.trajectories.inference")
     except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
+        if not exc.name or not exc.name.startswith("barracuda"):
             raise
         return import_module("section_3.src.inference")
 
@@ -867,10 +867,10 @@ def _load_trajectory_backend():
 def _run_with_native_smc_progress(callback, operation):
     try:
         progress = import_module(
-            "bayesorca._backends.event_counts.smc_progress"
+            "barracuda._backends.event_counts.smc_progress"
         )
     except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
+        if not exc.name or not exc.name.startswith("barracuda"):
             raise
         progress = import_module("section_1.src.smc_progress")
     return progress.run_with_smc_progress(callback, operation)
@@ -1233,7 +1233,7 @@ def _write_bytes(archive: ZipFile, name: str, content: bytes) -> None:
 def _idata_to_netcdf_bytes(idata: Any) -> bytes:
     import arviz as az
 
-    with TemporaryDirectory(prefix="orca-trajectory-") as directory:
+    with TemporaryDirectory(prefix="barracuda-trajectory-") as directory:
         path = Path(directory) / "posterior.nc"
         az.to_netcdf(idata, str(path))
         return path.read_bytes()
@@ -1334,7 +1334,7 @@ def build_trajectory_archive(
             archive,
             "README.txt",
             (
-                "Orca donor-ignorant contact trajectory analysis\n\n"
+                "Barracuda donor-ignorant contact trajectory analysis\n\n"
                 "normalized_trajectories.csv contains one ordered binary history per cell.\n"
                 "expanded_contacts.csv contains one row per contact.\n"
                 "model_evidence.csv reports SMC marginal likelihoods and Bayes factors.\n"

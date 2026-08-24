@@ -1,4 +1,4 @@
-"""Shared PyMC Sequential Monte Carlo progress components for Orca."""
+"""Shared PyMC Sequential Monte Carlo progress components for Barracuda."""
 
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ def pymc_progress(prefix: str) -> html.Div:
                         )
                     },
                 ),
-                className="orca-pymc-progress-overall",
+                className="barracuda-pymc-progress-overall",
             ),
             html.Div(
                 [
@@ -64,19 +64,19 @@ def pymc_progress(prefix: str) -> html.Div:
                         id=f"{component_prefix}-pymc-progress-meta",
                     ),
                 ],
-                className="orca-pymc-progress-summary",
+                className="barracuda-pymc-progress-summary",
                 role="status",
                 **{"aria-live": "polite", "aria-atomic": "true"},
             ),
             html.Div(
                 id=f"{component_prefix}-chain-progress",
-                className="orca-pymc-chain-list",
+                className="barracuda-pymc-chain-list",
                 role="list",
                 **{"aria-label": "PyMC SMC progress by chain"},
             ),
         ],
         id=f"{component_prefix}-pymc-progress",
-        className="orca-pymc-progress is-hidden",
+        className="barracuda-pymc-progress is-hidden",
         role="region",
         **{"aria-label": "Live PyMC Sequential Monte Carlo inference progress"},
     )
@@ -102,7 +102,7 @@ def chain_progress_rows(
                 [
                     html.Span(
                         f"Chain {display_index}",
-                        className="orca-pymc-chain-name",
+                        className="barracuda-pymc-chain-name",
                     ),
                     html.Progress(
                         max=1,
@@ -115,10 +115,10 @@ def chain_progress_rows(
                     ),
                     html.Span(
                         f"Stage {stage} · β = {beta:.3f}",
-                        className="orca-pymc-chain-state",
+                        className="barracuda-pymc-chain-state",
                     ),
                 ],
-                className="orca-pymc-chain-row",
+                className="barracuda-pymc-chain-row",
                 role="listitem",
             )
         )

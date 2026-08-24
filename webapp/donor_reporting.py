@@ -105,6 +105,17 @@ PARAMETER_LABELS = {
     ),
 }
 
+# Compact mathematical labels are used inside dense joint matrices. The full
+# biological definitions remain in headings, captions, and hover text.
+JOINT_AXIS_LABELS = {
+    "mu_lambda_population": "μλ,pop",
+    "sigma_lambda_population": "σλ,pop",
+    "phi_0_population": "φ₀,pop",
+    "mu_lambda_donor": "μλ,d",
+    "sigma_lambda_donor": "σλ,d",
+    "phi_0_donor": "φ₀,d",
+}
+
 CONDITION_COLOURS = {
     "No treatment": CONDITION_CONTROL,
     "Control": CONDITION_CONTROL,
@@ -1283,7 +1294,7 @@ def joint_posterior_figure(
 
             if row_index == size:
                 figure.update_xaxes(
-                    title=PARAMETER_LABELS.get(column_parameter, column_parameter),
+                    title=JOINT_AXIS_LABELS.get(column_parameter, column_parameter),
                     row=row_index,
                     col=column_index,
                 )
@@ -1291,7 +1302,7 @@ def joint_posterior_figure(
                 ylabel = (
                     "Posterior density"
                     if row_index == column_index
-                    else PARAMETER_LABELS.get(row_parameter, row_parameter)
+                    else JOINT_AXIS_LABELS.get(row_parameter, row_parameter)
                 )
                 figure.update_yaxes(title=ylabel, row=row_index, col=column_index)
 
@@ -1771,13 +1782,13 @@ def _donor_model_panel(
                 "between-donor components for every posterior draw. Bars show "
                 "posterior means; zero-inflated models use the inferred active-cell "
                 "weights.",
-                className="orca-help",
+                className="barracuda-help",
             ),
             _graph_component(
                 dcc,
                 variance_figure,
-                f"orca_{model_key}_variance_decomposition",
-                "orca-variance-decomposition-plot",
+                f"barracuda_{model_key}_variance_decomposition",
+                "barracuda-variance-decomposition-plot",
             ),
         ]
 
@@ -1792,16 +1803,16 @@ def _donor_model_panel(
             *variance_content,
             html.H4("Population posterior by condition"),
             html.P(
-                "Each curve is the population mixture moment from one independently "
-                "condition inferred independently. These are not the shared reference parameters of "
+                "Each curve is a population mixture moment from one condition, with "
+                "inference run independently for every condition. These are not the shared reference parameters of "
                 "the donor hierarchy.",
-                className="orca-help",
+                className="barracuda-help",
             ),
             _graph_component(
                 dcc,
                 population_figure,
-                f"orca_{model_key}_population_conditions",
-                "orca-joint-posterior-plot",
+                f"barracuda_{model_key}_population_conditions",
+                "barracuda-joint-posterior-plot",
             ),
             html.Div(
                 [
@@ -1811,7 +1822,7 @@ def _donor_model_panel(
                             html.P(
                                 "Mean, heterogeneity and fraction of nonengaging cells "
                                 "remain paired by SMC chain and draw within this inference run.",
-                                className="orca-help",
+                                className="barracuda-help",
                             ),
                             dcc.Dropdown(
                                 id={
@@ -1833,9 +1844,11 @@ def _donor_model_panel(
                                 figure=within_condition_figure,
                                 config={"displaylogo": False, "responsive": True},
                                 responsive=True,
-                                className="orca-joint-posterior-plot",
+                                className="barracuda-joint-posterior-plot",
+                                style={"height": f"{int(within_condition_figure.layout.height or 430)}px"},
                             ),
-                        ]
+                        ],
+                        className="barracuda-donor-posterior-panel",
                     ),
                     html.Div(
                         [
@@ -1844,7 +1857,7 @@ def _donor_model_panel(
                                 "Conditions are independent posterior distributions. "
                                 "The plot overlays them but never pairs their chain or "
                                 "draw indices.",
-                                className="orca-help",
+                                className="barracuda-help",
                             ),
                             dcc.Dropdown(
                                 id={
@@ -1866,12 +1879,14 @@ def _donor_model_panel(
                                 figure=across_condition_figure,
                                 config={"displaylogo": False, "responsive": True},
                                 responsive=True,
-                                className="orca-joint-posterior-plot",
+                                className="barracuda-joint-posterior-plot",
+                                style={"height": f"{int(across_condition_figure.layout.height or 430)}px"},
                             ),
-                        ]
+                        ],
+                        className="barracuda-donor-posterior-panel",
                     ),
                 ],
-                className="orca-form-grid two",
+                className="barracuda-donor-posterior-stack",
             ),
             dcc.Store(
                 id={
@@ -1882,7 +1897,7 @@ def _donor_model_panel(
             ),
         ],
         id={"type": f"{prefix}-model-panel", "index": model_key},
-        className="orca-model-result-panel",
+        className="barracuda-model-result-panel",
     )
 
 
@@ -1947,8 +1962,8 @@ def render_donor_condition_results(
     download = html.A(
         "Download all results and InferenceData files",
         href=f"data:application/zip;base64,{encoded_archive}",
-        download="orca_donor_aware_condition_analysis.zip",
-        className="orca-button primary download",
+        download="barracuda_donor_aware_condition_analysis.zip",
+        className="barracuda-button primary download",
     )
 
     content = html.Div(
@@ -1961,23 +1976,23 @@ def render_donor_condition_results(
             ),
             html.Section(
                 [
-                    html.Span("Model evidence", className="orca-section-label"),
+                    html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
                         "Every condition has its own best model. The horizontal axis "
                         "uses the unmodified log₁₀ BF(best model / candidate model) "
                         "scale, with exact boundaries at log₁₀(3), 1 and 2.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     _graph_component(
                         dcc,
                         condition_figure,
-                        "orca_donor_condition_bayes_factors",
-                        "orca-bayes-factor-plot",
+                        "barracuda_donor_condition_bayes_factors",
+                        "barracuda-bayes-factor-plot",
                     ),
                     csv_download_link(
                         evidence,
-                        "orca_donor_condition_model_evidence.csv",
+                        "barracuda_donor_condition_model_evidence.csv",
                         "Download condition Bayes factor CSV",
                     ),
                     html.H3("Evidence combined across conditions"),
@@ -1985,25 +2000,25 @@ def render_donor_condition_results(
                         "Because inference was run independently for each condition, their log "
                         "marginal likelihoods add. Aggregation is performed only after "
                         "checking that every model has one result for every condition.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     _graph_component(
                         dcc,
                         aggregate_figure,
-                        "orca_donor_aggregate_bayes_factors",
-                        "orca-bayes-factor-plot",
+                        "barracuda_donor_aggregate_bayes_factors",
+                        "barracuda-bayes-factor-plot",
                     ),
                     csv_download_link(
                         aggregate,
-                        "orca_donor_aggregate_model_evidence.csv",
+                        "barracuda_donor_aggregate_model_evidence.csv",
                         "Download aggregate Bayes factor CSV",
                     ),
                 ],
-                className="orca-result-section orca-figure-result",
+                className="barracuda-result-section barracuda-figure-result",
             ),
             html.Section(
                 [
-                    html.Span("Posterior results", className="orca-section-label"),
+                    html.Span("Posterior results", className="barracuda-section-label"),
                     html.H3("Choose inference results to visualise"),
                     dcc.Checklist(
                         id=f"{prefix}-model-view",
@@ -2013,23 +2028,23 @@ def render_donor_condition_results(
                         ],
                         value=fitted_models,
                         inline=True,
-                        className="orca-posterior-model-options",
-                        inputClassName="orca-check-input",
-                        labelClassName="orca-posterior-model-option",
+                        className="barracuda-posterior-model-options",
+                        inputClassName="barracuda-check-input",
+                        labelClassName="barracuda-posterior-model-option",
                     ),
                     html.P(
                         "Each model panel reports population mixture moments first, "
                         "then donor posteriors. Parameters absent from a model are not "
                         "shown.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
-                    html.Div(model_panels, className="orca-condition-model-panels"),
+                    html.Div(model_panels, className="barracuda-condition-model-panels"),
                 ],
-                className="orca-result-section",
+                className="barracuda-result-section",
             ),
             donor_contrast_section(results, prefix=prefix),
         ],
-        className="orca-results orca-condition-results orca-donor-results",
+        className="barracuda-results barracuda-condition-results barracuda-donor-results",
     )
     return content, download
 

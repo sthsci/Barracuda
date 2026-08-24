@@ -12,7 +12,7 @@ CACHE_ROOT = Path(os.environ.get("TMPDIR", "/tmp"))
 PYTENSOR_CACHE_ROOT = Path(
     os.environ.get(
         "PYTENSOR_BASE_COMPILEDIR",
-        str(CACHE_ROOT / "pytensor_orca_section3_bf"),
+        str(CACHE_ROOT / "pytensor_barracuda_section3_bf"),
     )
 )
 

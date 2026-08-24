@@ -1,1 +1,1 @@
-"""Event count inference backend packaged as bayesorca._backends.event_counts."""
+"""Event count inference backend packaged as barracuda._backends.event_counts."""

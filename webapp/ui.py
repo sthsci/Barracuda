@@ -1,4 +1,4 @@
-"""Reusable Dash components for the Orca interface."""
+"""Reusable Dash components for the Barracuda interface."""
 
 from __future__ import annotations
 
@@ -9,27 +9,27 @@ from dash import dcc, html
 
 def hero(kicker: str, title: str, lead: str, badge: str | None = None) -> html.Section:
     children: list = [
-        html.Div(kicker, className="orca-kicker"),
+        html.Div(kicker, className="barracuda-kicker"),
         html.H1(title),
         html.P(lead),
     ]
     if badge:
-        children.append(html.Span(badge, className="orca-badge"))
-    return html.Section(children, className="orca-hero")
+        children.append(html.Span(badge, className="barracuda-badge"))
+    return html.Section(children, className="barracuda-hero")
 
 
 def note(title: str, body: str, tone: str = "teal") -> html.Div:
     safe_tone = tone if tone in {"teal", "amber", "navy"} else "teal"
     return html.Div(
         [html.Strong(title), html.Span(body)],
-        className=f"orca-note orca-note-{safe_tone}",
+        className=f"barracuda-note barracuda-note-{safe_tone}",
     )
 
 
 def step_card(number: str, title: str, body: str) -> html.Div:
     return html.Div(
         [html.Span(number), html.H3(title), html.P(body)],
-        className="orca-step",
+        className="barracuda-step",
     )
 
 
@@ -42,33 +42,33 @@ def route_card(
 ) -> html.Div:
     return html.Div(
         [
-            html.Span(f"Section {number}", className="orca-route-label"),
+            html.Span(f"Section {number}", className="barracuda-route-label"),
             step_card(number, title, body),
-            dcc.Link(f"{link_label} →", href=path, className="orca-card-link"),
+            dcc.Link(f"{link_label} →", href=path, className="barracuda-card-link"),
         ],
-        className="orca-route-card",
+        className="barracuda-route-card",
     )
 
 
 def metric(label: str, value: str, *, accent: str = "sage") -> html.Div:
     return html.Div(
-        [html.Span(label, className="orca-metric-label"), html.Strong(value)],
-        className=f"orca-metric orca-metric-{accent}",
+        [html.Span(label, className="barracuda-metric-label"), html.Strong(value)],
+        className=f"barracuda-metric barracuda-metric-{accent}",
     )
 
 
 def metrics(items: Iterable[tuple[str, str]]) -> html.Div:
     return html.Div(
         [metric(label, value) for label, value in items],
-        className="orca-metrics",
+        className="barracuda-metrics",
     )
 
 
 def section_intro(label: str, title: str, body: str | None = None) -> html.Div:
-    children: list = [html.Span(label, className="orca-section-label"), html.H2(title)]
+    children: list = [html.Span(label, className="barracuda-section-label"), html.H2(title)]
     if body:
-        children.append(html.P(body, className="orca-section-lead"))
-    return html.Div(children, className="orca-section-intro")
+        children.append(html.P(body, className="barracuda-section-lead"))
+    return html.Div(children, className="barracuda-section-intro")
 
 
 def schematic_figure(
@@ -84,18 +84,18 @@ def schematic_figure(
         [
             html.Div(
                 html.Img(src=src, alt=alt),
-                className="orca-schematic-scroll",
+                className="barracuda-schematic-scroll",
                 tabIndex=0,
                 role="region",
                 **{"aria-label": "Scrollable research schematic"},
             ),
             html.Span(
                 "Swipe or scroll horizontally to inspect the full schematic.",
-                className="orca-schematic-scroll-hint",
+                className="barracuda-schematic-scroll-hint",
             ),
             html.Figcaption(caption),
         ],
-        className=f"orca-schematic orca-schematic-{variant}",
+        className=f"barracuda-schematic barracuda-schematic-{variant}",
     )
 
 
@@ -107,5 +107,5 @@ def research_warning() -> html.Div:
     )
 
 
-def markdown(text: str, *, class_name: str = "orca-copy", mathjax: bool = False) -> dcc.Markdown:
+def markdown(text: str, *, class_name: str = "barracuda-copy", mathjax: bool = False) -> dcc.Markdown:
     return dcc.Markdown(text, className=class_name, mathjax=mathjax, link_target="_blank")

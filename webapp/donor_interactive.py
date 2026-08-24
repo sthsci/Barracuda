@@ -42,6 +42,14 @@ CONTRAST_LABELS = {
     "percent_delta_sigma_lambda": "Relative difference in continuous cell-to-cell heterogeneity, %",
     "percent_delta_phi_0": "Relative difference in nonengaging fraction, %",
 }
+CONTRAST_AXIS_LABELS = {
+    "delta_mu_lambda": "Δμλ,d",
+    "delta_sigma_lambda": "Δσλ,d",
+    "delta_phi_0": "Δφ₀,d",
+    "percent_delta_mu_lambda": "Δμλ,d (%)",
+    "percent_delta_sigma_lambda": "Δσλ,d (%)",
+    "percent_delta_phi_0": "Δφ₀,d (%)",
+}
 DONOR_COLOURS = (DONOR_TEAL, DONOR_SAGE, DONOR_GOLD, DONOR_RUST)
 
 
@@ -321,7 +329,7 @@ def contrast_figure(frame: pd.DataFrame, *, title: str) -> go.Figure:
                     )
             if row_index == size:
                 figure.update_xaxes(
-                    title_text=CONTRAST_LABELS.get(column_parameter, column_parameter),
+                    title_text=CONTRAST_AXIS_LABELS.get(column_parameter, column_parameter),
                     row=row_index,
                     col=column_index,
                 )
@@ -330,7 +338,7 @@ def contrast_figure(frame: pd.DataFrame, *, title: str) -> go.Figure:
                     title_text=(
                         "Posterior density"
                         if row_index == column_index
-                        else CONTRAST_LABELS.get(row_parameter, row_parameter)
+                        else CONTRAST_AXIS_LABELS.get(row_parameter, row_parameter)
                     ),
                     row=row_index,
                     col=column_index,
@@ -358,7 +366,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
     if len(conditions) < 2:
         return html.Section(
             [
-                html.Span("Condition comparison", className="orca-section-label"),
+                html.Span("Condition comparison", className="barracuda-section-label"),
                 html.H3("Compare any two experimental conditions"),
                 note(
                     "Two conditions are required",
@@ -366,7 +374,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                     tone="navy",
                 ),
             ],
-            className="orca-result-section orca-donor-contrast-section",
+            className="barracuda-result-section barracuda-donor-contrast-section",
         )
     options = [
         {"label": MODEL_SPECS[key].label, "value": key}
@@ -376,18 +384,18 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
     default_comparison = conditions[1] if len(conditions) > 1 else conditions[0]
     return html.Section(
         [
-            html.Span("Condition comparison", className="orca-section-label"),
+            html.Span("Condition comparison", className="barracuda-section-label"),
             html.H3("Compare any two experimental conditions"),
             html.P(
-                "Comparison minus reference is calculated from both complete posterior particle distributions. Independent condition inference runs do not share chain or draw positions, so Orca uses every Cartesian particle pair when practical and a reproducible uniform sample of independent pairs for larger runs. It never reduces the comparison to a difference between two posterior means.",
-                className="orca-help",
+                "Comparison minus reference is calculated from both complete posterior particle distributions. Independent condition inference runs do not share chain or draw positions, so Barracuda uses every Cartesian particle pair when practical and a reproducible uniform sample of independent pairs for larger runs. It never reduces the comparison to a difference between two posterior means.",
+                className="barracuda-help",
             ),
             dcc.Store(id=f"{prefix}-contrast-data", data=payload),
             html.Div(
                 [
                     html.Label(
                         [
-                            html.Span("Candidate model", className="orca-field-label"),
+                            html.Span("Candidate model", className="barracuda-field-label"),
                             dcc.Dropdown(
                                 id=f"{prefix}-contrast-model",
                                 options=options,
@@ -395,11 +403,11 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                                 clearable=False,
                             ),
                         ],
-                        className="orca-field",
+                        className="barracuda-field",
                     ),
                     html.Label(
                         [
-                            html.Span("Reference condition", className="orca-field-label"),
+                            html.Span("Reference condition", className="barracuda-field-label"),
                             dcc.Dropdown(
                                 id=f"{prefix}-contrast-reference",
                                 options=[{"label": value, "value": value} for value in conditions],
@@ -407,11 +415,11 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                                 clearable=False,
                             ),
                         ],
-                        className="orca-field",
+                        className="barracuda-field",
                     ),
                     html.Label(
                         [
-                            html.Span("Comparison condition", className="orca-field-label"),
+                            html.Span("Comparison condition", className="barracuda-field-label"),
                             dcc.Dropdown(
                                 id=f"{prefix}-contrast-comparison",
                                 options=[{"label": value, "value": value} for value in conditions],
@@ -419,11 +427,11 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                                 clearable=False,
                             ),
                         ],
-                        className="orca-field",
+                        className="barracuda-field",
                     ),
                     html.Label(
                         [
-                            html.Span("Difference scale", className="orca-field-label"),
+                            html.Span("Difference scale", className="barracuda-field-label"),
                             dcc.Dropdown(
                                 id=f"{prefix}-contrast-scale",
                                 options=[
@@ -434,32 +442,37 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                                 clearable=False,
                             ),
                         ],
-                        className="orca-field",
+                        className="barracuda-field",
                     ),
                 ],
-                className="orca-form-grid two",
+                className="barracuda-form-grid two",
             ),
             html.Div(
                 id=f"{prefix}-contrast-rule",
                 role="status",
                 **{"aria-live": "polite"},
             ),
-            dcc.Graph(
-                id=f"{prefix}-contrast-figure",
-                figure=go.Figure(),
-                config={"displaylogo": False, "responsive": True},
-                responsive=True,
-                className="orca-joint-posterior-plot",
+            html.Div(
+                dcc.Graph(
+                    id=f"{prefix}-contrast-figure",
+                    figure=go.Figure(),
+                    config={"displaylogo": False, "responsive": True},
+                    responsive=True,
+                    className="barracuda-joint-posterior-plot",
+                    style={"height": "430px"},
+                ),
+                className="barracuda-joint-plot-scroll",
             ),
             html.Div(id=f"{prefix}-contrast-summary"),
         ],
-        className="orca-result-section orca-donor-contrast-section",
+        className="barracuda-result-section barracuda-donor-contrast-section",
     )
 
 
 def register_donor_contrast_callbacks(app, *, prefix: str) -> None:
     @app.callback(
         Output(f"{prefix}-contrast-figure", "figure"),
+        Output(f"{prefix}-contrast-figure", "style"),
         Output(f"{prefix}-contrast-summary", "children"),
         Output(f"{prefix}-contrast-rule", "children"),
         Input(f"{prefix}-contrast-model", "value"),
@@ -507,5 +520,5 @@ def register_donor_contrast_callbacks(app, *, prefix: str) -> None:
                 paper_bgcolor=SHEET,
                 plot_bgcolor=PAPER,
             )
-            return figure, html.Div(), note("Comparison unavailable", str(exc), tone="amber")
-        return figure, data_table(summary, max_rows=24), note("Particle comparison rule", rule, tone="navy")
+            return figure, {"height": "360px"}, html.Div(), note("Comparison unavailable", str(exc), tone="amber")
+        return figure, {"height": f"{int(figure.layout.height or 430)}px"}, data_table(summary, max_rows=24), note("Particle comparison rule", rule, tone="navy")

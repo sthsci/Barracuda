@@ -35,6 +35,13 @@ env/
 !.env.example
 .streamlit/secrets.toml
 
+# Local full-stack platform state
+/platform/api/var/
+/platform/frontend/.next/
+/platform/frontend/node_modules/
+/platform/frontend/coverage/
+/platform/frontend/*.tsbuildinfo
+
 # Logs and temporary files
 *.log
 *.tmp

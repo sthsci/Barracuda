@@ -84,6 +84,9 @@ def test_layout_has_unique_ids_release_terms_and_safe_defaults() -> None:
     assert by_id["trajectory-upload-panel"].className.endswith("is-hidden")
     assert by_id["trajectory-data-section"].className.endswith("is-hidden")
     assert by_id["trajectory-inference"].className.endswith("is-hidden")
+    assert by_id["trajectory-empirical-figure"].style == {"height": "700px"}
+    assert by_id["trajectory-figure-height"].value == 700
+    assert by_id["trajectory-arrow-scale"].value == 1.0
     assert [option["value"] for option in by_id["trajectory-models"].options] == list(
         trajectory.MODEL_ORDER
     )
@@ -177,16 +180,16 @@ def test_background_inference_exposes_native_pymc_progress_and_locks_controls(ap
     )
     assert callback_registration["running"] == {
         "running": {
-            "trajectory-pymc-progress.className": "orca-pymc-progress is-active",
+            "trajectory-pymc-progress.className": "barracuda-pymc-progress is-active",
             "trajectory-inference.aria-busy": "true",
             "trajectory-inference-controls.disabled": True,
-            "trajectory-run.className": "orca-button primary full is-running",
+            "trajectory-run.className": "barracuda-button primary full is-running",
         },
         "runningOff": {
-            "trajectory-pymc-progress.className": "orca-pymc-progress is-hidden",
+            "trajectory-pymc-progress.className": "barracuda-pymc-progress is-hidden",
             "trajectory-inference.aria-busy": "false",
             "trajectory-inference-controls.disabled": False,
-            "trajectory-run.className": "orca-button primary full",
+            "trajectory-run.className": "barracuda-button primary full",
         },
     }
 
@@ -264,17 +267,21 @@ def test_synthetic_truth_reaches_active_data_and_uploads_clear_it(app) -> None:
     assert truth["Synthetic"]["beta_s"] == -0.8
 
     activate = _callback(app, "trajectory-active-data.data")
-    synthetic = activate("synthetic", records, None, 1.0, truth)
+    synthetic = activate("synthetic", records, None, 1.0, 700, 1.0, truth)
     assert synthetic[0] == records
     assert synthetic[1] == truth
     assert synthetic[2] == 1.5
-    assert synthetic[3:5] == ("orca-workflow-panel", "orca-workflow-panel")
-    assert len(synthetic[6].data) > 0
+    assert synthetic[3:5] == ("barracuda-workflow-panel", "barracuda-workflow-panel")
+    assert synthetic[6].className == "barracuda-trajectory-encoding-legend"
+    assert len(synthetic[7].data) > 0
+    assert synthetic[8] == {"height": f"{int(synthetic[7].layout.height)}px"}
     assert synthetic[-1] is False
 
-    uploaded = activate("upload", None, records, 2.0, truth)
+    uploaded = activate("upload", None, records, 2.0, 820, 0.8, truth)
     assert uploaded[1] is None
     assert uploaded[2] == 2.0
+    assert uploaded[7].layout.height == 820
+    assert uploaded[8] == {"height": "820px"}
     assert uploaded[-1] is False
 
 
