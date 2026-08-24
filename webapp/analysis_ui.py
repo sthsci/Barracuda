@@ -1,4 +1,4 @@
-"""Dash components and UI-neutral result rendering for Orca analyses."""
+"""Dash components and UI-neutral result rendering for Barracuda analyses."""
 
 from __future__ import annotations
 
@@ -96,11 +96,11 @@ def model_title(key: str):
     }
     return html.Span(
         [
-            html.Span("M", className="orca-model-script", **{"aria-hidden": "true"}),
+            html.Span("M", className="barracuda-model-script", **{"aria-hidden": "true"}),
             html.Sub(subscripts[key], **{"aria-hidden": "true"}),
             html.Span(f" · {MODEL_NAMES[key]}"),
         ],
-        className="orca-model-title",
+        className="barracuda-model-title",
         **{"aria-label": MODEL_LABELS[key]},
     )
 
@@ -119,41 +119,41 @@ def parse_optional_seed(raw: object) -> int | None:
 
 
 def _help(text: str) -> html.Small:
-    return html.Small(text, className="orca-help")
+    return html.Small(text, className="barracuda-help")
 
 
 def field(label: str, control, help_text: str | None = None) -> html.Label:
-    children: list = [html.Span(label, className="orca-field-label"), control]
+    children: list = [html.Span(label, className="barracuda-field-label"), control]
     if help_text:
         children.append(_help(help_text))
-    return html.Label(children, className="orca-field")
+    return html.Label(children, className="barracuda-field")
 
 
 def model_selector(prefix: str, default: list[str] | None = None) -> html.Div:
     defaults = default or list(MODEL_LABELS)
     return html.Div(
         [
-            html.Div("Models included in inference", className="orca-field-label"),
+            html.Div("Models included in inference", className="barracuda-field-label"),
             dcc.Checklist(
                 id=f"{prefix}-models",
                 options=[
                     {
                         "label": html.Span(
                             [html.Strong(model_title(key)), html.Small(MODEL_HELP[key])],
-                            className="orca-model-option-copy",
+                            className="barracuda-model-option-copy",
                         ),
                         "value": key,
                     }
                     for key in MODEL_LABELS
                 ],
                 value=defaults,
-                className="orca-model-checklist",
-                inputClassName="orca-check-input",
-                labelClassName="orca-model-option",
+                className="barracuda-model-checklist",
+                inputClassName="barracuda-check-input",
+                labelClassName="barracuda-model-option",
             ),
             _help("Select one model to estimate its parameters, or select at least two to compare model evidence with Bayes factors."),
         ],
-        className="orca-field",
+        className="barracuda-field",
     )
 
 
@@ -167,7 +167,7 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
             html.H4("Donor deviation prior scales"),
             html.P(
                 "These hierarchical priors affect shrinkage and marginal likelihoods. Record them when reporting a Bayes factor analysis.",
-                className="orca-help",
+                className="barracuda-help",
             ),
             html.Div(
                 [
@@ -184,7 +184,7 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
                         dcc.Input(id=f"{prefix}-donor-zero-scale", type="number", min=0.05, max=3, step=0.05, value=1.0),
                     ),
                 ],
-                className="orca-form-grid three",
+                className="barracuda-form-grid three",
             ),
         ]
 
@@ -226,7 +226,7 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
                                 "Cores can shorten runtime; they add no information.",
                             ),
                         ],
-                        className="orca-form-grid three",
+                        className="barracuda-form-grid three",
                     ),
                     field(
                         "Inference seed (optional)",
@@ -251,7 +251,7 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
                                 "Smaller values generally request more particle mutation effort.",
                             ),
                         ],
-                        className="orca-form-grid two",
+                        className="barracuda-form-grid two",
                     ),
                     field(
                         "log10 rate prior bounds",
@@ -265,10 +265,10 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
                     ),
                     *donor_fields,
                 ],
-                className="orca-details",
+                className="barracuda-details",
             ),
         ],
-        className="orca-inference-controls",
+        className="barracuda-inference-controls",
     )
 
 
@@ -337,7 +337,7 @@ def data_table(
             "paginationPageSizeSelector": False,
             "domLayout": "autoHeight",
         },
-        className="ag-theme-quartz orca-data-grid",
+        className="ag-theme-quartz barracuda-data-grid",
         style={"width": "100%"},
         **kwargs,
     )
@@ -524,8 +524,8 @@ def data_overview(frame: pd.DataFrame, *, donor_aware: bool = False) -> html.Div
     if donor_aware:
         metric_items.append(metric("Donors", f"{frame['donor_id'].nunique():,}"))
     children: list = [
-        html.Div(metric_items, className="orca-metrics"),
-        dcc.Graph(figure=count_figure(frame), config={"displaylogo": False, "responsive": True}, className="orca-plot"),
+        html.Div(metric_items, className="barracuda-metrics"),
+        dcc.Graph(figure=count_figure(frame), config={"displaylogo": False, "responsive": True}, className="barracuda-plot"),
         data_table(frame, max_rows=10),
     ]
     if donor_aware:
@@ -547,7 +547,7 @@ def data_overview(frame: pd.DataFrame, *, donor_aware: bool = False) -> html.Div
                     tone="amber",
                 )
             )
-    return html.Div(children, className="orca-overview")
+    return html.Div(children, className="barracuda-overview")
 
 
 def posterior_figure(result: InferenceResult, variable: str, truth: Mapping[str, object] | None = None) -> go.Figure:
@@ -629,7 +629,7 @@ def render_results(
     observation_time: float,
     settings: InferenceSettings,
     truth: Mapping[str, object] | None = None,
-    download_name: str = "orca_results.zip",
+    download_name: str = "barracuda_results.zip",
 ) -> tuple[html.Div, html.A]:
     evidence = evidence_table(results).round(5)
     summary = summary_table(results).round(5)
@@ -645,7 +645,7 @@ def render_results(
             metric("Models analysed", str(len(results)), accent="navy"),
             metric("Cells analysed", f"{len(data):,}"),
         ],
-        className="orca-metrics",
+        className="barracuda-metrics",
     )
 
     tabs: list[dcc.Tab] = []
@@ -656,15 +656,15 @@ def render_results(
         plots = [
             html.Div(
                 [html.H4(PARAMETER_LABELS.get(variable, variable)), dcc.Graph(figure=posterior_figure(result, variable, truth), config={"displaylogo": False, "responsive": True})],
-                className="orca-posterior-panel",
+                className="barracuda-posterior-panel",
             )
             for variable in available
         ]
-        tabs.append(dcc.Tab(label=MODEL_LABELS[key], children=html.Div(plots, className="orca-posterior-grid"), className="orca-tab", selected_className="orca-tab selected"))
+        tabs.append(dcc.Tab(label=MODEL_LABELS[key], children=html.Div(plots, className="barracuda-posterior-grid"), className="barracuda-tab", selected_className="barracuda-tab selected"))
 
     recovery = _recovery_table(summary, truth) if truth is not None else pd.DataFrame()
     recovery_component = (
-        html.Div([html.H3("Ground truth recovery check"), data_table(recovery), html.P("This table compares the known generating values with the posterior interval for this dataset.", className="orca-help")], className="orca-result-section")
+        html.Div([html.H3("Ground truth recovery check"), data_table(recovery), html.P("This table compares the known generating values with the posterior interval for this dataset.", className="barracuda-help")], className="barracuda-result-section")
         if not recovery.empty
         else html.Div()
     )
@@ -684,19 +684,19 @@ def render_results(
         "Download results and configuration",
         href=f"data:application/zip;base64,{encoded}",
         download=download_name,
-        className="orca-button primary download",
+        className="barracuda-button primary download",
     )
     content = html.Div(
         [
             note("Inference complete", "All selected models completed successfully.", tone="teal"),
             generator_note,
             cards,
-            html.Div([html.H3("Model comparison"), data_table(evidence), html.P("The best-supported candidate model has log₁₀ BF(best/model) equal to zero. Repeat small SMC runs across seeds and particle counts before drawing conclusions.", className="orca-help")], className="orca-result-section"),
-            html.Div([html.H3("Posterior summaries"), data_table(display_summary, max_rows=15)], className="orca-result-section"),
+            html.Div([html.H3("Model comparison"), data_table(evidence), html.P("The best-supported candidate model has log₁₀ BF(best/model) equal to zero. Repeat small SMC runs across seeds and particle counts before drawing conclusions.", className="barracuda-help")], className="barracuda-result-section"),
+            html.Div([html.H3("Posterior summaries"), data_table(display_summary, max_rows=15)], className="barracuda-result-section"),
             recovery_component,
-            html.Div([html.H3("Posterior distributions"), dcc.Tabs(tabs, className="orca-tabs")], className="orca-result-section"),
+            html.Div([html.H3("Posterior distributions"), dcc.Tabs(tabs, className="barracuda-tabs")], className="barracuda-result-section"),
         ],
-        className="orca-results",
+        className="barracuda-results",
     )
     return content, download
 
@@ -715,7 +715,7 @@ def _download_link_bytes(
         label,
         href=f"data:{mime_type};base64,{encoded}",
         download=filename,
-        className=f"orca-button {kind} download",
+        className=f"barracuda-button {kind} download",
     )
 
 
@@ -726,7 +726,7 @@ def render_validation_results(
     observation_time: float,
     settings: InferenceSettings,
     truth: Mapping[str, object],
-    download_name: str = "orca_synthetic_validation.zip",
+    download_name: str = "barracuda_synthetic_validation.zip",
 ) -> tuple[html.Div, html.Div]:
     """Render the notebook-style synthetic-validation result release."""
 
@@ -766,46 +766,46 @@ def render_validation_results(
         [
             _download_link_bytes(
                 artifacts["figures/joint_posterior.png"],
-                "orca_joint_posterior.png",
+                "barracuda_joint_posterior.png",
                 "PNG",
                 "image/png",
             ),
             _download_link_bytes(
                 artifacts["figures/joint_posterior.pdf"],
-                "orca_joint_posterior.pdf",
+                "barracuda_joint_posterior.pdf",
                 "PDF",
                 "application/pdf",
             ),
             csv_download_link(
                 posterior_draws,
-                "orca_posterior_samples.csv",
+                "barracuda_posterior_samples.csv",
                 "CSV",
             ),
         ],
-        className="orca-figure-exports",
+        className="barracuda-figure-exports",
         **{"aria-label": "Export joint posterior figure"},
     )
     bayes_exports = html.Div(
         [
             _download_link_bytes(
                 artifacts["figures/bayes_factors.png"],
-                "orca_bayes_factors.png",
+                "barracuda_bayes_factors.png",
                 "PNG",
                 "image/png",
             ),
             _download_link_bytes(
                 artifacts["figures/bayes_factors.pdf"],
-                "orca_bayes_factors.pdf",
+                "barracuda_bayes_factors.pdf",
                 "PDF",
                 "application/pdf",
             ),
             csv_download_link(
                 evidence,
-                "orca_model_evidence.csv",
+                "barracuda_model_evidence.csv",
                 "CSV",
             ),
         ],
-        className="orca-figure-exports",
+        className="barracuda-figure-exports",
         **{"aria-label": "Export Bayes factor figure"},
     )
 
@@ -822,17 +822,17 @@ def render_validation_results(
                         [
                             html.Div(
                                 [
-                                    html.Span("Primary result", className="orca-section-label"),
+                                    html.Span("Primary result", className="barracuda-section-label"),
                                     html.H3("Joint posterior distributions"),
                                 ]
                             ),
                             joint_exports,
                         ],
-                        className="orca-result-heading",
+                        className="barracuda-result-heading",
                     ),
                     html.P(
                         "Diagonal panels show marginal posterior densities and 95% HDIs. Lower panels retain dependence between parameters. For the homogeneous and zero inflated models, the mean-rate axis contains the shared rate λ; for the Gamma models it contains μλ.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     dcc.Store(
                         id="synthetic-posterior-data",
@@ -853,19 +853,19 @@ def render_validation_results(
                                 ],
                                 value=fitted_models,
                                 inline=True,
-                                className="orca-posterior-model-options",
-                                inputClassName="orca-check-input",
-                                labelClassName="orca-posterior-model-option",
+                                className="barracuda-posterior-model-options",
+                                inputClassName="barracuda-check-input",
+                                labelClassName="barracuda-posterior-model-option",
                             ),
                             html.P(
                                 f"{len(fitted_models)} model{'s' if len(fitted_models) != 1 else ''} shown · the grid contains every parameter represented by the selection.",
                                 id="synthetic-posterior-selection-summary",
-                                className="orca-help",
+                                className="barracuda-help",
                                 role="status",
                                 **{"aria-live": "polite"},
                             ),
                         ],
-                        className="orca-posterior-filter",
+                        className="barracuda-posterior-filter",
                         role="group",
                         **{"aria-label": "Choose inference results for the joint posterior plot"},
                     ),
@@ -877,23 +877,23 @@ def render_validation_results(
                                 **plot_config,
                                 "toImageButtonOptions": {
                                     **plot_config["toImageButtonOptions"],
-                                    "filename": "orca_joint_posterior",
+                                    "filename": "barracuda_joint_posterior",
                                     "width": 1400,
                                     "height": 1400,
                                 },
                             },
                             responsive=True,
-                            className="orca-joint-posterior-plot",
+                            className="barracuda-joint-posterior-plot",
                             style={"height": f"{int(joint_figure.layout.height)}px"},
                         ),
-                        className="orca-joint-plot-scroll",
+                        className="barracuda-joint-plot-scroll",
                     ),
                     html.P(
                         "The PNG, PDF and CSV buttons above export all completed model results. The Plotly camera button exports the current on-screen selection.",
-                        className="orca-help orca-export-scope",
+                        className="barracuda-help barracuda-export-scope",
                     ),
                 ],
-                className="orca-result-section orca-figure-result",
+                className="barracuda-result-section barracuda-figure-result",
             ),
             html.Section(
                 [
@@ -901,17 +901,17 @@ def render_validation_results(
                         [
                             html.Div(
                                 [
-                                    html.Span("Model evidence", className="orca-section-label"),
+                                    html.Span("Model evidence", className="barracuda-section-label"),
                                     html.H3("Bayes factors"),
                                 ]
                             ),
                             bayes_exports,
                         ],
-                        className="orca-result-heading",
+                        className="barracuda-result-heading",
                     ),
                     html.P(
                         "Bars use the untransformed linear log₁₀ BF(best model / candidate model) scale computed from the SMC log marginal likelihoods. The highest-evidence model is labelled Best model and sits at zero by definition. The background boundaries are exactly log₁₀(3) ≈ 0.477, 1 and 2, corresponding to Bayes factors of 3, 10 and 100.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     dcc.Graph(
                         figure=bayes_figure,
@@ -919,30 +919,30 @@ def render_validation_results(
                             **plot_config,
                             "toImageButtonOptions": {
                                 **plot_config["toImageButtonOptions"],
-                                "filename": "orca_bayes_factors",
+                                "filename": "barracuda_bayes_factors",
                                 "width": 1100,
                                 "height": 650,
                             },
                         },
                         responsive=True,
-                        className="orca-bayes-factor-plot",
+                        className="barracuda-bayes-factor-plot",
                         style={"height": "430px"},
                     ),
                 ],
-                className="orca-result-section orca-figure-result",
+                className="barracuda-result-section barracuda-figure-result",
             ),
         ],
-        className="orca-results orca-validation-results",
+        className="barracuda-results barracuda-validation-results",
     )
 
     csv_links: list = [
-        csv_download_link(evidence, "orca_model_evidence.csv", "Model evidence CSV"),
-        csv_download_link(summary, "orca_posterior_summary.csv", "Posterior summary CSV"),
-        csv_download_link(posterior_draws, "orca_posterior_samples.csv", "Posterior samples CSV"),
+        csv_download_link(evidence, "barracuda_model_evidence.csv", "Model evidence CSV"),
+        csv_download_link(summary, "barracuda_posterior_summary.csv", "Posterior summary CSV"),
+        csv_download_link(posterior_draws, "barracuda_posterior_samples.csv", "Posterior samples CSV"),
     ]
     if not recovery.empty:
         csv_links.append(
-            csv_download_link(recovery, "orca_ground_truth_recovery.csv", "Ground truth recovery CSV")
+            csv_download_link(recovery, "barracuda_ground_truth_recovery.csv", "Ground truth recovery CSV")
         )
     downloads = html.Div(
         [
@@ -955,14 +955,14 @@ def render_validation_results(
             ),
             html.P(
                 "The ZIP contains one ArviZ InferenceData .nc file per model, all CSV tables, both figures as PNG and PDF, the input data, exact settings and software versions.",
-                className="orca-help",
+                className="barracuda-help",
             ),
             html.Details(
                 [
                     html.Summary("Download individual CSV tables"),
-                    html.Div(csv_links, className="orca-download-grid"),
+                    html.Div(csv_links, className="barracuda-download-grid"),
                 ],
-                className="orca-details",
+                className="barracuda-details",
             ),
             html.Details(
                 [
@@ -978,17 +978,17 @@ def render_validation_results(
                         "    kind='kde',\n"
                         "    marginals=True,\n"
                         ")",
-                        className="orca-code-block",
+                        className="barracuda-code-block",
                     ),
                     html.P(
                         "Unzip the complete analysis first, then replace hetero3 with the model key shown in the filename.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                 ],
-                className="orca-details",
+                className="barracuda-details",
             ),
         ],
-        className="orca-analysis-downloads",
+        className="barracuda-analysis-downloads",
     )
     return content, downloads
 
@@ -1019,7 +1019,7 @@ def normalize_uploaded_frame(raw: pd.DataFrame, *, donor_aware: bool) -> tuple[p
     columns = list(raw.columns)
     required = ["cell_id", "donor_id", "count"] if donor_aware else ["cell_id", "count"]
     if all(column in columns for column in required):
-        return raw.loc[:, required].copy(), "Recognised the standard Orca column names."
+        return raw.loc[:, required].copy(), "Recognised the standard Barracuda column names."
     needed = 3 if donor_aware else 2
     if len(columns) < needed:
         raise ValueError(f"The CSV needs at least {needed} columns: {', '.join(required)}.")
@@ -1034,4 +1034,4 @@ def normalize_uploaded_frame(raw: pd.DataFrame, *, donor_aware: bool) -> tuple[p
 
 def csv_download_link(frame: pd.DataFrame, filename: str, label: str) -> html.A:
     encoded = base64.b64encode(frame.to_csv(index=False).encode("utf-8")).decode("ascii")
-    return html.A(label, href=f"data:text/csv;base64,{encoded}", download=filename, className="orca-button secondary download")
+    return html.A(label, href=f"data:text/csv;base64,{encoded}", download=filename, className="barracuda-button secondary download")

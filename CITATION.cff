@@ -1,10 +1,10 @@
 cff-version: 1.2.0
-message: "If you use bayesorca, please cite the ORCA manuscript and this software."
-title: "bayesorca: Bayesian inference for heterogeneity in immune cell cytotoxicity"
+message: "If you use barracuda, please cite the BARRACUDA manuscript and this software."
+title: "BARRACUDA: Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity"
 type: software
 version: 0.1.0
 license: MIT
-repository-code: "https://github.com/sthsci/Orca"
+repository-code: "https://github.com/sthsci/Barracuda"
 authors:
   - family-names: Sung
     given-names: Elephes

@@ -1,1 +1,1 @@
-"""Trajectory inference backend packaged as bayesorca._backends.trajectories."""
+"""Trajectory inference backend packaged as barracuda._backends.trajectories."""

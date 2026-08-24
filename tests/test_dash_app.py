@@ -5,11 +5,12 @@ import time
 from pathlib import Path
 
 import diskcache
+import barracuda
 from dash.development.base_component import Component
 
 from webapp.analysis_ui import read_uploaded_csv
-from webapp.dashapp import OrcaDiskcacheManager, PAGE_BY_PATH, PAGES, create_app
-from webapp.pages import bayes_101
+from webapp.dashapp import BarracudaDiskcacheManager, PAGE_BY_PATH, PAGES, create_app
+from webapp.pages import bayes_101, notebooks, python_api
 
 
 def _walk(component):
@@ -42,25 +43,72 @@ def test_dash_server_and_health_endpoint_load() -> None:
     health = client.get("/healthz")
 
     assert response.status_code == 200
-    assert b"Orca" in response.data
+    assert b"BARRACUDA" in response.data
     assert health.status_code == 200
-    assert health.get_json() == {"application": "orca-dash", "status": "ok"}
+    assert health.get_json() == {"application": "barracuda-dash", "status": "ok"}
+    assert Path("webapp/assets/favicon.ico").is_file()
 
 
 def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:
     expected = {
         "/": "One question, three levels of information",
         "/bayesian-101": "The update at the heart of Bayesian inference",
+        "/notebooks": "Learn and analyse in Google Colab",
+        "/python-api": "Run BARRACUDA simulation, inference and result export directly from Python",
         "/event-counts": "Choose an analysis",
         "/event-counts/donor-ignorant": "Which data do you want to use?",
         "/event-counts/donor-aware": "Provide counts with donor labels",
         "/trajectory": "Which trajectory data do you want to use?",
+        "/workspace": "Save and share CSV data",
     }
     assert {page.PATH for page in PAGES} == set(expected)
     for page in PAGES:
         content = page.layout()
         assert expected[page.PATH] in _text(content)
     assert PAGE_BY_PATH["/synthetic-validation"].PATH == "/event-counts/donor-ignorant"
+
+
+def test_python_api_page_documents_the_install_and_complete_public_surface() -> None:
+    content = python_api.layout()
+    page_text = _text(content)
+
+    assert "python -m pip install cyto-barracuda" in page_text
+    assert "from barracuda import" in page_text
+    assert set(python_api.DOCUMENTED_NAMES) == set(barracuda.__all__)
+    assert {python_api.PYPI_URL, python_api.SOURCE_URL} <= {
+        component.href
+        for component in _walk(content)
+        if component.__class__.__name__ == "A"
+        and getattr(component, "href", "").startswith("https://")
+    }
+
+
+def test_colab_notebook_hub_links_every_workflow_from_the_home_page() -> None:
+    expected = {
+        f"{notebooks.COLAB_ROOT}/{path}"
+        for path in (
+            "notebooks/00_run_the_barracuda_web_app.ipynb",
+            "notebooks/01_bayesian_inference_101.ipynb",
+            "notebooks/02_event_count_model_tutorial.ipynb",
+            "notebooks/03_trajectory_model_tutorial.ipynb",
+            "notebooks/04_event_count_analysis.ipynb",
+            "notebooks/05_donor_aware_analysis.ipynb",
+            "notebooks/06_trajectory_analysis.ipynb",
+        )
+    }
+    links = [
+        component
+        for component in _walk(notebooks.layout())
+        if component.__class__.__name__ == "A"
+    ]
+
+    assert {link.href for link in links} == expected
+    assert all(link.target == "_blank" and link.rel == "noreferrer" for link in links)
+    assert all(category in _text(notebooks.layout()) for category in ("Start here", "Teaching", "Analysis"))
+    assert any(
+        getattr(component, "href", None) == notebooks.PATH
+        for component in _walk(PAGE_BY_PATH["/"].layout())
+    )
 
 
 def test_dash_layout_contains_upload_edit_inference_and_download_surfaces() -> None:
@@ -196,16 +244,16 @@ def test_synthetic_controls_use_paper_terms_and_fold_observation_time() -> None:
         for component in _walk(content)
         if component.__class__.__name__ == "A"
         and getattr(component, "download", None)
-        == "orca_synthetic_validation_demo.ipynb"
+        == "barracuda_synthetic_validation_demo.ipynb"
     ]
     assert len(notebook_links) == 1
-    assert notebook_links[0].href == "/assets/downloads/orca_synthetic_validation_demo.ipynb"
+    assert notebook_links[0].href == "/assets/downloads/barracuda_synthetic_validation_demo.ipynb"
     notebook_path = (
         Path(__file__).resolve().parents[1]
         / "webapp"
         / "assets"
         / "downloads"
-        / "orca_synthetic_validation_demo.ipynb"
+        / "barracuda_synthetic_validation_demo.ipynb"
     )
     assert notebook_path.is_file()
 
@@ -234,7 +282,7 @@ def test_background_result_survives_restricted_macos_process_cleanup(
     monkeypatch,
     tmp_path,
 ) -> None:
-    manager = OrcaDiskcacheManager(diskcache.Cache(str(tmp_path / "callback-cache")))
+    manager = BarracudaDiskcacheManager(diskcache.Cache(str(tmp_path / "callback-cache")))
 
     def denied_cleanup(_manager, _job) -> None:
         raise PermissionError(1, "Operation not permitted")
@@ -248,7 +296,7 @@ def test_background_result_survives_restricted_macos_process_cleanup(
 
 
 def test_background_manager_returns_a_completed_worker_result(tmp_path) -> None:
-    manager = OrcaDiskcacheManager(diskcache.Cache(str(tmp_path / "callback-cache")))
+    manager = BarracudaDiskcacheManager(diskcache.Cache(str(tmp_path / "callback-cache")))
 
     def finish_job(result_key, _progress_key, _args, _context) -> None:
         manager.handle.set(result_key, {"plots": "ready"})

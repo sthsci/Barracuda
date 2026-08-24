@@ -1,4 +1,4 @@
-"""Dash application factory for Orca."""
+"""Dash application factory for Barracuda."""
 
 from __future__ import annotations
 
@@ -7,21 +7,25 @@ from pathlib import Path
 
 import diskcache
 import psutil
-from dash import Dash, DiskcacheManager, Input, Output, dcc, html
+from dash import ClientsideFunction, Dash, DiskcacheManager, Input, Output, dcc, html
 
 from webapp.analysis_ui import PROFILE_VALUES
-from webapp.pages import bayes_101, donor_aware, event_counts, event_counts_overview, home, synthetic_validation, trajectory
+from webapp.account_ui import register_callbacks as register_account_callbacks
+from webapp.account_ui import shell_components as account_shell_components
+from webapp.pages import bayes_101, donor_aware, event_counts, event_counts_overview, home, notebooks, python_api, shared, synthetic_validation, trajectory, workspace
 
 
-PAGES = [home, bayes_101, event_counts_overview, event_counts, donor_aware, trajectory]
+PAGES = [home, bayes_101, notebooks, python_api, event_counts_overview, event_counts, donor_aware, trajectory, workspace]
 PAGE_BY_PATH = {page.PATH: page for page in PAGES}
 # The former standalone validation URL now opens the merged donor ignorant
 # workflow. Keeping the alias avoids breaking saved links without restoring a
 # second copy of the page in navigation.
 PAGE_BY_PATH[synthetic_validation.PATH] = event_counts
 PAGE_BY_PATH["/donor-aware"] = donor_aware
+PAGE_BY_PATH[shared.PATH] = shared
 NAV_GROUPS = [
     ("Overview", [(home, False), (bayes_101, False)]),
+    ("Resources", [(notebooks, False), (python_api, False)]),
     (
         "Event counts",
         [
@@ -31,24 +35,28 @@ NAV_GROUPS = [
         ],
     ),
     ("Trajectories", [(trajectory, False)]),
+    ("Workspace", [(workspace, False)]),
 ]
 NAV_LABELS = {
     home.PATH: "Home",
     bayes_101.PATH: "Bayesian inference 101",
+    notebooks.PATH: "Google Colab notebooks",
+    python_api.PATH: "Python package API",
     event_counts_overview.PATH: "Event count analysis",
     event_counts.PATH: "Donor ignorant · Data and validation",
     donor_aware.PATH: "Donor aware · Condition analysis",
     trajectory.PATH: "Trajectory inference",
+    workspace.PATH: "Account and CSV sharing",
 }
 NAV_IDS = {page.PATH: f"nav-{index}" for index, page in enumerate(PAGES)}
 NAV_BASE_CLASSES = {
-    page.PATH: "orca-nav-link orca-nav-link-child" if is_child else "orca-nav-link"
+    page.PATH: "barracuda-nav-link barracuda-nav-link-child" if is_child else "barracuda-nav-link"
     for _group, entries in NAV_GROUPS
     for page, is_child in entries
 }
 
 
-class OrcaDiskcacheManager(DiskcacheManager):
+class BarracudaDiskcacheManager(DiskcacheManager):
     """Collect completed jobs even when macOS blocks process-tree inspection.
 
     Dash normally asks ``psutil`` to inspect and terminate the worker process
@@ -59,8 +67,8 @@ class OrcaDiskcacheManager(DiskcacheManager):
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
-        self._orca_jobs: dict[int, object] = {}
-        self._orca_completed_jobs: set[int] = set()
+        self._barracuda_jobs: dict[int, object] = {}
+        self._barracuda_completed_jobs: set[int] = set()
 
     def call_job_fn(self, key, job_fn, args, context):
         """Start a worker and retain its process handle in the server process."""
@@ -74,23 +82,23 @@ class OrcaDiskcacheManager(DiskcacheManager):
         process.start()
         if process.pid is None:
             return None
-        self._orca_completed_jobs.discard(process.pid)
-        self._orca_jobs[process.pid] = process
+        self._barracuda_completed_jobs.discard(process.pid)
+        self._barracuda_jobs[process.pid] = process
         return process.pid
 
     def job_running(self, job) -> bool:
         if job is None:
             return False
         job_id = int(job)
-        if job_id in self._orca_completed_jobs:
+        if job_id in self._barracuda_completed_jobs:
             return False
-        process = self._orca_jobs.get(job_id)
+        process = self._barracuda_jobs.get(job_id)
         if process is not None:
             if process.is_alive():
                 return True
             process.join(timeout=0)
-            self._orca_jobs.pop(job_id, None)
-            self._orca_completed_jobs.add(job_id)
+            self._barracuda_jobs.pop(job_id, None)
+            self._barracuda_completed_jobs.add(job_id)
             return False
         try:
             return super().job_running(job_id)
@@ -101,15 +109,15 @@ class OrcaDiskcacheManager(DiskcacheManager):
         if job is None:
             return
         job_id = int(job)
-        if job_id in self._orca_completed_jobs:
+        if job_id in self._barracuda_completed_jobs:
             return
-        process = self._orca_jobs.pop(job_id, None)
+        process = self._barracuda_jobs.pop(job_id, None)
         if process is not None:
             process.join(timeout=0.25)
             if process.is_alive():
                 process.terminate()
                 process.join(timeout=1)
-            self._orca_completed_jobs.add(job_id)
+            self._barracuda_completed_jobs.add(job_id)
             return
         try:
             super().terminate_job(job_id)
@@ -117,7 +125,7 @@ class OrcaDiskcacheManager(DiskcacheManager):
             # The completed worker exits on its own. In restricted macOS
             # sessions, process-tree cleanup is unavailable but the cached
             # callback result is still safe to return to the page.
-            self._orca_completed_jobs.add(job_id)
+            self._barracuda_completed_jobs.add(job_id)
             return
 
 
@@ -127,7 +135,7 @@ def _sidebar() -> html.Aside:
         groups.append(
             html.Div(
                 [
-                    html.Div(group, className="orca-nav-group-label"),
+                    html.Div(group, className="barracuda-nav-group-label"),
                     html.Nav(
                         [
                             dcc.Link(
@@ -138,42 +146,95 @@ def _sidebar() -> html.Aside:
                             )
                             for page, _is_child in entries
                         ],
-                        className="orca-nav-links",
+                        className="barracuda-nav-links",
                         **{"aria-label": f"{group} navigation"},
                     ),
                 ],
-                className="orca-nav-group",
+                className="barracuda-nav-group",
             )
         )
     return html.Aside(
         [
             dcc.Link(
-                [html.Span("O", className="orca-mark"), html.Div([html.Strong("Orca"), html.Small("Bayesian inference for immune cell decisions")])],
+                [html.Span("B", className="barracuda-mark"), html.Div([html.Strong("BARRACUDA"), html.Small("Inference for immune cell decisions")])],
                 href="/",
-                className="orca-brand",
+                className="barracuda-brand",
             ),
-            html.Div(groups, className="orca-nav"),
+            html.Div(groups, className="barracuda-nav"),
+            html.Details(
+                [
+                    html.Summary("Figure display"),
+                    html.Div(
+                        [
+                            html.Label(
+                                [
+                                    html.Span("Width", className="barracuda-field-label"),
+                                    dcc.Slider(
+                                        id="barracuda-figure-width",
+                                        min=60,
+                                        max=100,
+                                        step=5,
+                                        value=100,
+                                        marks={60: "60%", 80: "80%", 100: "100%"},
+                                        persistence=True,
+                                        persistence_type="local",
+                                    ),
+                                ],
+                                className="barracuda-field",
+                            ),
+                            html.Label(
+                                [
+                                    html.Span("Height", className="barracuda-field-label"),
+                                    dcc.Slider(
+                                        id="barracuda-figure-height-scale",
+                                        min=0.75,
+                                        max=1.75,
+                                        step=0.05,
+                                        value=1.0,
+                                        marks={0.75: "75%", 1.0: "100%", 1.75: "175%"},
+                                        persistence=True,
+                                        persistence_type="local",
+                                    ),
+                                ],
+                                className="barracuda-field",
+                            ),
+                            html.Button(
+                                "Reset figure size",
+                                id="barracuda-figure-reset",
+                                n_clicks=0,
+                                className="barracuda-button tertiary small full",
+                            ),
+                            html.P(
+                                "Display only. Use each figure's export menu or download buttons to save it.",
+                                className="barracuda-help",
+                            ),
+                        ],
+                        className="barracuda-sidebar-figure-body",
+                    ),
+                ],
+                className="barracuda-sidebar-figure-controls",
+            ),
             html.Div(
                 [
-                    html.Span("Data use", className="orca-preview-label"),
-                    html.P("Use synthetic or approved anonymous data. Inputs are not intentionally retained.", className="orca-sidebar-warning"),
+                    html.Span("Data use", className="barracuda-preview-label"),
+                    html.P("Use synthetic or approved anonymous data. Inputs are not intentionally retained.", className="barracuda-sidebar-warning"),
                 ],
-                className="orca-sidebar-footer",
+                className="barracuda-sidebar-footer",
             ),
         ],
-        className="orca-sidebar",
+        className="barracuda-sidebar",
     )
 
 
 def _not_found(pathname: str) -> html.Div:
     return html.Div(
         [
-            html.Span("404", className="orca-section-label"),
-            html.H1("This Orca page does not exist"),
+            html.Span("404", className="barracuda-section-label"),
+            html.H1("This Barracuda page does not exist"),
             html.P(f"No page is registered at {pathname!r}."),
-            dcc.Link("Return home", href="/", className="orca-button primary"),
+            dcc.Link("Return home", href="/", className="barracuda-button primary"),
         ],
-        className="orca-not-found",
+        className="barracuda-not-found",
     )
 
 
@@ -181,19 +242,22 @@ def create_app() -> Dash:
     asset_folder = Path(__file__).resolve().parent / "assets"
     cache_directory = Path(
         os.environ.get(
-            "ORCA_BACKGROUND_CACHE",
-            f"/tmp/orca-dash-background-{os.getpid()}",
+            "BARRACUDA_BACKGROUND_CACHE",
+            f"/tmp/barracuda-dash-background-{os.getpid()}",
         )
     )
-    background_manager = OrcaDiskcacheManager(
+    background_manager = BarracudaDiskcacheManager(
         diskcache.Cache(str(cache_directory), size_limit=512 * 1024 * 1024)
     )
     app = Dash(
         __name__,
         assets_folder=str(asset_folder),
-        title="Orca · Bayesian inference",
+        title="BARRACUDA",
+        # Page controls are mounted only for the active route. Dash should not
+        # report callbacks from the other scientific pages as browser errors
+        # while their components are intentionally absent.
         suppress_callback_exceptions=True,
-        update_title="Orca is working…",
+        update_title="BARRACUDA is working…",
         background_callback_manager=background_manager,
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"},
@@ -203,16 +267,33 @@ def create_app() -> Dash:
     )
     app.layout = html.Div(
         [
-            dcc.Location(id="orca-location", refresh=False),
+            dcc.Location(id="barracuda-location", refresh=False),
+            dcc.Store(id="barracuda-figure-sizing-applied"),
             _sidebar(),
-            html.Main(html.Div(id="orca-page", className="orca-page-inner"), className="orca-main"),
+            html.Main(
+                [
+                    html.Div(id="barracuda-page", className="barracuda-page-inner"),
+                    *account_shell_components(),
+                ],
+                className="barracuda-main",
+            ),
         ],
-        className="orca-shell",
+        className="barracuda-shell",
     )
+    # Every scientific page is routed into ``barracuda-page``.  Supplying Dash with
+    # the complete component tree prevents transient "nonexistent object"
+    # errors while a route-specific page (notably the optional workspace) is
+    # mounting, without keeping hidden duplicate controls in the live DOM.
+    app.validation_layout = html.Div([app.layout, *(page.layout() for page in PAGES)])
 
     nav_outputs = [Output(NAV_IDS[page.PATH], "className") for page in PAGES]
 
-    @app.callback(Output("orca-page", "children"), *nav_outputs, Input("orca-location", "pathname"))
+    @app.callback(
+        Output("barracuda-page", "children"),
+        *nav_outputs,
+        Output("barracuda-account-panel", "className"),
+        Input("barracuda-location", "pathname"),
+    )
     def route(pathname: str | None):
         normalized = pathname or "/"
         page = PAGE_BY_PATH.get(normalized)
@@ -222,7 +303,12 @@ def create_app() -> Dash:
             f"{NAV_BASE_CLASSES[current.PATH]} active" if current.PATH == active_path else NAV_BASE_CLASSES[current.PATH]
             for current in PAGES
         ]
-        return content, *classes
+        workspace_class = (
+            "barracuda-account-workspace-shell"
+            if active_path == workspace.PATH
+            else "barracuda-account-workspace-shell is-hidden"
+        )
+        return content, *classes, workspace_class
 
     for prefix in ("synthetic", "counts", "donor", "trajectory"):
         @app.callback(
@@ -240,8 +326,38 @@ def create_app() -> Dash:
         if register is not None:
             register(app)
 
+    shared.register_callbacks(app)
+
+    register_account_callbacks(app)
+
+    app.clientside_callback(
+        ClientsideFunction(
+            namespace="barracudaFigureControls",
+            function_name="apply",
+        ),
+        Output("barracuda-figure-sizing-applied", "data"),
+        Input("barracuda-figure-width", "value"),
+        Input("barracuda-figure-height-scale", "value"),
+        Input("barracuda-location", "pathname"),
+    )
+
+    app.clientside_callback(
+        """
+        function(clicks) {
+            if (!clicks) {
+                return [window.dash_clientside.no_update, window.dash_clientside.no_update];
+            }
+            return [100, 1.0];
+        }
+        """,
+        Output("barracuda-figure-width", "value"),
+        Output("barracuda-figure-height-scale", "value"),
+        Input("barracuda-figure-reset", "n_clicks"),
+        prevent_initial_call=True,
+    )
+
     @app.server.route("/healthz")
     def health_check():
-        return {"status": "ok", "application": "orca-dash"}, 200
+        return {"status": "ok", "application": "barracuda-dash"}, 200
 
     return app

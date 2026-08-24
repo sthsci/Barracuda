@@ -1,4 +1,4 @@
-"""Colours shared with the Orca manuscript figures."""
+"""Colours shared with the Barracuda manuscript figures."""
 
 PAPER_INK = "#262A33"
 PAPER_WARM = "#FFF1E5"

@@ -60,10 +60,10 @@ def layout() -> html.Div:
                 "The paper's validation workflow starts from known μλ, σλ and φ₀, generates cell-level event counts, and compares the inferred posterior with those known values.",
                 variant="validation",
             ),
-            html.P("The public demo accepts generated counts up to 100. If a setting exceeds that limit, reduce it and generate again. Choose priors that cover the truth you set.", className="orca-help"),
+            html.P("The public demo accepts generated counts up to 100. If a setting exceeds that limit, reduce it and generate again. Choose priors that cover the truth you set.", className="barracuda-help"),
             html.Div(
                 [
-                    html.Span("Step A", className="orca-section-label"),
+                    html.Span("Step A", className="barracuda-section-label"),
                     html.H2("Choose the ground truth"),
                     field(
                         "Generating model",
@@ -90,40 +90,40 @@ def layout() -> html.Div:
                             field("Continuous cell-to-cell heterogeneity in event rates, σλ", dcc.Input(id="synthetic-sigma-lambda", type="number", min=0, max=50, step=0.25, value=3.0)),
                             field("Fraction of nonengaging cells, φ₀", dcc.Slider(id="synthetic-p-zero", min=0, max=0.95, step=0.05, value=0.2, marks={0: "0", 0.5: "0.5", 0.95: "0.95"}, tooltip={"placement": "bottom"})),
                         ],
-                        className="orca-form-grid three",
+                        className="barracuda-form-grid three",
                     ),
                     html.Div(
                         [
                             html.Div(
                                 [
-                                    html.Span("Live model design", className="orca-section-label"),
+                                    html.Span("Live model design", className="barracuda-section-label"),
                                     html.H3("Population distribution of cell-specific event rates λᵢ"),
                                     html.P(
                                         "This includes every cell. A zero-inflated model places probability φ₀ at λᵢ = 0, while the remaining population follows the rate structure named by the model.",
-                                        className="orca-help",
+                                        className="barracuda-help",
                                     ),
                                 ],
-                                className="orca-rate-preview-copy",
+                                className="barracuda-rate-preview-copy",
                             ),
                             dcc.Graph(
                                 id="synthetic-rate-distribution-preview",
                                 figure=rate_distribution_figure("gamma", 4.0, 3.0, 0.2),
                                 config={"displaylogo": False, "responsive": True},
-                                className="orca-rate-preview-plot",
+                                className="barracuda-rate-preview-plot",
                             ),
-                            html.Div(id="synthetic-rate-preview-note", className="orca-rate-preview-note"),
+                            html.Div(id="synthetic-rate-preview-note", className="barracuda-rate-preview-note"),
                         ],
-                        className="orca-rate-preview",
+                        className="barracuda-rate-preview",
                     ),
                     html.Details(
                         [
                             html.Summary("Alternative rate distributions · in development"),
                             html.P(
                                 "Lognormal, truncated Normal and other positive rate families are not used to generate data in this release. Keeping them separate ensures that every public simulation matches one of the four models evaluated below.",
-                                className="orca-help",
+                                className="barracuda-help",
                             ),
                         ],
-                        className="orca-details orca-development-details",
+                        className="barracuda-details barracuda-development-details",
                     ),
                     html.Details(
                         [
@@ -141,25 +141,25 @@ def layout() -> html.Div:
                                         "Set a seed to reproduce exactly the same dataset.",
                                     ),
                                 ],
-                                className="orca-form-grid two",
+                                className="barracuda-form-grid two",
                             ),
                         ],
-                        className="orca-details orca-observation-details",
+                        className="barracuda-details barracuda-observation-details",
                     ),
-                    html.Button("Generate synthetic data", id="synthetic-generate", n_clicks=0, className="orca-button primary full"),
+                    html.Button("Generate synthetic data", id="synthetic-generate", n_clicks=0, className="barracuda-button primary full"),
                     html.Div(id="synthetic-generate-status", role="status", **{"aria-live": "polite"}),
                 ],
-                className="orca-workflow-panel",
+                className="barracuda-workflow-panel",
             ),
             html.Div(id="synthetic-preview"),
             html.Div(
                 [
-                    html.Span("Step C", className="orca-section-label"),
+                    html.Span("Step C", className="barracuda-section-label"),
                     html.H2("Run Bayesian inference"),
                     model_selector("synthetic"),
                     inference_controls("synthetic"),
-                    html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
-                    html.Button("Run inference for selected models", id="synthetic-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                    html.P("Inference can take several minutes. Keep this page open until it finishes.", className="barracuda-help"),
+                    html.Button("Run inference for selected models", id="synthetic-run", n_clicks=0, disabled=True, className="barracuda-button primary full"),
                     html.Div(id="synthetic-run-status", role="status", **{"aria-live": "polite"}),
                     pymc_progress("synthetic"),
                     dcc.Loading(
@@ -171,34 +171,34 @@ def layout() -> html.Div:
                                         "Run inference for one or more models. Posterior distributions appear for every completed model, and comparative Bayes factors appear when at least two models are included.",
                                     ),
                                 ],
-                                className="orca-results-placeholder",
+                                className="barracuda-results-placeholder",
                             ),
                             id="synthetic-results",
                         ),
                         type="circle",
                         color="#304B3D",
-                        className="orca-loading",
+                        className="barracuda-loading",
                     ),
-                    html.Div(id="synthetic-download", className="orca-download-slot"),
+                    html.Div(id="synthetic-download", className="barracuda-download-slot"),
                     html.Details(
                         [
                             html.Summary("Run the complete demonstration in Jupyter"),
                             html.P(
                                 "The notebook contains the Gamma simulator, all four PyMC models, the joint posterior plot, the Bayes factor plot and the code for reopening downloaded InferenceData files.",
-                                className="orca-help",
+                                className="barracuda-help",
                             ),
                             html.A(
                                 "Download the one-file demonstration notebook",
-                                href="/assets/downloads/orca_synthetic_validation_demo.ipynb",
-                                download="orca_synthetic_validation_demo.ipynb",
-                                className="orca-button secondary download",
+                                href="/assets/downloads/barracuda_synthetic_validation_demo.ipynb",
+                                download="barracuda_synthetic_validation_demo.ipynb",
+                                className="barracuda-button secondary download",
                             ),
                         ],
-                        className="orca-details orca-notebook-details",
+                        className="barracuda-details barracuda-notebook-details",
                     ),
                 ],
                 id="synthetic-inference-section",
-                className="orca-workflow-panel is-hidden",
+                className="barracuda-workflow-panel is-hidden",
             ),
         ]
     )
@@ -358,7 +358,7 @@ def register_callbacks(app) -> None:
             )
             frame = validate_count_frame(frame)
         except Exception as exc:
-            return no_update, no_update, no_update, no_update, "orca-workflow-panel is-hidden", True, note("Could not generate data", str(exc), tone="amber")
+            return no_update, no_update, no_update, no_update, "barracuda-workflow-panel is-hidden", True, note("Could not generate data", str(exc), tone="amber")
 
         truth_frame = pd.DataFrame(
             {
@@ -386,15 +386,15 @@ def register_callbacks(app) -> None:
 
         preview = html.Div(
             [
-                html.Span("Step B", className="orca-section-label"),
+                html.Span("Step B", className="barracuda-section-label"),
                 html.H2("Inspect the generated dataset"),
                 data_table(truth_frame),
                 data_overview(frame),
-                csv_download_link(frame, "orca_synthetic_counts.csv", "Download this synthetic dataset"),
+                csv_download_link(frame, "barracuda_synthetic_counts.csv", "Download this synthetic dataset"),
             ],
-            className="orca-workflow-panel",
+            className="barracuda-workflow-panel",
         )
-        return table_records(frame), dict(truth), float(observation_time), preview, "orca-workflow-panel", False, note("Dataset generated", "The synthetic data passed the validation checks.", tone="teal")
+        return table_records(frame), dict(truth), float(observation_time), preview, "barracuda-workflow-panel", False, note("Dataset generated", "The synthetic data passed the validation checks.", tone="teal")
 
     @app.callback(
         Output("synthetic-results", "children"),
@@ -431,8 +431,8 @@ def register_callbacks(app) -> None:
         running=[
             (
                 Output("synthetic-pymc-progress", "className"),
-                "orca-pymc-progress is-active",
-                "orca-pymc-progress is-hidden",
+                "barracuda-pymc-progress is-active",
+                "barracuda-pymc-progress is-hidden",
             ),
             (
                 Output("synthetic-inference-section", "aria-busy"),
@@ -441,8 +441,8 @@ def register_callbacks(app) -> None:
             ),
             (
                 Output("synthetic-run", "className"),
-                "orca-button primary full is-running",
-                "orca-button primary full",
+                "barracuda-button primary full is-running",
+                "barracuda-button primary full",
             ),
         ],
     )
@@ -518,7 +518,7 @@ def register_callbacks(app) -> None:
                 observation_time=float(observation_time),
                 settings=settings,
                 truth=truth,
-                download_name="orca_synthetic_validation.zip",
+                download_name="barracuda_synthetic_validation.zip",
             )
         except Exception as exc:
             return html.Div(), html.Div(), note("Inference did not complete", str(exc), tone="amber")

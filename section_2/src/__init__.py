@@ -1,1 +1,1 @@
-"""Donor aware inference backend packaged as bayesorca._backends.donor."""
+"""Donor aware inference backend packaged as barracuda._backends.donor."""

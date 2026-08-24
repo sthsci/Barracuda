@@ -253,9 +253,9 @@ def _selected_specs(model_keys: Sequence[str] | None) -> list[ModelSpec]:
 
 def _load_backend(donor_aware: bool) -> ModuleType:
     installed_name = (
-        "bayesorca._backends.donor.inference_donor_relative"
+        "barracuda._backends.donor.inference_donor_relative"
         if donor_aware
-        else "bayesorca._backends.event_counts.inference"
+        else "barracuda._backends.event_counts.inference"
     )
     source_name = (
         "section_2.src.inference_donor_relative"
@@ -265,7 +265,7 @@ def _load_backend(donor_aware: bool) -> ModuleType:
     try:
         return import_module(installed_name)
     except ModuleNotFoundError as exc:
-        if not exc.name or not exc.name.startswith("bayesorca"):
+        if not exc.name or not exc.name.startswith("barracuda"):
             raise
         return import_module(source_name)
 
@@ -727,7 +727,7 @@ def build_results_zip(
                 default=_json_default,
             ) + "\n"
             _zip_write(archive, "ground_truth.json", truth_json)
-        with TemporaryDirectory(prefix="orca-idata-") as temporary_directory:
+        with TemporaryDirectory(prefix="barracuda-idata-") as temporary_directory:
             temporary_root = Path(temporary_directory)
             for result in result_values:
                 filename = f"posterior_{result.model_key}_smc.nc"
@@ -742,7 +742,7 @@ def build_results_zip(
         _zip_write(
             archive,
             "README.md",
-            "# Orca Bayesian event count results\n"
+            "# Barracuda Bayesian event count results\n"
             "\n"
             "The `posterior_<model>_smc.nc` files are ArviZ InferenceData "
             "objects produced by PyMC Sequential Monte Carlo. The CSV files "

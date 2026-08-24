@@ -3,9 +3,9 @@ requires = ["setuptools>=75", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "bayesorca"
+name = "barracuda"
 version = "0.1.0"
-description = "Bayesian inference for heterogeneity in immune cell event counts and decision trajectories"
+description = "Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity"
 readme = "PACKAGE_README.md"
 requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
@@ -36,6 +36,7 @@ classifiers = [
 ]
 dependencies = [
   "arviz==0.22.0",
+  "h5py==3.13.0",
   "numpy==1.26.4",
   "pandas==2.2.3",
   "pymc==5.25.1",
@@ -49,30 +50,30 @@ test = ["pytest==8.3.4"]
 build = ["build>=1.2", "twine>=5.1"]
 
 [project.urls]
-Homepage = "https://github.com/sthsci/Orca"
-Repository = "https://github.com/sthsci/Orca"
-Issues = "https://github.com/sthsci/Orca/issues"
+Homepage = "https://github.com/sthsci/Barracuda"
+Repository = "https://github.com/sthsci/Barracuda"
+Issues = "https://github.com/sthsci/Barracuda/issues"
 
 [tool.setuptools]
 packages = [
-  "bayesorca",
-  "bayesorca._backends",
-  "bayesorca._backends.event_counts",
-  "bayesorca._backends.donor",
-  "bayesorca._backends.trajectories",
-  "bayesorca._core",
+  "barracuda",
+  "barracuda._backends",
+  "barracuda._backends.event_counts",
+  "barracuda._backends.donor",
+  "barracuda._backends.trajectories",
+  "barracuda._core",
 ]
 
 [tool.setuptools.package-dir]
-"bayesorca" = "src/bayesorca"
-"bayesorca._backends" = "src/bayesorca/_backends"
-"bayesorca._backends.event_counts" = "section_1/src"
-"bayesorca._backends.donor" = "section_2/src"
-"bayesorca._backends.trajectories" = "section_3/src"
-"bayesorca._core" = "webapp/core"
+"barracuda" = "src/barracuda"
+"barracuda._backends" = "src/barracuda/_backends"
+"barracuda._backends.event_counts" = "section_1/src"
+"barracuda._backends.donor" = "section_2/src"
+"barracuda._backends.trajectories" = "section_3/src"
+"barracuda._core" = "webapp/core"
 
 [tool.setuptools.package-data]
-bayesorca = ["py.typed"]
+barracuda = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

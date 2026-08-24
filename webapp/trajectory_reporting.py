@@ -11,6 +11,7 @@ from __future__ import annotations
 from ast import literal_eval
 import base64
 from collections.abc import Mapping, Sequence
+from html import escape
 import math
 from typing import Final
 
@@ -286,7 +287,7 @@ def empirical_state_summary(frame: pd.DataFrame) -> pd.DataFrame:
             )
         if "log2_n_cells" not in output:
             output["log2_n_cells"] = np.log2(
-                output["n_cells"].astype(float) + 1.0
+                output["n_cells"].astype(float).clip(lower=1.0)
             )
         return output.sort_values(
             ["condition", "x_before", "y_before"],
@@ -329,7 +330,9 @@ def empirical_state_summary(frame: pd.DataFrame) -> pd.DataFrame:
     grouped["empirical_lethal_probability"] = (
         grouped["n_lethal"] / grouped["n_contacts"]
     )
-    grouped["log2_n_cells"] = np.log2(grouped["n_cells"] + 1.0)
+    grouped["log2_n_cells"] = np.log2(
+        grouped["n_cells"].astype(float).clip(lower=1.0)
+    )
     return grouped
 
 
@@ -337,9 +340,153 @@ def _probability_colour(probability: float) -> str:
     return str(sample_colorscale(PROBABILITY_SCALE, [float(probability)])[0])
 
 
+def _state_arrow_length(
+    n_cells: int,
+    max_log2_cells: float,
+    arrow_scale: float,
+) -> float:
+    """Map cell support to an arrow length using the paper's log2 scale."""
+
+    log2_cells = math.log2(max(int(n_cells), 1))
+    support = log2_cells / max(max_log2_cells, 1.0)
+    return min(0.95, 0.15 + 0.62 * float(arrow_scale) * support)
+
+
+def _encoding_legend_svg(
+    summary: pd.DataFrame,
+    *,
+    arrow_scale: float,
+) -> str:
+    """Return the paper-style arrow length and quarter-fan legend as SVG."""
+
+    max_cells = max(int(summary["n_cells"].max()), 1)
+    powers = [2**power for power in range(int(math.floor(math.log2(max_cells))) + 1)]
+    examples = list(dict.fromkeys([*powers, max_cells]))
+    if len(examples) > 6:
+        indices = np.linspace(0, len(examples) - 1, 6).round().astype(int)
+        examples = [examples[index] for index in indices]
+    max_log2_cells = max(math.log2(max_cells), 1.0)
+
+    size_items: list[str] = []
+    start_x = 18.0
+    available_width = 535.0
+    spacing = available_width / max(len(examples), 1)
+    for index, count in enumerate(examples):
+        x = start_x + index * spacing
+        length = 18.0 + 58.0 * (
+            (_state_arrow_length(count, max_log2_cells, arrow_scale) - 0.15)
+            / 0.80
+        )
+        size_items.extend(
+            [
+                (
+                    f'<line x1="{x:.1f}" y1="69" x2="{x + length:.1f}" y2="69" '
+                    'stroke="#77736B" stroke-width="2.4" marker-end="url(#grey-arrow)"/>'
+                ),
+                (
+                    f'<text x="{x + length / 2:.1f}" y="94" text-anchor="middle" '
+                    f'class="value">{count}</text>'
+                ),
+            ]
+        )
+
+    origin_x, origin_y, radius = 690.0, 112.0, 68.0
+    probabilities = np.linspace(0.0, 1.0, 6)
+    angles = [math.atan2(probability, 1.0 - probability) for probability in probabilities]
+    fan_items: list[str] = []
+    for band_index, (lower, upper) in enumerate(
+        zip(angles[:-1], angles[1:], strict=True)
+    ):
+        lower_x = origin_x + radius * math.cos(lower)
+        lower_y = origin_y - radius * math.sin(lower)
+        upper_x = origin_x + radius * math.cos(upper)
+        upper_y = origin_y - radius * math.sin(upper)
+        midpoint_probability = float(probabilities[band_index] + 0.1)
+        colour = _probability_colour(midpoint_probability)
+        fan_items.append(
+            (
+                f'<path d="M {origin_x:.1f},{origin_y:.1f} '
+                f'L {lower_x:.1f},{lower_y:.1f} '
+                f'A {radius:.1f},{radius:.1f} 0 0,0 {upper_x:.1f},{upper_y:.1f} Z" '
+                f'fill="{escape(colour)}" fill-opacity="0.9" stroke="#25231F" stroke-width="0.7"/>'
+            )
+        )
+    for probability in (0.0, 0.25, 0.5, 0.75, 1.0):
+        angle = math.atan2(probability, 1.0 - probability)
+        end_x = origin_x + (radius - 3) * math.cos(angle)
+        end_y = origin_y - (radius - 3) * math.sin(angle)
+        fan_items.append(
+            (
+                f'<line x1="{origin_x:.1f}" y1="{origin_y:.1f}" '
+                f'x2="{end_x:.1f}" y2="{end_y:.1f}" stroke="#25231F" '
+                'stroke-width="1.7" marker-end="url(#black-arrow)"/>'
+            )
+        )
+
+    svg = f"""
+    <svg xmlns="http://www.w3.org/2000/svg" width="900" height="132" viewBox="0 0 900 132">
+      <defs>
+        <marker id="grey-arrow" markerWidth="7" markerHeight="7" refX="5.8" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#77736B"/>
+        </marker>
+        <marker id="black-arrow" markerWidth="7" markerHeight="7" refX="5.8" refY="3.5" orient="auto">
+          <path d="M0,0 L7,3.5 L0,7 Z" fill="#25231F"/>
+        </marker>
+        <style>
+          .title {{ font: 18px 'Iowan Old Style', Baskerville, Georgia, serif; fill: #25231F; }}
+          .value {{ font: 15px 'Iowan Old Style', Baskerville, Georgia, serif; fill: #25231F; }}
+          .small {{ font: 13px 'Iowan Old Style', Baskerville, Georgia, serif; fill: #25231F; }}
+        </style>
+      </defs>
+      <text x="18" y="25" class="title">Cells reaching the state (arrow length increases with log₂ n)</text>
+      {''.join(size_items)}
+      <text x="610" y="25" class="title">Empirical killing probability</text>
+      {''.join(fan_items)}
+      <text x="766" y="119" class="value">p = 0</text>
+      <text x="741" y="62" class="value">0.5</text>
+      <text x="666" y="34" class="value">p = 1</text>
+      <text x="602" y="128" class="small">horizontal = non-lethal · vertical = lethal</text>
+    </svg>
+    """
+    encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
+    return f"data:image/svg+xml;base64,{encoded}"
+
+
+def empirical_state_encoding_legend(
+    frame: pd.DataFrame,
+    *,
+    arrow_scale: float = 1.0,
+) -> html.Figure:
+    """Render the Figure 5 direction and log2 cell-support legend."""
+
+    summary = empirical_state_summary(frame)
+    if summary.empty:
+        raise ValueError("at least one observed contact is required")
+    return html.Figure(
+        [
+            html.Img(
+                src=_encoding_legend_svg(summary, arrow_scale=arrow_scale),
+                alt=(
+                    "Trajectory arrow legend. Arrow length increases with the log base 2 "
+                    "number of cells reaching a state. Horizontal arrows represent zero "
+                    "empirical killing probability, vertical arrows represent probability "
+                    "one, and intermediate directions represent intermediate probabilities."
+                ),
+            ),
+            html.Figcaption(
+                "Direction encodes the empirical probability that the next contact is lethal; length encodes how many cells reached the state on a log₂ scale."
+            ),
+        ],
+        className="barracuda-trajectory-encoding-legend",
+    )
+
+
 def empirical_state_arrow_figure(
     frame: pd.DataFrame,
     condition_colours: Mapping[str, str] | None = None,
+    *,
+    arrow_scale: float = 1.0,
+    figure_height: int = 700,
 ) -> go.Figure:
     """Plot empirical state arrows, faceted by experimental condition.
 
@@ -362,7 +509,14 @@ def empirical_state_arrow_figure(
         vertical_spacing=0.16,
     )
     condition_colours = dict(condition_colours or {})
-    global_max_weight = max(float(summary["log2_n_cells"].max()), 1.0)
+    del condition_colours  # condition names are already the subplot titles
+    arrow_scale = float(arrow_scale)
+    if not 0.4 <= arrow_scale <= 1.6:
+        raise ValueError("arrow scale must be between 0.4 and 1.6")
+    figure_height = int(figure_height)
+    if not 480 <= figure_height <= 1200:
+        raise ValueError("figure height must be between 480 and 1200 pixels")
+    global_max_weight = max(math.log2(max(int(summary["n_cells"].max()), 1)), 1.0)
 
     for condition_number, condition in enumerate(conditions):
         row = condition_number // columns + 1
@@ -372,8 +526,11 @@ def empirical_state_arrow_figure(
         ]
         for state in condition_frame.itertuples(index=False):
             probability = float(state.empirical_lethal_probability)
-            weight = float(state.log2_n_cells)
-            length = 0.18 + 0.62 * weight / global_max_weight
+            length = _state_arrow_length(
+                int(state.n_cells),
+                global_max_weight,
+                arrow_scale,
+            )
             direction = np.asarray([1.0 - probability, probability])
             norm = float(np.linalg.norm(direction)) or 1.0
             delta = length * direction / norm
@@ -395,10 +552,10 @@ def empirical_state_arrow_figure(
                     x=[start_x, end_x],
                     y=[start_y, end_y],
                     mode="lines+markers",
-                    line={"color": colour, "width": 4},
+                    line={"color": colour, "width": 3.5 * arrow_scale},
                     marker={
                         "color": [colour, colour],
-                        "size": [5, 11],
+                        "size": [max(3.5, 5 * arrow_scale), max(8, 11 * arrow_scale)],
                         "symbol": ["circle", "arrow"],
                         "angle": [0, angle],
                         "line": {"color": INK, "width": 0.55},
@@ -410,53 +567,6 @@ def empirical_state_arrow_figure(
                 row=row,
                 col=column,
             )
-        # A small condition-colour key retains user colour choices without
-        # replacing the numerical probability colour scale.
-        figure.add_trace(
-            go.Scatter(
-                x=[None],
-                y=[None],
-                mode="markers",
-                name=condition,
-                marker={
-                    "size": 9,
-                    "color": condition_colours.get(condition, "#007AFF"),
-                },
-                hoverinfo="skip",
-                legendgroup=condition,
-                showlegend=True,
-            ),
-            row=row,
-            col=column,
-        )
-
-    # One invisible trace supplies a genuinely numerical, shared colour bar.
-    figure.add_trace(
-        go.Scatter(
-            x=[None, None],
-            y=[None, None],
-            mode="markers",
-            marker={
-                "color": [0.0, 1.0],
-                "colorscale": PROBABILITY_SCALE,
-                "cmin": 0.0,
-                "cmax": 1.0,
-                "showscale": True,
-                "colorbar": {
-                    "title": {
-                        "text": "Empirical next-contact<br>killing probability"
-                    },
-                    "tickvals": [0.0, 0.5, 1.0],
-                    "len": 0.72,
-                },
-            },
-            hoverinfo="skip",
-            showlegend=False,
-        ),
-        row=1,
-        col=1,
-    )
-
     axis_max = int(
         max(summary["x_before"].max(), summary["y_before"].max())
     ) + 1
@@ -485,18 +595,12 @@ def empirical_state_arrow_figure(
         )
     figure.update_layout(
         template="none",
-        height=max(430, 410 * rows),
+        height=max(figure_height, 350 * rows + 300),
         paper_bgcolor=SHEET,
         plot_bgcolor=PAPER,
         font={"family": SERIF, "color": INK, "size": 13},
-        margin={"l": 82, "r": 118, "t": 92, "b": 76},
-        legend={
-            "orientation": "h",
-            "x": 0,
-            "y": 1.06,
-            "xanchor": "left",
-            "yanchor": "bottom",
-        },
+        margin={"l": 82, "r": 42, "t": 70, "b": 76},
+        showlegend=False,
     )
     return figure
 
@@ -1304,7 +1408,7 @@ def _csv_link(frame: pd.DataFrame, filename: str, label: str) -> html.A:
         label,
         href=f"data:text/csv;base64,{encoded}",
         download=filename,
-        className="orca-button secondary download",
+        className="barracuda-button secondary download",
     )
 
 
@@ -1316,8 +1420,8 @@ def _download_component(download: object | None) -> object | None:
         return html.A(
             "Download complete trajectory analysis",
             href=f"data:application/zip;base64,{encoded}",
-            download="orca_trajectory_analysis.zip",
-            className="orca-button primary download",
+            download="barracuda_trajectory_analysis.zip",
+            className="barracuda-button primary download",
         )
     return download
 
@@ -1403,7 +1507,7 @@ def render_trajectory_results(
                         [
                             html.Span(
                                 "Marginal posterior parameter",
-                                className="orca-field-label",
+                                className="barracuda-field-label",
                             ),
                             dcc.Dropdown(
                                 id={
@@ -1423,7 +1527,7 @@ def render_trajectory_results(
                                 clearable=False,
                             ),
                         ],
-                        className="orca-field",
+                        className="barracuda-field",
                     ),
                     dcc.Graph(
                         id={
@@ -1436,7 +1540,7 @@ def render_trajectory_results(
                             "responsive": True,
                             "toImageButtonOptions": {
                                 "format": "png",
-                                "filename": f"orca_trajectory_{model_key}_marginal",
+                                "filename": f"barracuda_trajectory_{model_key}_marginal",
                                 "scale": 2,
                             },
                         },
@@ -1445,7 +1549,7 @@ def render_trajectory_results(
                     html.H5("Full joint posterior"),
                     html.P(
                         "Diagonal panels use shared bins and show 95% HDIs. Lower panels retain paired particle dependence between parameters.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     html.Div(
                         dcc.Graph(
@@ -1459,22 +1563,22 @@ def render_trajectory_results(
                                 "responsive": True,
                                 "toImageButtonOptions": {
                                     "format": "png",
-                                    "filename": f"orca_trajectory_{model_key}_joint",
+                                    "filename": f"barracuda_trajectory_{model_key}_joint",
                                     "scale": 2,
                                 },
                             },
                             responsive=True,
-                            className="orca-joint-posterior-plot",
+                            className="barracuda-joint-posterior-plot",
                             style={
                                 "height": f"{int(joint.layout.height)}px",
                                 "minWidth": f"{max(760, 220 * len(parameters))}px",
                             },
                         ),
-                        className="orca-joint-plot-scroll",
+                        className="barracuda-joint-plot-scroll",
                     ),
                 ],
                 id={"type": f"{prefix}-model-panel", "index": model_key},
-                className="orca-model-result-panel",
+                className="barracuda-model-result-panel",
             )
         )
 
@@ -1488,7 +1592,7 @@ def render_trajectory_results(
                 ),
             ],
             id=f"{prefix}-bayes-factor-unavailable",
-            className="orca-results-placeholder",
+            className="barracuda-results-placeholder",
         )
     else:
         bayes_result = dcc.Graph(
@@ -1499,36 +1603,36 @@ def render_trajectory_results(
                 "responsive": True,
                 "toImageButtonOptions": {
                     "format": "png",
-                    "filename": "orca_trajectory_bayes_factors",
+                    "filename": "barracuda_trajectory_bayes_factors",
                     "scale": 2,
                 },
             },
             responsive=True,
-            className="orca-bayes-factor-plot",
+            className="barracuda-bayes-factor-plot",
         )
 
     content = html.Div(
         [
             html.Section(
                 [
-                    html.Span("Model evidence", className="orca-section-label"),
+                    html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
                         "The axis is the continuous log₁₀ BF(candidate model / best model) scale. Best models sit at zero; evidence against alternatives extends left through the exact BF boundaries 3, 10 and 100.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     bayes_result,
                     _csv_link(
                         evidence_table,
-                        "orca_trajectory_model_evidence.csv",
+                        "barracuda_trajectory_model_evidence.csv",
                         "Download Bayes factor CSV",
                     ),
                 ],
-                className="orca-result-section orca-figure-result",
+                className="barracuda-result-section barracuda-figure-result",
             ),
             html.Section(
                 [
-                    html.Span("Posterior results", className="orca-section-label"),
+                    html.Span("Posterior results", className="barracuda-section-label"),
                     html.H3("Choose inference results to visualise"),
                     dcc.Store(
                         id=f"{prefix}-posterior-data",
@@ -1548,20 +1652,20 @@ def render_trajectory_results(
                         ],
                         value=models,
                         inline=True,
-                        className="orca-posterior-model-options",
-                        inputClassName="orca-check-input",
-                        labelClassName="orca-posterior-model-option",
+                        className="barracuda-posterior-model-options",
+                        inputClassName="barracuda-check-input",
+                        labelClassName="barracuda-posterior-model-option",
                     ),
                     html.P(
                         "Condition colours are retained across every posterior. Parameters fixed by a candidate model are omitted rather than shown as artificial zero-width distributions.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
-                    html.Div(panels, className="orca-condition-model-panels"),
+                    html.Div(panels, className="barracuda-condition-model-panels"),
                 ],
-                className="orca-result-section",
+                className="barracuda-result-section",
             ),
         ],
-        className="orca-results orca-trajectory-results",
+        className="barracuda-results barracuda-trajectory-results",
     )
 
     supplied_download = _download_component(download)
@@ -1577,25 +1681,25 @@ def render_trajectory_results(
                         [
                             _csv_link(
                                 evidence_table,
-                                "orca_trajectory_model_evidence.csv",
+                                "barracuda_trajectory_model_evidence.csv",
                                 "Model evidence CSV",
                             ),
                             _csv_link(
                                 draws,
-                                "orca_trajectory_posterior_samples.csv",
+                                "barracuda_trajectory_posterior_samples.csv",
                                 "Paired posterior samples CSV",
                             ),
                         ],
-                        className="orca-download-grid",
+                        className="barracuda-download-grid",
                     ),
                 ],
-                className="orca-details",
+                className="barracuda-details",
             )
         ]
     )
     downloads = html.Div(
         download_children,
-        className="orca-analysis-downloads",
+        className="barracuda-analysis-downloads",
     )
     return content, downloads
 
@@ -1606,6 +1710,7 @@ __all__ = [
     "PARAMETER_LABELS",
     "TRAJECTORY_MODEL_LABELS",
     "empirical_state_arrow_figure",
+    "empirical_state_encoding_legend",
     "empirical_state_summary",
     "expanded_history_frame",
     "joint_posterior_figure",

@@ -323,15 +323,15 @@ def test_validation_results_hide_tables_and_offer_plot_csv_and_idata_exports() -
     links = [item for item in _walk([content, downloads]) if item.__class__.__name__ == "A"]
     filenames = {getattr(link, "download", None) for link in links}
     assert {
-        "orca_joint_posterior.png",
-        "orca_joint_posterior.pdf",
-        "orca_posterior_samples.csv",
-        "orca_bayes_factors.png",
-        "orca_bayes_factors.pdf",
-        "orca_model_evidence.csv",
-        "orca_posterior_summary.csv",
-        "orca_ground_truth_recovery.csv",
-        "orca_synthetic_validation.zip",
+        "barracuda_joint_posterior.png",
+        "barracuda_joint_posterior.pdf",
+        "barracuda_posterior_samples.csv",
+        "barracuda_bayes_factors.png",
+        "barracuda_bayes_factors.pdf",
+        "barracuda_model_evidence.csv",
+        "barracuda_posterior_summary.csv",
+        "barracuda_ground_truth_recovery.csv",
+        "barracuda_synthetic_validation.zip",
     } <= filenames
     assert ".nc file per model" in _text(downloads)
 
@@ -359,7 +359,7 @@ def test_downloadable_notebook_is_clean_and_self_contained() -> None:
         / "webapp"
         / "assets"
         / "downloads"
-        / "orca_synthetic_validation_demo.ipynb"
+        / "barracuda_synthetic_validation_demo.ipynb"
     )
     notebook = json.loads(notebook_path.read_text(encoding="utf-8"))
     source = "\n".join(

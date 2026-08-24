@@ -73,7 +73,7 @@ def _condition_colour_controls(
                         },
                         type="color",
                         value=defaults[label],
-                        className="orca-colour-input",
+                        className="barracuda-colour-input",
                     ),
                     dcc.Dropdown(
                         id={
@@ -84,14 +84,14 @@ def _condition_colour_controls(
                         value=defaults[label],
                         clearable=False,
                         searchable=False,
-                        className="orca-condition-preset",
+                        className="barracuda-condition-preset",
                     ),
                 ],
-                className="orca-condition-colour-card",
+                className="barracuda-condition-colour-card",
             )
             for label in labels
         ],
-        className="orca-condition-colour-grid",
+        className="barracuda-condition-colour-grid",
     )
 
 
@@ -109,15 +109,15 @@ def _condition_overview(
                     dcc.Tab(
                         label=f"{condition} · {len(group):,} cells",
                         children=data_overview(group, donor_aware=donor_aware),
-                        className="orca-tab",
-                        selected_className="orca-tab selected",
+                        className="barracuda-tab",
+                        selected_className="barracuda-tab selected",
                     )
                     for condition, group in groups.items()
                 ],
-                className="orca-tabs",
+                className="barracuda-tabs",
             ),
         ],
-        className="orca-details orca-overview",
+        className="barracuda-details barracuda-overview",
     )
 
 
@@ -184,11 +184,11 @@ def layout(
             privacy_note,
             html.Div(
                 [
-                    html.Span("Step A", className="orca-section-label"),
+                    html.Span("Step A", className="barracuda-section-label"),
                     html.H2("Provide counts with donor labels" if donor_aware else "Provide your count data"),
                     html.P(
                         "Include an experimental condition column to compare as many as four groups. A table without that column is treated as one group.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     html.H3("Choose your data source"),
                     dcc.RadioItems(
@@ -199,12 +199,12 @@ def layout(
                         ],
                         value="upload",
                         inline=True,
-                        className="orca-segmented",
-                        labelClassName="orca-segment",
-                        inputClassName="orca-segment-input",
+                        className="barracuda-segmented",
+                        labelClassName="barracuda-segment",
+                        inputClassName="barracuda-segment-input",
                     ),
                     html.Div(
-                        dcc.Upload(id=f"{prefix}-upload", children=html.Div([html.Strong("Drop a CSV here"), html.Span(" or choose a file")]), accept=".csv,text/csv", multiple=False, max_size=1_000_000, className="orca-upload"),
+                        dcc.Upload(id=f"{prefix}-upload", children=html.Div([html.Strong("Drop a CSV here"), html.Span(" or choose a file")]), accept=".csv,text/csv", multiple=False, max_size=1_000_000, className="barracuda-upload"),
                         id=f"{prefix}-upload-panel",
                         className="",
                     ),
@@ -215,11 +215,11 @@ def layout(
                             html.Summary("Review or edit input rows"),
                             html.Div(
                                 [
-                                    html.Button("Add row", id=f"{prefix}-add-row", n_clicks=0, className="orca-button tertiary small"),
-                                    html.Button("Remove selected", id=f"{prefix}-remove-rows", n_clicks=0, className="orca-button tertiary small"),
+                                    html.Button("Add row", id=f"{prefix}-add-row", n_clicks=0, className="barracuda-button tertiary small"),
+                                    html.Button("Remove selected", id=f"{prefix}-remove-rows", n_clicks=0, className="barracuda-button tertiary small"),
                                 ],
                                 id=f"{prefix}-edit-actions",
-                                className="orca-editor-actions is-hidden",
+                                className="barracuda-editor-actions is-hidden",
                             ),
                             dag.AgGrid(
                                 id=f"{prefix}-table",
@@ -227,67 +227,67 @@ def layout(
                                 columnDefs=table_columns,
                                 defaultColDef={"sortable": True, "resizable": True, "minWidth": 130, "flex": 1},
                                 dashGridOptions=_grid_options(False),
-                                className="ag-theme-quartz orca-data-grid orca-edit-grid",
+                                className="ag-theme-quartz barracuda-data-grid barracuda-edit-grid",
                                 style={"width": "100%", "height": "430px"},
                             ),
                         ],
-                        className="orca-details orca-editor-shell",
+                        className="barracuda-details barracuda-editor-shell",
                     ),
                     html.Details(
                         [
                             html.Summary("Observation time T · default 1"),
                             html.Label(
                                 [
-                                    html.Span("Common observation time T", className="orca-field-label"),
+                                    html.Span("Common observation time T", className="barracuda-field-label"),
                                     dcc.Input(id=f"{prefix}-observation-time", type="number", min=0.01, max=100, step=0.25, value=1.0),
                                     html.Small(
                                         "Counts follow Nᵢ | λᵢ,T ~ Poisson(λᵢT). With T = 1, rates are events per complete observation window. Edit T only when you want rates per another time unit.",
-                                        className="orca-help",
+                                        className="barracuda-help",
                                     ),
                                 ],
-                                className="orca-field compact",
+                                className="barracuda-field compact",
                             ),
                         ],
-                        className="orca-details orca-observation-details",
+                        className="barracuda-details barracuda-observation-details",
                     ),
                     html.Div(
                         [
                             html.H3("Condition colours"),
                             html.P(
                                 "Use the Apple-inspired presets or open the colour well to choose any colour. These choices are used consistently in the posterior and comparison plots.",
-                                className="orca-help",
+                                className="barracuda-help",
                             ),
                             html.Div(id=f"{prefix}-condition-colour-controls"),
                         ],
                         id=f"{prefix}-condition-colours-section",
-                        className="orca-condition-colours-section is-hidden",
+                        className="barracuda-condition-colours-section is-hidden",
                     ),
                     html.Div(id=f"{prefix}-overview"),
                 ],
-                className="orca-workflow-panel",
+                className="barracuda-workflow-panel",
             ),
             html.Div(
                 [
-                    html.Span("Step B", className="orca-section-label"),
+                    html.Span("Step B", className="barracuda-section-label"),
                     html.H2("Configure and run donor aware inference" if donor_aware else "Configure and run donor ignorant inference"),
                     html.Fieldset(
                         [
                             model_selector(prefix, default_models),
                             inference_controls(prefix, donor_aware=donor_aware),
-                            html.P("Inference can take several minutes. Keep this page open until it finishes.", className="orca-help"),
-                            html.Button("Run inference for selected models", id=f"{prefix}-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                            html.P("Inference can take several minutes. Keep this page open until it finishes.", className="barracuda-help"),
+                            html.Button("Run inference for selected models", id=f"{prefix}-run", n_clicks=0, disabled=True, className="barracuda-button primary full"),
                         ],
                         id=f"{prefix}-inference-controls",
                         disabled=False,
-                        className="orca-inference-fieldset",
+                        className="barracuda-inference-fieldset",
                     ),
                     html.Div(id=f"{prefix}-run-status", role="status", **{"aria-live": "polite"}),
                     pymc_progress(prefix),
-                    dcc.Loading(html.Div(id=f"{prefix}-results"), type="circle", color="#304B3D", className="orca-loading"),
-                    html.Div(id=f"{prefix}-download", className="orca-download-slot"),
+                    dcc.Loading(html.Div(id=f"{prefix}-results"), type="circle", color="#304B3D", className="barracuda-loading"),
+                    html.Div(id=f"{prefix}-download", className="barracuda-download-slot"),
                 ],
                 id=f"{prefix}-inference",
-                className="orca-workflow-panel",
+                className="barracuda-workflow-panel",
             ),
         ]
     )
@@ -312,7 +312,7 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
         triggered = ctx.triggered_id
         editable = source == "edit"
         upload_class = "" if source == "upload" else "is-hidden"
-        action_class = "orca-editor-actions" if editable else "orca-editor-actions is-hidden"
+        action_class = "barracuda-editor-actions" if editable else "barracuda-editor-actions is-hidden"
         grid_options = _grid_options(editable)
         if triggered == f"{prefix}-add-row" and editable:
             rows = list(current_rows or [])
@@ -329,12 +329,12 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
         if triggered == f"{prefix}-remove-rows" and editable:
             selected = list(selected_rows or [])
             rows = [row for row in list(current_rows or []) if row not in selected]
-            status = html.P(f"Removed {len(selected)} selected row(s).", className="orca-help") if selected else html.P("Select one or more rows using the checkboxes first.", className="orca-help")
+            status = html.P(f"Removed {len(selected)} selected row(s).", className="barracuda-help") if selected else html.P("Select one or more rows using the checkboxes first.", className="barracuda-help")
             return rows, _columns(donor_aware, True), grid_options, upload_class, action_class, status
         if source == "edit":
-            return _blank_rows(donor_aware=donor_aware), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("A blank minimum-size template is ready. Replace the placeholder identifiers and counts, then add or remove rows as needed.", className="orca-help")
+            return _blank_rows(donor_aware=donor_aware), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("A blank minimum-size template is ready. Replace the placeholder identifiers and counts, then add or remove rows as needed.", className="barracuda-help")
         if not upload_contents:
-            return [], _columns(donor_aware, False), grid_options, upload_class, action_class, html.P("Upload a UTF-8 CSV up to 1 MB.", className="orca-help")
+            return [], _columns(donor_aware, False), grid_options, upload_class, action_class, html.P("Upload a UTF-8 CSV up to 1 MB.", className="barracuda-help")
         try:
             raw = read_uploaded_csv(upload_contents)
             frame, mapping_message = normalize_condition_frame(
@@ -358,7 +358,7 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
     )
     def validate_input(rows, _cell_change, observation_time):
         if not rows:
-            return html.Div(), html.Div(), None, True, html.Div(), "orca-condition-colours-section is-hidden"
+            return html.Div(), html.Div(), None, True, html.Div(), "barracuda-condition-colours-section is-hidden"
         try:
             frame = pd.DataFrame(rows)
             required = list(condition_columns(donor_aware=donor_aware))
@@ -367,29 +367,29 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             if observation_time is None or float(observation_time) <= 0:
                 raise ValueError("observation time must be greater than zero")
         except Exception as exc:
-            return note("Please correct the input", str(exc), tone="amber"), html.Div(), None, True, html.Div(), "orca-condition-colours-section is-hidden"
+            return note("Please correct the input", str(exc), tone="amber"), html.Div(), None, True, html.Div(), "barracuda-condition-colours-section is-hidden"
         labels = list(split_condition_frame(valid, donor_aware=donor_aware))
         return (
             html.Div(
                 [
                     note(
                         "Dataset ready",
-                        f"The data passed the Orca checks for {len(labels)} experimental condition{'s' if len(labels) != 1 else ''}.",
+                        f"The data passed the Barracuda checks for {len(labels)} experimental condition{'s' if len(labels) != 1 else ''}.",
                         tone="teal",
                     ),
                     html.A(
                         "Continue to inference settings ↓",
                         href=f"#{prefix}-inference",
-                        className="orca-button primary small",
+                        className="barracuda-button primary small",
                     ),
                 ],
-                className="orca-validation-ready",
+                className="barracuda-validation-ready",
             ),
             _condition_overview(valid, donor_aware=donor_aware),
             table_records(valid),
             False,
             _condition_colour_controls(labels, prefix=prefix),
-            "orca-condition-colours-section",
+            "barracuda-condition-colours-section",
         )
 
     @app.callback(
@@ -458,8 +458,8 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
         running=[
             (
                 Output(f"{prefix}-pymc-progress", "className"),
-                "orca-pymc-progress is-active",
-                "orca-pymc-progress is-hidden",
+                "barracuda-pymc-progress is-active",
+                "barracuda-pymc-progress is-hidden",
             ),
             (
                 Output(f"{prefix}-inference", "aria-busy"),
@@ -473,8 +473,8 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             ),
             (
                 Output(f"{prefix}-run", "className"),
-                "orca-button primary full is-running",
-                "orca-button primary full",
+                "barracuda-button primary full is-running",
+                "barracuda-button primary full",
             ),
         ],
     )

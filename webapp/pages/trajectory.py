@@ -37,6 +37,7 @@ from webapp.progress_ui import (
 )
 from webapp.trajectory_reporting import (
     empirical_state_arrow_figure,
+    empirical_state_encoding_legend,
     model_panel_styles,
     posterior_marginal_figure,
     render_trajectory_results,
@@ -107,7 +108,7 @@ def _empty_figure(message: str) -> go.Figure:
 def _workflow_option(title: str, description: str) -> html.Span:
     return html.Span(
         [html.Strong(title), html.Small(description)],
-        className="orca-model-option-copy",
+        className="barracuda-model-option-copy",
     )
 
 
@@ -117,16 +118,16 @@ def _model_option(model_key: str) -> html.Span:
         [
             html.Strong(f"{short} · {name}"),
             html.Small(description),
-            html.Span(parameters, className="orca-trajectory-parameter-chip"),
+            html.Span(parameters, className="barracuda-trajectory-parameter-chip"),
         ],
-        className="orca-model-option-copy",
+        className="barracuda-model-option-copy",
     )
 
 
 def _model_selector() -> html.Div:
     return html.Div(
         [
-            html.Div("Models included in inference", className="orca-field-label"),
+            html.Div("Models included in inference", className="barracuda-field-label"),
             dcc.Checklist(
                 id="trajectory-models",
                 options=[
@@ -134,16 +135,16 @@ def _model_selector() -> html.Div:
                     for model_key in MODEL_ORDER
                 ],
                 value=list(MODEL_ORDER),
-                className="orca-model-checklist",
-                inputClassName="orca-check-input",
-                labelClassName="orca-model-option",
+                className="barracuda-model-checklist",
+                inputClassName="barracuda-check-input",
+                labelClassName="barracuda-model-option",
             ),
             html.Small(
                 "Select one model for parameter inference or at least two for Bayes factor comparison.",
-                className="orca-help",
+                className="barracuda-help",
             ),
         ],
-        className="orca-field",
+        className="barracuda-field",
     )
 
 
@@ -183,7 +184,7 @@ def _inference_controls() -> html.Div:
                                 dcc.Input(id="trajectory-cores", type="number", min=1, max=2, step=1, value=1),
                             ),
                         ],
-                        className="orca-form-grid three",
+                        className="barracuda-form-grid three",
                     ),
                     field(
                         "Inference seed (optional)",
@@ -208,7 +209,7 @@ def _inference_controls() -> html.Div:
                                 dcc.Input(id="trajectory-correlation", type="number", min=0.001, max=0.2, step=0.005, value=0.01),
                             ),
                         ],
-                        className="orca-form-grid two",
+                        className="barracuda-form-grid two",
                     ),
                     field(
                         "log10 mean contact rate prior bounds",
@@ -246,13 +247,13 @@ def _inference_controls() -> html.Div:
                                 "More points improve the heterogeneous likelihood approximation but increase runtime.",
                             ),
                         ],
-                        className="orca-form-grid two",
+                        className="barracuda-form-grid two",
                     ),
                 ],
-                className="orca-details",
+                className="barracuda-details",
             ),
         ],
-        className="orca-inference-controls",
+        className="barracuda-inference-controls",
     )
 
 
@@ -271,7 +272,7 @@ def _condition_colour_controls(labels: list[str]) -> html.Div:
                         id={"type": "trajectory-condition-colour", "index": label},
                         type="color",
                         value=defaults[label],
-                        className="orca-colour-input",
+                        className="barracuda-colour-input",
                     ),
                     dcc.Dropdown(
                         id={"type": "trajectory-condition-preset", "index": label},
@@ -279,14 +280,14 @@ def _condition_colour_controls(labels: list[str]) -> html.Div:
                         value=defaults[label],
                         clearable=False,
                         searchable=False,
-                        className="orca-condition-preset",
+                        className="barracuda-condition-preset",
                     ),
                 ],
-                className="orca-condition-colour-card",
+                className="barracuda-condition-colour-card",
             )
             for label in labels
         ],
-        className="orca-condition-colour-grid",
+        className="barracuda-condition-colour-grid",
     )
 
 
@@ -320,7 +321,7 @@ def _data_summary(frame: pd.DataFrame) -> html.Div:
             metric("Zero-contact cells", f"{zero_contact:,}"),
             metric("Lethal contact fraction", f"{lethal_fraction:.1%}"),
         ],
-        className="orca-metrics",
+        className="barracuda-metrics",
     )
 
 
@@ -349,32 +350,32 @@ def layout() -> html.Div:
             ),
             html.Section(
                 [
-                    html.Span("Model", className="orca-section-label"),
+                    html.Span("Model", className="barracuda-section-label"),
                     html.H2("From ordered contacts to killing decisions"),
                     html.P(
                         "Every candidate model shares a Gamma-Poisson contact layer. They differ in whether baseline killing propensity varies between cells and whether previous lethal or non-lethal contacts change the next decision.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     html.Div(
                         [
                             markdown(
                                 "$$z_{ij}\\sim\\mathrm{Bernoulli}(p_{ij}),\\qquad "
                                 "\\mathrm{logit}(p_{ij})=\\eta_i+\\beta_f f_{ij}+\\beta_s s_{ij}$$",
-                                class_name="orca-equation small",
+                                class_name="barracuda-equation small",
                                 mathjax=True,
                             ),
                             markdown(
                                 "$$\\eta_i\\sim\\mathrm{Normal}(\\mu_\\eta,\\sigma_\\eta),\\qquad "
                                 "\\lambda_i\\sim\\mathrm{Gamma}(\\mu_\\lambda,\\sigma_\\lambda)$$",
-                                class_name="orca-equation small",
+                                class_name="barracuda-equation small",
                                 mathjax=True,
                             ),
                         ],
-                        className="orca-equation-row",
+                        className="barracuda-equation-row",
                     ),
                     html.P(
                         "Here f is the number of previous non-lethal contacts and s is the number of previous lethal contacts. Positive β increases the odds of a later kill; negative β reduces them.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     html.Div(
                         [
@@ -385,18 +386,18 @@ def layout() -> html.Div:
                                     html.P(description),
                                     html.Small(parameters),
                                 ],
-                                className="orca-trajectory-model-card",
+                                className="barracuda-trajectory-model-card",
                             )
                             for short, name, description, parameters in MODEL_UI.values()
                         ],
-                        className="orca-model-definition-grid",
+                        className="barracuda-model-definition-grid",
                     ),
                 ],
-                className="orca-trajectory-intro",
+                className="barracuda-trajectory-intro",
             ),
             html.Section(
                 [
-                    html.Span("Start here", className="orca-section-label"),
+                    html.Span("Start here", className="barracuda-section-label"),
                     html.H2("Which trajectory data do you want to use?"),
                     dcc.RadioItems(
                         id="trajectory-workflow",
@@ -417,23 +418,23 @@ def layout() -> html.Div:
                             },
                         ],
                         value=None,
-                        className="orca-model-checklist",
-                        inputClassName="orca-check-input",
-                        labelClassName="orca-model-option",
+                        className="barracuda-model-checklist",
+                        inputClassName="barracuda-check-input",
+                        labelClassName="barracuda-model-option",
                     ),
                     html.P(
                         "Choose one option to continue.",
                         id="trajectory-workflow-status",
-                        className="orca-help",
+                        className="barracuda-help",
                         role="status",
                         **{"aria-live": "polite"},
                     ),
                 ],
-                className="orca-workflow-panel",
+                className="barracuda-workflow-panel",
             ),
             html.Div(
                 [
-                    html.Span("Synthetic data", className="orca-section-label"),
+                    html.Span("Synthetic data", className="barracuda-section-label"),
                     html.H2("Choose the ground truth"),
                     field(
                         "Generating model",
@@ -461,7 +462,7 @@ def layout() -> html.Div:
                             field("Previous non-lethal effect, βf", dcc.Input(id="trajectory-beta-f", type="number", min=-5, max=5, step=0.05, value=0.8)),
                             field("Previous lethal effect, βs", dcc.Input(id="trajectory-beta-s", type="number", min=-5, max=5, step=0.05, value=-0.8)),
                         ],
-                        className="orca-form-grid three",
+                        className="barracuda-form-grid three",
                     ),
                     html.Details(
                         [
@@ -478,20 +479,20 @@ def layout() -> html.Div:
                                         dcc.Input(id="trajectory-simulation-seed", type="text", value="", placeholder="Blank = a new dataset"),
                                     ),
                                 ],
-                                className="orca-form-grid two",
+                                className="barracuda-form-grid two",
                             ),
                         ],
-                        className="orca-details orca-observation-details",
+                        className="barracuda-details barracuda-observation-details",
                     ),
-                    html.Button("Generate synthetic trajectories", id="trajectory-generate", n_clicks=0, className="orca-button primary full"),
+                    html.Button("Generate synthetic trajectories", id="trajectory-generate", n_clicks=0, className="barracuda-button primary full"),
                     html.Div(id="trajectory-generate-status", role="status", **{"aria-live": "polite"}),
                 ],
                 id="trajectory-synthetic-panel",
-                className="orca-workflow-panel is-hidden",
+                className="barracuda-workflow-panel is-hidden",
             ),
             html.Div(
                 [
-                    html.Span("Your data", className="orca-section-label"),
+                    html.Span("Your data", className="barracuda-section-label"),
                     html.H2("Upload ordered contact histories"),
                     html.P(
                         "Use one row per cell with cell_id, condition and history. Write the ordered outcomes as a quoted comma-separated sequence such as \"0,1,0\". A blank history keeps a zero-contact cell in the contact-rate analysis.",
@@ -499,15 +500,15 @@ def layout() -> html.Div:
                     dcc.Upload(
                         id="trajectory-upload",
                         children=html.Div([html.Strong("Drop a CSV here"), " or choose a file"]),
-                        className="orca-upload",
+                        className="barracuda-upload",
                         multiple=False,
                     ),
                     html.Div(id="trajectory-upload-status", role="status", **{"aria-live": "polite"}),
                     html.A(
                         "Download the trajectory CSV template",
-                        href="/assets/downloads/orca_trajectory_template.csv",
-                        download="orca_trajectory_template.csv",
-                        className="orca-button secondary",
+                        href="/assets/downloads/barracuda_trajectory_template.csv",
+                        download="barracuda_trajectory_template.csv",
+                        className="barracuda-button secondary",
                     ),
                     html.Details(
                         [
@@ -525,19 +526,19 @@ def layout() -> html.Div:
                                 "The default is one complete observation window. T changes the interpretation of contact rates, not the order of outcomes.",
                             ),
                         ],
-                        className="orca-details orca-observation-details",
+                        className="barracuda-details barracuda-observation-details",
                     ),
                     html.P(
                         "The paper's wide format with Cell and numbered contact columns is also accepted. Do not include donor labels; this model is donor ignorant.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                 ],
                 id="trajectory-upload-panel",
-                className="orca-workflow-panel is-hidden",
+                className="barracuda-workflow-panel is-hidden",
             ),
             html.Section(
                 [
-                    html.Span("01 · Empirical data", className="orca-section-label"),
+                    html.Span("01 · Empirical data", className="barracuda-section-label"),
                     html.H2("Observed contact-history states"),
                     html.Div(id="trajectory-data-summary"),
                     html.Div(
@@ -545,39 +546,80 @@ def layout() -> html.Div:
                             html.H3("Condition colours"),
                             html.P(
                                 "These colours identify conditions in posterior plots. The state-map colour scale remains fixed to the empirical killing probability.",
-                                className="orca-help",
+                                className="barracuda-help",
                             ),
                             html.Div(id="trajectory-condition-colour-controls"),
                         ],
                         id="trajectory-condition-colours-section",
-                        className="orca-condition-colours-section",
+                        className="barracuda-condition-colours-section",
                     ),
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.Span("Figure display", className="barracuda-section-label"),
+                                    html.P(
+                                        "Increase the canvas for dense state maps or reduce the arrows when neighbouring states look crowded. These settings change only the display, never the data or inference.",
+                                        className="barracuda-help",
+                                    ),
+                                ],
+                                className="barracuda-figure-display-copy",
+                            ),
+                            field(
+                                "Figure height",
+                                dcc.Slider(
+                                    id="trajectory-figure-height",
+                                    min=480,
+                                    max=1200,
+                                    step=40,
+                                    value=700,
+                                    marks={480: "480 px", 700: "700", 960: "960", 1200: "1200 px"},
+                                    tooltip={"placement": "bottom", "always_visible": False},
+                                ),
+                            ),
+                            field(
+                                "Arrow size",
+                                dcc.Slider(
+                                    id="trajectory-arrow-scale",
+                                    min=0.4,
+                                    max=1.6,
+                                    step=0.1,
+                                    value=1.0,
+                                    marks={0.4: "40%", 1.0: "100%", 1.6: "160%"},
+                                    tooltip={"placement": "bottom", "always_visible": False},
+                                ),
+                            ),
+                        ],
+                        className="barracuda-figure-display-controls",
+                    ),
+                    html.Div(id="trajectory-empirical-legend"),
                     dcc.Graph(
                         id="trajectory-empirical-figure",
                         figure=_empty_figure("Choose data to draw the empirical state map."),
                         responsive=True,
-                        config={"displaylogo": False, "toImageButtonOptions": {"format": "png", "filename": "orca_empirical_trajectory_map", "scale": 2}},
-                        className="orca-trajectory-empirical-plot",
+                        config={"displaylogo": False, "toImageButtonOptions": {"format": "png", "filename": "barracuda_empirical_trajectory_map", "scale": 2}},
+                        className="barracuda-trajectory-empirical-plot",
+                        style={"height": "700px"},
                     ),
                     html.P(
                         "Arrow direction and colour show the empirical probability that the next contact is lethal. Arrow-tail length shows the number of cells reaching the state on a log2 scale.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     html.Details(
                         [html.Summary("Review the normalized cell histories"), html.Div(id="trajectory-data-preview")],
-                        className="orca-details",
+                        className="barracuda-details",
                     ),
                 ],
                 id="trajectory-data-section",
-                className="orca-workflow-panel is-hidden",
+                className="barracuda-workflow-panel is-hidden",
             ),
             html.Section(
                 [
-                    html.Span("02 · Bayesian inference", className="orca-section-label"),
+                    html.Span("02 · Bayesian inference", className="barracuda-section-label"),
                     html.H2("Compare trajectory mechanisms"),
                     html.P(
                         "Inference runs independently for each experimental condition. Bayes factors compare candidate mechanisms within a condition, while posterior plots overlay conditions using your selected colours.",
-                        className="orca-section-lead",
+                        className="barracuda-section-lead",
                     ),
                     note(
                         "How model evidence is computed",
@@ -588,12 +630,12 @@ def layout() -> html.Div:
                         [
                             _model_selector(),
                             _inference_controls(),
-                            html.P(id="trajectory-workload", className="orca-help"),
-                            html.Button("Run trajectory inference", id="trajectory-run", n_clicks=0, disabled=True, className="orca-button primary full"),
+                            html.P(id="trajectory-workload", className="barracuda-help"),
+                            html.Button("Run trajectory inference", id="trajectory-run", n_clicks=0, disabled=True, className="barracuda-button primary full"),
                         ],
                         id="trajectory-inference-controls",
                         disabled=False,
-                        className="orca-inference-fieldset",
+                        className="barracuda-inference-fieldset",
                     ),
                     html.Div(id="trajectory-run-status", role="status", **{"aria-live": "polite"}),
                     pymc_progress("trajectory"),
@@ -604,18 +646,18 @@ def layout() -> html.Div:
                                     html.Strong("Bayes factors and posterior distributions"),
                                     html.P("Run inference to compare model evidence and inspect marginal or joint posterior distributions."),
                                 ],
-                                className="orca-results-placeholder",
+                                className="barracuda-results-placeholder",
                             ),
                             id="trajectory-results",
                         ),
                         type="circle",
                         color="#304B3D",
-                        className="orca-loading",
+                        className="barracuda-loading",
                     ),
-                    html.Div(id="trajectory-download", className="orca-download-slot"),
+                    html.Div(id="trajectory-download", className="barracuda-download-slot"),
                 ],
                 id="trajectory-inference",
-                className="orca-workflow-panel is-hidden",
+                className="barracuda-workflow-panel is-hidden",
             ),
         ]
     )
@@ -630,10 +672,10 @@ def register_callbacks(app) -> None:
     )
     def choose_workflow(workflow):
         if workflow == "synthetic":
-            return "orca-workflow-panel", "orca-workflow-panel is-hidden", "Set the ground truth, then generate trajectories."
+            return "barracuda-workflow-panel", "barracuda-workflow-panel is-hidden", "Set the ground truth, then generate trajectories."
         if workflow == "upload":
-            return "orca-workflow-panel is-hidden", "orca-workflow-panel", "Upload a trajectory CSV to continue."
-        return "orca-workflow-panel is-hidden", "orca-workflow-panel is-hidden", "Choose one option to continue."
+            return "barracuda-workflow-panel is-hidden", "barracuda-workflow-panel", "Upload a trajectory CSV to continue."
+        return "barracuda-workflow-panel is-hidden", "barracuda-workflow-panel is-hidden", "Choose one option to continue."
 
     @app.callback(
         Output("trajectory-sigma-eta", "disabled"),
@@ -724,7 +766,9 @@ def register_callbacks(app) -> None:
         Output("trajectory-data-section", "className"),
         Output("trajectory-inference", "className"),
         Output("trajectory-data-summary", "children"),
+        Output("trajectory-empirical-legend", "children"),
         Output("trajectory-empirical-figure", "figure"),
+        Output("trajectory-empirical-figure", "style"),
         Output("trajectory-data-preview", "children"),
         Output("trajectory-condition-colour-controls", "children"),
         Output("trajectory-run", "disabled"),
@@ -732,9 +776,19 @@ def register_callbacks(app) -> None:
         Input("trajectory-synthetic-data", "data"),
         Input("trajectory-upload-data", "data"),
         Input("trajectory-upload-observation-time", "value"),
+        Input("trajectory-figure-height", "value"),
+        Input("trajectory-arrow-scale", "value"),
         State("trajectory-synthetic-truth", "data"),
     )
-    def activate_data(workflow, synthetic_records, upload_records, upload_time, synthetic_truth):
+    def activate_data(
+        workflow,
+        synthetic_records,
+        upload_records,
+        upload_time,
+        figure_height,
+        arrow_scale,
+        synthetic_truth,
+    ):
         records = synthetic_records if workflow == "synthetic" else upload_records if workflow == "upload" else None
         truth = synthetic_truth if workflow == "synthetic" else None
         if workflow == "synthetic" and isinstance(synthetic_truth, Mapping):
@@ -746,24 +800,34 @@ def register_callbacks(app) -> None:
         else:
             observation_time = upload_time
         if not records:
-            return None, None, 1.0, "orca-workflow-panel is-hidden", "orca-workflow-panel is-hidden", html.Div(), _empty_figure("Choose data to draw the empirical state map."), html.Div(), html.Div(), True
+            return None, None, 1.0, "barracuda-workflow-panel is-hidden", "barracuda-workflow-panel is-hidden", html.Div(), html.Div(), _empty_figure("Choose data to draw the empirical state map."), {"height": f"{int(figure_height or 700)}px"}, html.Div(), html.Div(), True
         try:
             frame = _frame_from_records(records)
             observation_time = float(observation_time)
             if observation_time <= 0:
                 raise ValueError("Observation time must be greater than zero.")
             labels = list(dict.fromkeys(frame["condition"].astype(str)))
-            figure = empirical_state_arrow_figure(frame)
+            figure = empirical_state_arrow_figure(
+                frame,
+                arrow_scale=float(arrow_scale or 1.0),
+                figure_height=int(figure_height or 700),
+            )
+            encoding_legend = empirical_state_encoding_legend(
+                frame,
+                arrow_scale=float(arrow_scale or 1.0),
+            )
         except Exception as exc:
-            return None, None, 1.0, "orca-workflow-panel is-hidden", "orca-workflow-panel is-hidden", note("Data are not ready", str(exc), tone="amber"), _empty_figure(str(exc)), html.Div(), html.Div(), True
+            return None, None, 1.0, "barracuda-workflow-panel is-hidden", "barracuda-workflow-panel is-hidden", note("Data are not ready", str(exc), tone="amber"), html.Div(), _empty_figure(str(exc)), {"height": f"{int(figure_height or 700)}px"}, html.Div(), html.Div(), True
         return (
             _serialise_frame(frame),
             truth,
             observation_time,
-            "orca-workflow-panel",
-            "orca-workflow-panel",
+            "barracuda-workflow-panel",
+            "barracuda-workflow-panel",
             _data_summary(frame),
+            encoding_legend,
             figure,
+            {"height": f"{int(figure.layout.height or 430)}px"},
             _preview_table(frame),
             _condition_colour_controls(labels),
             False,
@@ -833,10 +897,10 @@ def register_callbacks(app) -> None:
             [],
         ],
         running=[
-            (Output("trajectory-pymc-progress", "className"), "orca-pymc-progress is-active", "orca-pymc-progress is-hidden"),
+            (Output("trajectory-pymc-progress", "className"), "barracuda-pymc-progress is-active", "barracuda-pymc-progress is-hidden"),
             (Output("trajectory-inference", "aria-busy"), "true", "false"),
             (Output("trajectory-inference-controls", "disabled"), True, False),
-            (Output("trajectory-run", "className"), "orca-button primary full is-running", "orca-button primary full"),
+            (Output("trajectory-run", "className"), "barracuda-button primary full is-running", "barracuda-button primary full"),
         ],
     )
     def run_inference(set_progress, _clicks, records, truth, observation_time, models, particles, chains, cores, seed, threshold, correlation, prior_bounds, sigma_lambda_prior, sigma_eta_prior, beta_prior_sd, n_quad, colour_values, colour_ids):
@@ -919,8 +983,8 @@ def register_callbacks(app) -> None:
             download = html.A(
                 "Download trajectories, posterior files and tables",
                 href=f"data:application/zip;base64,{encoded}",
-                download="orca_trajectory_inference.zip",
-                className="orca-button primary full",
+                download="barracuda_trajectory_inference.zip",
+                className="barracuda-button primary full",
             )
             content, download_slot = render_trajectory_results(
                 evidence=evidence,

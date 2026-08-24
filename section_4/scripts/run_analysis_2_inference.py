@@ -12,7 +12,7 @@ os.environ.setdefault("PYTENSOR_FLAGS", "optimizer_excluding=fusion")
 os.environ.setdefault("HDF5_USE_FILE_LOCKING", "FALSE")
 os.environ.setdefault(
     "MPLCONFIGDIR",
-    str(Path(os.environ.get("TMPDIR", "/tmp")) / "orca_matplotlib"),
+    str(Path(os.environ.get("TMPDIR", "/tmp")) / "barracuda_matplotlib"),
 )
 
 import arviz as az

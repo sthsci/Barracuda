@@ -1,8 +1,9 @@
-# bayesorca
+# barracuda
 
-`bayesorca` is the reusable Python interface to ORCA, a Bayesian framework for
-studying heterogeneity in immune cell cytotoxicity. It exposes the scientific
-simulation and inference code used by the ORCA manuscript and web application
+`barracuda` is the reusable Python interface to BARRACUDA—Bayesian Analysis
+Resolving Randomness and Alternative Causes Underlying Differential Activity.
+It exposes the scientific
+simulation and inference code used by the BARRACUDA manuscript and web application
 without requiring Dash.
 
 The package contains three workflows:
@@ -12,16 +13,16 @@ The package contains three workflows:
 - donor ignorant inference from ordered contact and kill trajectories.
 
 All model comparison uses PyMC Sequential Monte Carlo (SMC). The returned
-ArviZ `InferenceData` objects contain posterior draws, while ORCA records the
+ArviZ `InferenceData` objects contain posterior draws, while BARRACUDA records the
 SMC marginal likelihood used to calculate Bayes factors.
 
 ## Install
 
 ```bash
-python -m pip install bayesorca
+python -m pip install barracuda
 ```
 
-ORCA is currently tested with Python 3.12. SMC inference can be computationally
+BARRACUDA is currently tested with Python 3.12. SMC inference can be computationally
 expensive. Start with small particle and chain counts while checking a workflow,
 then choose settings appropriate for the scientific analysis.
 
@@ -30,7 +31,7 @@ then choose settings appropriate for the scientific analysis.
 ```python
 import pandas as pd
 
-from bayesorca.event_counts import (
+from barracuda import (
     InferenceSettings,
     evidence_table,
     run_count_models,
@@ -60,7 +61,7 @@ models in the paper.
 ## Donor aware example
 
 ```python
-from bayesorca.event_counts import run_donor_aware_models
+from barracuda import run_donor_aware_models
 
 donor_results = run_donor_aware_models(
     donor_counts,  # columns: cell_id, donor_id, count
@@ -81,7 +82,7 @@ for `run_count_models` and `run_donor_models` respectively.
 ```python
 import pandas as pd
 
-from bayesorca.trajectories import (
+from barracuda import (
     TrajectorySettings,
     run_trajectory_conditions,
     trajectory_evidence_frame,
@@ -108,7 +109,7 @@ and coefficients `beta_f` and `beta_s`.
 
 ## Data and privacy
 
-This library runs locally and does not transmit input data. The public ORCA web
+This library runs locally and does not transmit input data. The public BARRACUDA web
 application has additional upload limits and privacy guidance. Do not publish
 identifying clinical or donor metadata in notebooks, issue reports, or package
 examples.
@@ -119,4 +120,4 @@ This is research software accompanying a manuscript in preparation. Version
 `0.1.x` should be treated as an alpha API. Pin an exact version in reproducible
 analyses and record the inference settings and random seed.
 
-ORCA is released under the [MIT License](https://github.com/sthsci/Orca/blob/main/LICENSE).
+BARRACUDA is released under the [MIT License](https://github.com/sthsci/Barracuda/blob/main/LICENSE).

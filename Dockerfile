@@ -22,6 +22,7 @@ COPY --chown=appuser:appuser dash_app.py ./
 COPY --chown=appuser:appuser webapp ./webapp
 COPY --chown=appuser:appuser section_1/src ./section_1/src
 COPY --chown=appuser:appuser section_2/src ./section_2/src
+COPY --chown=appuser:appuser section_3/src ./section_3/src
 
 USER appuser
 

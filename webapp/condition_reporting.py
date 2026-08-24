@@ -315,7 +315,7 @@ def _zip_download(content: bytes, filename: str) -> html.A:
         "Download all results and InferenceData files",
         href=f"data:application/zip;base64,{encoded}",
         download=filename,
-        className="orca-button primary download",
+        className="barracuda-button primary download",
     )
 
 
@@ -353,17 +353,17 @@ def render_condition_results(
                             "responsive": True,
                             "toImageButtonOptions": {
                                 "format": "png",
-                                "filename": f"orca_{model_key}_condition_posteriors",
+                                "filename": f"barracuda_{model_key}_condition_posteriors",
                                 "scale": 2,
                             },
                         },
                         responsive=True,
-                        className="orca-joint-posterior-plot",
+                        className="barracuda-joint-posterior-plot",
                         style={"height": f"{int(figure.layout.height)}px"},
                     )
                 ],
                 id={"type": f"{prefix}-model-panel", "index": model_key},
-                className="orca-model-result-panel",
+                className="barracuda-model-result-panel",
             )
         )
     archive = build_condition_results_zip(
@@ -382,11 +382,11 @@ def render_condition_results(
             ),
             html.Section(
                 [
-                    html.Span("Model evidence", className="orca-section-label"),
+                    html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
                         "Every condition has its own best model. Bars use the raw log₁₀ BF(best model / candidate model) scale; the boundaries are exactly log₁₀(3), 1 and 2.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
                     dcc.Graph(
                         figure=bayes_figure,
@@ -395,24 +395,24 @@ def render_condition_results(
                             "responsive": True,
                             "toImageButtonOptions": {
                                 "format": "png",
-                                "filename": "orca_condition_bayes_factors",
+                                "filename": "barracuda_condition_bayes_factors",
                                 "scale": 2,
                             },
                         },
                         responsive=True,
-                        className="orca-bayes-factor-plot",
+                        className="barracuda-bayes-factor-plot",
                     ),
                     csv_download_link(
                         evidence,
-                        "orca_condition_model_evidence.csv",
+                        "barracuda_condition_model_evidence.csv",
                         "Download Bayes factor CSV",
                     ),
                 ],
-                className="orca-result-section orca-figure-result",
+                className="barracuda-result-section barracuda-figure-result",
             ),
             html.Section(
                 [
-                    html.Span("Posterior results", className="orca-section-label"),
+                    html.Span("Posterior results", className="barracuda-section-label"),
                     html.H3("Choose inference results to visualise"),
                     dcc.Checklist(
                         id=f"{prefix}-model-view",
@@ -422,22 +422,22 @@ def render_condition_results(
                         ],
                         value=fitted_models,
                         inline=True,
-                        className="orca-posterior-model-options",
-                        inputClassName="orca-check-input",
-                        labelClassName="orca-posterior-model-option",
+                        className="barracuda-posterior-model-options",
+                        inputClassName="barracuda-check-input",
+                        labelClassName="barracuda-posterior-model-option",
                     ),
                     html.P(
                         "Condition colours are the choices made above. Each model uses only the parameters it contains, so the grid changes from one to three dimensions automatically.",
-                        className="orca-help",
+                        className="barracuda-help",
                     ),
-                    html.Div(model_panels, className="orca-condition-model-panels"),
+                    html.Div(model_panels, className="barracuda-condition-model-panels"),
                 ],
-                className="orca-result-section",
+                className="barracuda-result-section",
             ),
         ],
-        className="orca-results orca-condition-results",
+        className="barracuda-results barracuda-condition-results",
     )
-    return content, _zip_download(archive, "orca_condition_analysis.zip")
+    return content, _zip_download(archive, "barracuda_condition_analysis.zip")
 
 
 def model_panel_styles(

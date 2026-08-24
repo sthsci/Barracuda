@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import inspect
 import math
 
@@ -13,6 +14,7 @@ from webapp.trajectory_reporting import (
     BF3_LOG10,
     TRAJECTORY_MODEL_LABELS,
     empirical_state_arrow_figure,
+    empirical_state_encoding_legend,
     empirical_state_summary,
     expanded_history_frame,
     joint_posterior_figure,
@@ -202,7 +204,7 @@ def test_state_summary_counts_cells_contacts_and_empirical_probability() -> None
     assert int(origin.n_contacts) == 4
     assert int(origin.n_lethal) == 3
     assert float(origin.empirical_lethal_probability) == pytest.approx(0.75)
-    assert float(origin.log2_n_cells) == pytest.approx(math.log2(5.0))
+    assert float(origin.log2_n_cells) == pytest.approx(math.log2(4.0))
     assert int(after_failure.n_cells) == 1
     assert float(after_failure.empirical_lethal_probability) == 1.0
 
@@ -261,13 +263,29 @@ def test_empirical_arrow_map_facets_and_uses_log_cell_count_length() -> None:
     assert origin_length > after_length
     assert figure.layout.yaxis.scaleanchor == "x"
     assert figure.layout.yaxis2.scaleanchor == "x2"
-    colourbar = next(
+    assert not figure.layout.images
+    legend = empirical_state_encoding_legend(frame)
+    legend_source = str(legend.children[0].src)
+    assert legend_source.startswith("data:image/svg+xml;base64,")
+    legend_svg = base64.b64decode(legend_source.split(",", 1)[1]).decode()
+    assert "Empirical killing probability" in legend_svg
+    assert "arrow length increases with log₂ n" in legend_svg
+    assert "horizontal = non-lethal" in legend_svg
+    assert "vertical = lethal" in legend_svg
+
+    larger = empirical_state_arrow_figure(frame, arrow_scale=1.4)
+    larger_arrow = next(
         trace
-        for trace in figure.data
-        if trace.type == "scatter" and bool(trace.marker.showscale)
+        for trace in larger.data
+        if trace.type == "scatter"
+        and trace.mode == "lines+markers"
+        and trace.x[0] is not None
     )
-    np.testing.assert_allclose(np.asarray(colourbar.marker.color, dtype=float), [0, 1])
-    assert "next-contact" in colourbar.marker.colorbar.title.text
+    larger_length = math.hypot(
+        float(larger_arrow.x[1]) - float(larger_arrow.x[0]),
+        float(larger_arrow.y[1]) - float(larger_arrow.y[0]),
+    )
+    assert larger_length > origin_length
 
 
 def test_bayes_factor_axis_is_exact_continuous_and_marks_best_and_truth() -> None:
@@ -446,8 +464,8 @@ def test_result_renderer_puts_bayes_factors_first_and_exposes_callback_ids() -> 
         if getattr(item, "download", None) is not None
     ]
     assert {item.download for item in links} == {
-        "orca_trajectory_model_evidence.csv",
-        "orca_trajectory_posterior_samples.csv",
+        "barracuda_trajectory_model_evidence.csv",
+        "barracuda_trajectory_posterior_samples.csv",
     }
 
 

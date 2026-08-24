@@ -1,29 +1,29 @@
-name: bayesorca package checks
+name: barracuda package checks
 
 on:
   push:
-    branches: [main, codex/bayesorca-package]
+    branches: [main, pypackage]
     paths:
       - "pyproject.toml"
       - "PACKAGE_README.md"
-      - "src/bayesorca/**"
+      - "src/barracuda/**"
       - "webapp/core/**"
       - "section_1/src/**"
       - "section_2/src/**"
       - "section_3/src/**"
-      - "tests/test_bayesorca_package.py"
+      - "tests/test_barracuda_package.py"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
   pull_request:
     paths:
       - "pyproject.toml"
       - "PACKAGE_README.md"
-      - "src/bayesorca/**"
+      - "src/barracuda/**"
       - "webapp/core/**"
       - "section_1/src/**"
       - "section_2/src/**"
       - "section_3/src/**"
-      - "tests/test_bayesorca_package.py"
+      - "tests/test_barracuda_package.py"
       - ".github/workflows/python-package.yml"
       - ".github/workflows/publish-package.yml"
 
@@ -40,13 +40,13 @@ jobs:
       - name: Install package and test tools
         run: python -m pip install --upgrade pip && python -m pip install -e ".[test,build]"
       - name: Run package tests
-        run: python -m pytest -q tests/test_bayesorca_package.py
+        run: python -m pytest -q tests/test_barracuda_package.py
       - name: Build wheel and source distribution
         run: python -m build
       - name: Validate distributions
         run: python -m twine check dist/*
       - name: Test wheel in a clean environment
         run: |
-          python -m venv /tmp/bayesorca-wheel-test
-          /tmp/bayesorca-wheel-test/bin/python -m pip install dist/*.whl
-          /tmp/bayesorca-wheel-test/bin/python -c "import bayesorca; print(bayesorca.__version__)"
+          python -m venv /tmp/barracuda-wheel-test
+          /tmp/barracuda-wheel-test/bin/python -m pip install dist/*.whl
+          /tmp/barracuda-wheel-test/bin/python -c "import barracuda; print(barracuda.__version__)"

@@ -1,4 +1,4 @@
-"""Stable, UI-independent API for the Orca web application."""
+"""Stable, UI-independent API for the Barracuda web application."""
 
 from .data import (
     sample_count_frame,
