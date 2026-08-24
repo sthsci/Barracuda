@@ -46,8 +46,11 @@ The installed distribution version is available as `barracuda.__version__`.
 BARRACUDA currently supports Python 3.12.
 
 ```bash
-python -m pip install barracuda
+python -m pip install cyto-barracuda
 ```
+
+The PyPI distribution is named `cyto-barracuda`; the installed Python package
+is `barracuda`, so public imports use `from barracuda import ...`.
 
 For package development and documentation:
 

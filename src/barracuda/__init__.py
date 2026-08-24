@@ -3,7 +3,7 @@
 from importlib.metadata import PackageNotFoundError, version
 
 try:
-    __version__ = version("barracuda")
+    __version__ = version("cyto-barracuda")
 except PackageNotFoundError:  # Source checkout without installed metadata.
     __version__ = "0.2.0"
 

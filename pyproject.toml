@@ -3,7 +3,7 @@ requires = ["setuptools>=77", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "barracuda"
+name = "cyto-barracuda"
 version = "0.2.0"
 description = "Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity"
 readme = "README.md"

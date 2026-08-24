@@ -7,8 +7,10 @@ semantics, computational guidance, privacy, and API links have one source of
 truth.
 
 ```bash
-python -m pip install barracuda
+python -m pip install cyto-barracuda
 ```
+
+The distribution name is `cyto-barracuda`; import it in Python as `barracuda`.
 
 The generated documentation is published at
 <https://sthsci.github.io/Barracuda/> after GitHub Pages is enabled. Version 0.2 is

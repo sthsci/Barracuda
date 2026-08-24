@@ -5,8 +5,10 @@
 ```bash
 python3.12 -m venv .venv
 source .venv/bin/activate
-python -m pip install barracuda
+python -m pip install cyto-barracuda
 ```
+
+The distribution installs the `barracuda` Python package.
 
 For a source checkout, use `python -m pip install -e ".[test,build,docs]"`.
 

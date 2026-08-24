@@ -1,4 +1,4 @@
-name: Publish barracuda to PyPI
+name: Publish cyto-barracuda to PyPI
 
 on:
   push:
@@ -35,7 +35,7 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: pypi
-      url: https://pypi.org/project/barracuda/
+      url: https://pypi.org/project/cyto-barracuda/
     permissions:
       id-token: write
     steps:

@@ -27,7 +27,7 @@ cumulative Bayes-factor scans, diagnostics, plotting, and reproducible export.
 ## Install
 
 ```bash
-python -m pip install barracuda
+python -m pip install cyto-barracuda
 ```
 
 BARRACUDA currently supports Python 3.12. Inference uses PyMC Sequential Monte Carlo
