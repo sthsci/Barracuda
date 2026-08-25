@@ -33,12 +33,15 @@ THOMAS_BAYES_PAPER_URL = "https://doi.org/10.1098/rstl.1763.0053"
 THOMAS_BAYES_PORTRAIT_URL = "https://commons.wikimedia.org/wiki/File:Thomas_Bayes.gif"
 
 BOOK_INK = "#17272C"
-BOOK_PAPER = "#EDF2EF"
-BOOK_SHEET = "#FCFDFB"
-BOOK_RULE = "#667871"
-BOOK_GRID = "#CDD8D2"
+BOOK_PAPER = "#F3ECDF"
+BOOK_SHEET = "#FFFDF8"
+BOOK_RULE = "#7E9299"
+BOOK_GRID = "#D2CEC4"
 BOOK_SERIF = "Iowan Old Style, Baskerville, Palatino Linotype, Palatino, Georgia, serif"
 BOOK_MONO = "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
+IMPERIAL_BLUE = "#00548F"
+IMPERIAL_SKY = "#549DC5"
+OXIDE_RED = "#B44E37"
 
 TWO_PARAMETER_DATA = np.array([4.8, 4.9, 5.0, 5.1, 5.3])
 MEAN_BOUNDS = (4.35, 5.85)
@@ -46,7 +49,12 @@ SCALE_BOUNDS = (0.08, 0.85)
 MEAN_PRIOR_LOCATION = 5.45
 MEAN_PRIOR_SCALE = 0.15
 SCALE_PRIOR_SCALE = 0.45
-SURFACE_COLORS = [[0.0, "#EDF2EF"], [0.35, "#B8D0CB"], [0.72, "#34717A"], [1.0, "#172F38"]]
+SURFACE_COLORS = [[0.0, BOOK_PAPER], [0.35, "#C4D8DC"], [0.72, IMPERIAL_SKY], [1.0, "#003E6B"]]
+SAMPLER_PLATE_SHAPES = [
+    {"type": "rect", "xref": "paper", "yref": "paper", "x0": -0.01, "x1": 0.772, "y0": 0.758, "y1": 1.01, "fillcolor": BOOK_SHEET, "line": {"color": BOOK_RULE, "width": 1}, "layer": "below"},
+    {"type": "rect", "xref": "paper", "yref": "paper", "x0": -0.01, "x1": 0.772, "y0": -0.01, "y1": 0.744, "fillcolor": "#E6EEF1", "line": {"color": BOOK_RULE, "width": 1}, "layer": "below"},
+    {"type": "rect", "xref": "paper", "yref": "paper", "x0": 0.787, "x1": 1.01, "y0": -0.01, "y1": 0.744, "fillcolor": BOOK_SHEET, "line": {"color": BOOK_RULE, "width": 1}, "layer": "below"},
+]
 
 
 def _external_link(label: str, href: str, *, class_name: str | None = None) -> html.A:
@@ -445,12 +453,12 @@ def _mcmc_figure() -> go.Figure:
         horizontal_spacing=0.035,
         vertical_spacing=0.035,
     )
-    figure.add_trace(go.Histogram(x=[means[0]], nbinsx=22, histnorm="probability density", marker={"color": DONOR_TEAL, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.8, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
+    figure.add_trace(go.Histogram(x=[means[0]], nbinsx=22, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
     figure.add_trace(_posterior_contour_trace(), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Retained chain", line={"color": PAPER_SPINE, "width": 1.5}, marker={"color": PAPER_SPINE, "size": 5}), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": CONDITION_BISPECIFIC, "size": 11, "line": {"color": BOOK_INK, "width": 1}}), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposal", marker={"color": DONOR_TEAL, "size": 10, "symbol": "diamond-open", "line": {"width": 2}}), row=2, col=1)
-    figure.add_trace(go.Histogram(y=[scales[0]], nbinsy=18, histnorm="probability density", marker={"color": DONOR_TEAL, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.8, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
+    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Retained chain", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposal", marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
+    figure.add_trace(go.Histogram(y=[scales[0]], nbinsy=18, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
     figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["Draw 1/60 · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     figure.frames = [
         go.Frame(
@@ -458,17 +466,17 @@ def _mcmc_figure() -> go.Figure:
             traces=[0, 2, 3, 4, 5, 6],
             data=[
                 go.Histogram(x=means[: index + 1], nbinsx=22, histnorm="probability density"),
-                go.Scatter(x=means[: index + 1], y=scales[: index + 1], mode="lines+markers", line={"color": PAPER_SPINE, "width": 1.5}, marker={"color": PAPER_SPINE, "size": 5}),
-                go.Scatter(x=[mean], y=[scale], mode="markers", marker={"color": CONDITION_BISPECIFIC, "size": 11, "line": {"color": BOOK_INK, "width": 1}}),
+                go.Scatter(x=means[: index + 1], y=scales[: index + 1], mode="lines+markers", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}),
+                go.Scatter(x=[mean], y=[scale], mode="markers", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}),
                 go.Scatter(
                     x=[proposed_means[index]],
                     y=[proposed_scales[index]],
                     mode="markers",
                     marker={
-                        "color": DONOR_TEAL if accepted_updates[index] else DONOR_RUST,
+                        "color": BOOK_SHEET if accepted_updates[index] else OXIDE_RED,
                         "size": 10,
-                        "symbol": "diamond-open" if accepted_updates[index] else "x-open",
-                        "line": {"width": 2},
+                        "symbol": "diamond" if accepted_updates[index] else "x-open",
+                        "line": {"color": IMPERIAL_SKY if accepted_updates[index] else OXIDE_RED, "width": 2},
                     },
                 ),
                 go.Histogram(y=scales[: index + 1], nbinsy=18, histnorm="probability density"),
@@ -530,6 +538,7 @@ def _mcmc_figure() -> go.Figure:
             }
         ],
     )
+    figure.update_layout(plot_bgcolor="rgba(0,0,0,0)", shapes=SAMPLER_PLATE_SHAPES)
     figure.update_xaxes(range=list(MEAN_BOUNDS), showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_yaxes(title="Density of μ", showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
@@ -626,10 +635,10 @@ def _smc_figure() -> go.Figure:
         horizontal_spacing=0.035,
         vertical_spacing=0.035,
     )
-    figure.add_trace(go.Histogram(x=initial_means, nbinsx=22, histnorm="probability density", marker={"color": CONDITION_BISPECIFIC, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.78, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
+    figure.add_trace(go.Histogram(x=initial_means, nbinsx=22, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
     figure.add_trace(contour(initial_temperature), row=2, col=1)
-    figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker={"color": CONDITION_BISPECIFIC, "size": 7, "opacity": 0.78, "line": {"color": BOOK_INK, "width": 0.45}}, hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
-    figure.add_trace(go.Histogram(y=initial_scales, nbinsy=18, histnorm="probability density", marker={"color": CONDITION_BISPECIFIC, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.78, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
+    figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker={"color": OXIDE_RED, "size": 8, "opacity": 0.86, "line": {"color": BOOK_SHEET, "width": 1.2}}, hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
+    figure.add_trace(go.Histogram(y=initial_scales, nbinsy=18, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
     figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["β = 0.00 · particles represent the prior"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     figure.frames = [
         go.Frame(
@@ -637,7 +646,7 @@ def _smc_figure() -> go.Figure:
             data=[
                 go.Histogram(x=means, nbinsx=22, histnorm="probability density"),
                 contour(temperature),
-                go.Scatter(x=means, y=scales, mode="markers"),
+                go.Scatter(x=means, y=scales, mode="markers", marker={"color": OXIDE_RED, "size": 8, "opacity": 0.86, "line": {"color": BOOK_SHEET, "width": 1.2}}),
                 go.Histogram(y=scales, nbinsy=18, histnorm="probability density"),
                 go.Scatter(
                     x=[MEAN_BOUNDS[0] + 0.04],
@@ -697,6 +706,7 @@ def _smc_figure() -> go.Figure:
             }
         ],
     )
+    figure.update_layout(plot_bgcolor="rgba(0,0,0,0)", shapes=SAMPLER_PLATE_SHAPES)
     figure.update_xaxes(range=list(MEAN_BOUNDS), showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_yaxes(title="Density of μ", showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)

@@ -20,7 +20,17 @@ def app_header(items: Iterable[tuple[str, str, str]], *, workspace_id: str) -> h
         html.Div(
             [
                 html.A(
-                    [html.Span("B", className="barracuda-mark", **{"aria-hidden": "true"}), html.Strong("BARRACUDA")],
+                    [
+                        html.Img(
+                            src="/assets/barracuda-abstract-consistent-posterior-mark.png",
+                            alt="",
+                            width=44,
+                            height=44,
+                            className="barracuda-mark",
+                            **{"aria-hidden": "true"},
+                        ),
+                        html.Strong("BARRACUDA"),
+                    ],
                     href="/",
                     className="barracuda-brand",
                     **{"aria-label": "BARRACUDA home"},
@@ -29,7 +39,7 @@ def app_header(items: Iterable[tuple[str, str, str]], *, workspace_id: str) -> h
                 html.A("Workspace", href="/workspace", id=workspace_id, className="barracuda-workspace-link"),
                 html.Details(
                     [
-                        html.Summary("Menu", **{"aria-label": "Open navigation menu", "aria-expanded": "false"}),
+                        html.Summary("Menu", **{"aria-label": "Open navigation menu"}),
                         html.Nav(
                             [*links("-mobile"), html.A("Workspace", href="/workspace", className="barracuda-nav-link")],
                             **{"aria-label": "Mobile navigation"},
@@ -106,9 +116,22 @@ def task_card(
     outcome: str,
     path: str,
     action: str,
+    *,
+    specimen: str | None = None,
 ) -> html.Article:
     return html.Article(
         [
+            *(
+                [
+                    html.Div(
+                        [html.Span() for _ in range(6)],
+                        className=f"barracuda-specimen-diagram {specimen}",
+                        **{"aria-hidden": "true"},
+                    )
+                ]
+                if specimen
+                else []
+            ),
             html.H3(title),
             html.P([html.Strong("Use when: "), use_when]),
             html.P([html.Strong("Required data: "), html.Code(schema)]),

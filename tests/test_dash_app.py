@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import time
 from pathlib import Path
 
@@ -47,6 +48,23 @@ def test_dash_server_and_health_endpoint_load() -> None:
     assert health.status_code == 200
     assert health.get_json() == {"application": "barracuda-dash", "status": "ok"}
     assert Path("webapp/assets/favicon.ico").is_file()
+
+
+def test_home_and_header_use_the_approved_visual_assets() -> None:
+    root = Path(__file__).resolve().parents[1]
+    hero_path = root / "webapp" / "assets" / "figure_abstract_papercraft.png"
+    home_components = list(_walk(PAGE_BY_PATH["/"].layout()))
+    shell_components = list(_walk(create_app().layout))
+
+    hero = next(component for component in home_components if getattr(component, "src", None) == "/assets/figure_abstract_papercraft.png")
+    mark = next(component for component in shell_components if getattr(component, "className", None) == "barracuda-mark")
+
+    assert (hero.width, hero.height) == (1672, 941)
+    assert hashlib.sha256(hero_path.read_bytes()).hexdigest() == "4161e0c100455730682cd692b3d59401fe544579952cc86c645e260207756694"
+    assert mark.src == "/assets/barracuda-abstract-consistent-posterior-mark.png"
+    assert mark.alt == ""
+    assert sum(getattr(component, "className", "").startswith("barracuda-specimen-diagram") for component in home_components) == 3
+    assert "webapp/assets/barracuda-abstract-consistent-posterior-mark.png" in (root / "README.md").read_text()
 
 
 def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:

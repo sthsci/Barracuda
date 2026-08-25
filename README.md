@@ -1,5 +1,9 @@
 # BARRACUDA
 
+<p align="center">
+  <img src="webapp/assets/barracuda-abstract-consistent-posterior-mark.png" alt="Abstract barracuda over a joint posterior distribution with aligned marginal distributions" width="260">
+</p>
+
 **Bayesian Analysis Resolving Randomness and Alternative Causes Underlying Differential Activity**
 
 Research code supporting the manuscript *A Bayesian framework reveals heterogeneous and stochastic decision-making in NK cell cytotoxicity*. BARRACUDA uses single-cell contact and kill histories to ask whether variation in natural killer (NK) cell behaviour arises from stochastic events, stable cell-to-cell differences, donor effects, interaction history, or a combination of these mechanisms.

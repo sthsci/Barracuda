@@ -64,3 +64,5 @@ def test_update_and_smc_figures_end_at_readable_joint_and_marginal_views() -> No
     ]
     assert "marginals ready" in smc.frames[-1].data[-1].text[0]
     assert sum(trace.type == "histogram" for trace in smc.data) == 2
+    assert len(smc.layout.shapes) == 3
+    assert len(bayes_101._mcmc_figure().layout.shapes) == 3
