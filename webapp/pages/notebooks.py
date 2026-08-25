@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from dash import html
+from dash import dcc, html
 
-from webapp.ui import hero
+from webapp.ui import page_header
 
 
 PATH = "/notebooks"
@@ -96,11 +96,19 @@ def layout() -> html.Div:
         )
     return html.Div(
         [
-            hero(
-                "Interactive notebooks",
+            page_header(
+                "Resources",
                 "Learn and analyse in Google Colab",
                 "Run BARRACUDA without a local installation, follow the teaching material, or adapt an analysis workflow to your own approved data.",
                 badge="Seven notebooks · Opens in a new tab",
+                crumb="Google Colab notebooks",
+            ),
+            html.Div(
+                [
+                    html.Div([html.Strong("Prefer local Python?"), html.P("Install the package and use the simulation, inference, and export API directly.")]),
+                    dcc.Link("Open the Python API", href="/python-api", className="barracuda-button secondary"),
+                ],
+                className="barracuda-resource-switcher",
             ),
             *sections,
         ]

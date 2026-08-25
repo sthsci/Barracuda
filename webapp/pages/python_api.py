@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dash import html
 
-from webapp.ui import hero, note
+from webapp.ui import note, page_header
 
 
 PATH = "/python-api"
@@ -137,11 +137,12 @@ def _api_group(title: str, entries: tuple[tuple[str, str], ...]) -> html.Details
 def layout() -> html.Div:
     return html.Div(
         [
-            hero(
-                "Reusable analysis interface",
+            page_header(
+                "Resources",
                 "Python package API",
                 "Run BARRACUDA simulation, inference and result export directly from Python without starting the web application.",
                 badge="PyPI: cyto-barracuda · Import: barracuda · Python 3.12",
+                crumb="Python API",
             ),
             html.Nav(
                 [

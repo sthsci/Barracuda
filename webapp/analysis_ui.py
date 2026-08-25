@@ -164,7 +164,7 @@ def inference_controls(prefix: str, *, donor_aware: bool = False) -> html.Div:
     donor_fields: list = []
     if donor_aware:
         donor_fields = [
-            html.H4("Donor deviation prior scales"),
+            html.H3("Donor deviation prior scales"),
             html.P(
                 "These hierarchical priors affect shrinkage and marginal likelihoods. Record them when reporting a Bayes factor analysis.",
                 className="barracuda-help",
@@ -346,17 +346,17 @@ def data_table(
 def _plot_layout(figure: go.Figure, *, x_title: str, y_title: str) -> go.Figure:
     figure.update_layout(
         template="none",
-        paper_bgcolor=BOOK_SHEET,
-        plot_bgcolor=BOOK_PAPER,
-        font={"family": BOOK_SERIF, "color": BOOK_INK, "size": 13},
+        paper_bgcolor="#FFFFFF",
+        plot_bgcolor="#F5F7F6",
+        font={"family": "Inter, Avenir Next, Segoe UI, Helvetica, Arial, sans-serif", "color": "#17272C", "size": 13},
         margin={"l": 54, "r": 24, "t": 30, "b": 52},
         xaxis_title=x_title,
         yaxis_title=y_title,
         legend={"orientation": "h", "y": 1.12, "x": 0, "bgcolor": "rgba(0,0,0,0)"},
-        hoverlabel={"bgcolor": BOOK_SHEET, "bordercolor": BOOK_RULE, "font_family": BOOK_SERIF, "font_color": BOOK_INK},
+        hoverlabel={"bgcolor": "#FFFFFF", "bordercolor": "#9DADA6", "font_family": "Inter, Avenir Next, Segoe UI, Helvetica, Arial, sans-serif", "font_color": "#17272C"},
     )
-    figure.update_xaxes(showline=True, linewidth=1, linecolor=BOOK_RULE, gridcolor=BOOK_GRID, ticks="outside", tickcolor=BOOK_RULE, zeroline=False)
-    figure.update_yaxes(showline=True, linewidth=1, linecolor=BOOK_RULE, gridcolor=BOOK_GRID, ticks="outside", tickcolor=BOOK_RULE, zeroline=False)
+    figure.update_xaxes(showline=True, linewidth=1, linecolor="#9DADA6", gridcolor="#D3DDD8", ticks="outside", tickcolor="#9DADA6", zeroline=False)
+    figure.update_yaxes(showline=True, linewidth=1, linecolor="#9DADA6", gridcolor="#D3DDD8", ticks="outside", tickcolor="#9DADA6", zeroline=False)
     return figure
 
 

@@ -9,7 +9,7 @@ from dash import Input, Output, dcc, html
 from webapp.pages import synthetic_validation
 from webapp.pages.analysis_page import layout as analysis_layout
 from webapp.pages.analysis_page import register_callbacks as register_analysis_callbacks
-from webapp.ui import hero
+from webapp.ui import page_header
 
 
 PATH = "/event-counts/donor-ignorant"
@@ -29,7 +29,7 @@ def _without_hero(component: html.Div) -> list:
     return [
         child
         for child in children
-        if getattr(child, "className", None) != "barracuda-hero"
+        if getattr(child, "className", None) not in {"barracuda-hero", "barracuda-page-header"}
     ]
 
 
@@ -66,11 +66,12 @@ def _own_data_body() -> html.Div:
 def layout() -> html.Div:
     return html.Div(
         [
-            hero(
-                "Event counts · Donor ignorant",
-                "Choose how to begin",
+            page_header(
+                "Analyse",
+                "Counts without donor labels",
                 "Validate the method against a known synthetic truth, or analyse your own count data without donor labels.",
                 badge="Synthetic validation • Real data analysis",
+                crumb="Counts without donor labels",
             ),
             html.Section(
                 [

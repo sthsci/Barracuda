@@ -1,126 +1,135 @@
-"""Entry page for the event count workflows."""
+"""Entry page for event-count workflows."""
 
 from __future__ import annotations
 
 from dash import dcc, html
 
 from webapp.analysis_ui import model_title
-from webapp.core.inference import MODEL_SPECS
-from webapp.ui import hero, schematic_figure
+from webapp.ui import page_header, schematic_figure
 
 
 PATH = "/event-counts"
 TITLE = "Event count analysis"
 
 
-def _workflow_link(label: str, title: str, body: str, path: str) -> dcc.Link:
-    return dcc.Link(
+def _route(title: str, internal: str, body: str, schema: str, path: str) -> html.Article:
+    return html.Article(
         [
-            html.Span(label, className="barracuda-section-label"),
             html.H3(title),
+            html.Small(internal),
             html.P(body),
-            html.Span("Open analysis", className="barracuda-workflow-choice-action"),
+            html.Code(schema),
+            dcc.Link("Open analysis →", href=path, className="barracuda-card-link"),
         ],
-        href=path,
-        className="barracuda-workflow-choice",
+        className="barracuda-data-route",
     )
 
 
 def layout() -> html.Div:
-    constraints = {
-        "hetero3": "μλ > 0 · σλ > 0 · φ₀ > 0",
-        "z2p": "μλ > 0 · σλ = 0 · φ₀ > 0",
-        "dis2p": "μλ > 0 · σλ > 0 · φ₀ = 0",
-        "homo": "μλ > 0 · σλ = 0 · φ₀ = 0",
-    }
+    rows = (
+        ("homo", "One shared rate", "No", "Random count variation only", "μλ"),
+        ("dis2p", "Varies continuously", "No", "Stable continuous cell-to-cell differences", "μλ, σλ"),
+        ("z2p", "One shared positive rate", "Yes", "A nonengaging group plus engaging cells", "μλ, φ₀"),
+        ("hetero3", "Varies continuously", "Yes", "Continuous differences plus nonengaging cells", "μλ, σλ, φ₀"),
+    )
     return html.Div(
         [
-            hero(
-                "Event counts",
-                "Choose an event count workflow",
-                "Use total contacts or kills per cell to compare population structures. Add donor labels when you also need to separate variation within and between donors.",
-                badge="Counts per cell • Optional donor labels",
-            ),
-            html.Div(
-                [
-                    html.H2("Choose an analysis"),
-                    html.P(
-                        "Choose whether donor labels are part of the model. Each analysis then guides you through the appropriate data and inference workflow.",
-                        className="barracuda-section-lead",
-                    ),
-                ],
-                className="barracuda-section-intro",
-            ),
-            html.Div(
-                [
-                    _workflow_link(
-                        "Without donor labels",
-                        "Donor ignorant",
-                        "Choose synthetic data or analyse one to four experimental conditions as independent populations.",
-                        "/event-counts/donor-ignorant",
-                    ),
-                    _workflow_link(
-                        "With donor labels",
-                        "Donor aware",
-                        "Analyse one to four conditions with a donor hierarchy, then separate within-donor variation from differences between donors.",
-                        "/event-counts/donor-aware",
-                    ),
-                ],
-                className="barracuda-workflow-choice-grid two",
+            page_header(
+                "Analyse",
+                "Event count analysis",
+                "Compare explanations for variation in total contacts or kills observed across individual cells.",
+                crumb="Event counts",
             ),
             html.Section(
                 [
-                    html.Span("Models used in the paper", className="barracuda-section-label"),
-                    html.H2("Four population structures"),
-                    html.P(
-                        "Each model gives a different explanation for variation in the counts observed across cells.",
-                        className="barracuda-section-lead",
+                    html.H2("What information is present in your table?"),
+                    html.P("Choose the route that matches your columns. Both routes support one to four experimental conditions.", className="barracuda-section-lead"),
+                    html.Div(
+                        [
+                            _route(
+                                "Counts without donor labels",
+                                "Donor ignorant",
+                                "Use one total count per cell when donor identity is unavailable or outside the question.",
+                                "cell_id · condition · count",
+                                "/event-counts/donor-ignorant",
+                            ),
+                            _route(
+                                "Counts grouped by donor",
+                                "Donor aware",
+                                "Add donor identifiers to separate variation among cells within donors from differences between donors.",
+                                "cell_id · donor_id · condition · count",
+                                "/event-counts/donor-aware",
+                            ),
+                        ],
+                        className="barracuda-data-route-grid",
+                    ),
+                ],
+                className="barracuda-overview-section",
+            ),
+            html.Section(
+                [
+                    html.Span("Model reference", className="barracuda-eyebrow"),
+                    html.H2("Four explanations for population structure"),
+                    html.P("The models differ in whether engaging cells share a rate and whether a distinct nonengaging fraction is present.", className="barracuda-section-lead"),
+                    html.Div(
+                        [
+                            html.Table(
+                                [
+                                    html.Thead(html.Tr([html.Th(label, scope="col") for label in ("Model", "Cell-specific rates", "Nonengaging fraction", "Biological interpretation", "Parameters")])),
+                                    html.Tbody(
+                                        [
+                                            html.Tr(
+                                                [
+                                                    html.Th(model_title(key), scope="row"),
+                                                    html.Td(rates),
+                                                    html.Td(nonengaging),
+                                                    html.Td(interpretation),
+                                                    html.Td(html.Code(parameters)),
+                                                ]
+                                            )
+                                            for key, rates, nonengaging, interpretation, parameters in rows
+                                        ]
+                                    ),
+                                ],
+                                className="barracuda-model-table",
+                            )
+                        ],
+                        className="barracuda-table-scroll",
+                        tabIndex=0,
+                        role="region",
+                        **{"aria-label": "Scrollable comparison of event count models"},
                     ),
                     schematic_figure(
                         "/assets/event_count_models.png",
-                        "Four event rate models. Zero inflated Gamma combines a nonengaging mass at rate zero with continuously varying positive rates; zero inflated combines the nonengaging mass with one shared positive rate; Gamma has continuously varying positive rates and no nonengaging mass; homogeneous assigns one positive rate to every cell.",
-                        "The paper compares the same four event count models throughout. μλ is the mean event rate among engaging cells, σλ measures continuous cell-to-cell heterogeneity in event rates, and φ₀ is the fraction of nonengaging cells.",
+                        "Four event-rate models compare a shared positive rate, continuous positive-rate variation, a nonengaging fraction, and both continuous variation and a nonengaging fraction.",
+                        "The same four event-count models are compared throughout BARRACUDA.",
                         variant="models",
-                    ),
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.H3(model_title(key)),
-                                    html.P(MODEL_SPECS[key].description),
-                                    html.Span(constraints[key]),
-                                ],
-                                className="barracuda-model-definition",
-                            )
-                            for key in ("hetero3", "z2p", "dis2p", "homo")
-                        ],
-                        className="barracuda-model-definition-grid",
                     ),
                     html.Details(
                         [
-                            html.Summary("Paper notation and model equations"),
+                            html.Summary("Model equations and paper notation"),
                             dcc.Markdown(
                                 r"""
 For cell $i$, the observed event count is $N_i$ and the common observation time is $T$:
 
 $$N_i \mid \lambda_i,T \sim \operatorname{Poisson}(\lambda_iT).$$
 
-For $\mathcal{M}_{\Gamma}$ and $\mathcal{M}_{\mathrm{ZI}\Gamma}$, event rates among engaging cells follow a Gamma distribution with shape $\alpha$ and rate $\beta$:
+For the continuously heterogeneous models:
 
 $$\lambda_i \sim \operatorname{Gamma}(\alpha,\beta),\qquad
 \alpha=\frac{\mu_\lambda^2}{\sigma_\lambda^2},\qquad
 \beta=\frac{\mu_\lambda}{\sigma_\lambda^2}.$$
 
-$\mu_\lambda$ is the mean event rate among engaging cells. $\sigma_\lambda$ measures continuous cell-to-cell heterogeneity in their event rates. $\phi_0$ is the fraction of nonengaging cells assigned $\lambda_i=0$ in the zero inflated models.
+$\mu_\lambda$ is the mean rate among engaging cells, $\sigma_\lambda$ is continuous rate heterogeneity, and $\phi_0$ is the nonengaging fraction.
 """,
                                 mathjax=True,
                                 className="barracuda-model-equations",
                             ),
                         ],
-                        className="barracuda-details barracuda-model-equation-details",
+                        className="barracuda-details",
                     ),
                 ],
-                className="barracuda-model-reference",
+                className="barracuda-overview-section",
             ),
         ]
     )

@@ -21,6 +21,7 @@ from webapp.core.conditions import (
     condition_columns,
     default_condition_colours,
     normalize_condition_frame,
+    sample_condition_frame,
     sanitize_condition_colours,
     split_condition_frame,
     validate_condition_frame,
@@ -30,7 +31,7 @@ from webapp.progress_ui import (
     sampling_complete_payload,
     sampling_progress_payload,
 )
-from webapp.ui import hero, note
+from webapp.ui import analysis_stepper, empty_state, hero, note, page_header
 
 
 def _columns(donor_aware: bool, editable: bool) -> list[dict]:
@@ -161,7 +162,7 @@ def _blank_rows(*, donor_aware: bool) -> list[dict[str, object]]:
     ]
 
 
-def layout(
+def _legacy_layout(
     *,
     prefix: str,
     donor_aware: bool,
@@ -176,6 +177,8 @@ def layout(
         if donor_aware
         else note("Input scope", "Use one row per cell and one count outcome, such as contacts or kills. Do not upload names, clinical metadata, raw microscopy, or other identifiers.", tone="navy")
     )
+
+
     table_columns = _columns(donor_aware, False)
     return html.Div(
         [
@@ -204,7 +207,10 @@ def layout(
                         inputClassName="barracuda-segment-input",
                     ),
                     html.Div(
-                        dcc.Upload(id=f"{prefix}-upload", children=html.Div([html.Strong("Drop a CSV here"), html.Span(" or choose a file")]), accept=".csv,text/csv", multiple=False, max_size=1_000_000, className="barracuda-upload"),
+                        html.Label(
+                            dcc.Upload(id=f"{prefix}-upload", children=html.Div([html.Strong("Drop a CSV here"), html.Span(" or choose a file")]), accept=".csv,text/csv", multiple=False, max_size=1_000_000, className="barracuda-upload"),
+                            className="barracuda-upload-label",
+                        ),
                         id=f"{prefix}-upload-panel",
                         className="",
                     ),
@@ -293,7 +299,107 @@ def layout(
     )
 
 
+def layout(
+    *,
+    prefix: str,
+    donor_aware: bool,
+    kicker: str,
+    title: str,
+    lead: str,
+    badge: str,
+) -> html.Div:
+    """Mount the established controls in the shared analysis workbench."""
+
+    legacy = _legacy_layout(
+        prefix=prefix,
+        donor_aware=donor_aware,
+        kicker=kicker,
+        title=title,
+        lead=lead,
+        badge=badge,
+    )
+    store, _hero, privacy_note, data_panel, inference_panel = legacy.children
+    data_children = list(data_panel.children)
+    inference_children = list(inference_panel.children)
+
+    source = data_children[4]
+    source.options = [
+        {"label": "Upload CSV", "value": "upload"},
+        {"label": "Enter data manually", "value": "edit"},
+        {"label": "Use an example", "value": "example"},
+    ]
+    upload_panel = data_children[5]
+    upload_panel.children = [
+        upload_panel.children,
+        html.P(
+            "CSV · maximum 1 MB · required: cell_id, count"
+            + (", donor_id" if donor_aware else "")
+            + " · condition is optional and defaults to one group.",
+            className="barracuda-upload-requirements",
+        ),
+    ]
+
+    configuration = html.Aside(
+        [
+            html.Section(
+                [*data_children[:7], *data_children[8:11]],
+                className="barracuda-workflow-panel",
+            ),
+            html.Section(inference_children[:3], className="barracuda-workflow-panel"),
+        ],
+        className="barracuda-config-rail",
+        **{"aria-label": "Analysis configuration"},
+    )
+    results = html.Section(
+        [
+            html.Span("Preview and results", className="barracuda-section-label"),
+            html.H2("Evidence workspace"),
+            empty_state(
+                "Start with a dataset",
+                "Upload a CSV, enter rows, or load the built-in synthetic example. A validated data preview will appear here before inference begins.",
+            ),
+            data_children[7],
+            data_children[11],
+            *inference_children[3:],
+        ],
+        id=f"{prefix}-inference",
+        className="barracuda-result-region",
+        **{"aria-busy": "false"},
+    )
+    requirement = (
+        "cell_id · donor_id · condition · count"
+        if donor_aware
+        else "cell_id · condition · count"
+    )
+    return html.Div(
+        [
+            store,
+            page_header(
+                "Analyse",
+                title,
+                lead,
+                crumb="Counts grouped by donor" if donor_aware else "Counts without donor labels",
+                badge=requirement,
+            ),
+            privacy_note,
+            analysis_stepper(prefix),
+            html.Div([configuration, results], className="barracuda-analysis-workbench"),
+        ]
+    )
+
+
 def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
+    @app.callback(
+        Output(f"{prefix}-stepper", "children"),
+        Input(f"{prefix}-valid-data", "data"),
+        Input(f"{prefix}-inference", "aria-busy"),
+        Input(f"{prefix}-results", "children"),
+        Input(f"{prefix}-download", "children"),
+    )
+    def update_stepper(valid_data, busy, results, download):
+        current = 4 if download else 3 if results else 2 if busy == "true" else 1 if valid_data else 0
+        return analysis_stepper(prefix, current).children
+
     @app.callback(
         Output(f"{prefix}-table", "rowData"),
         Output(f"{prefix}-table", "columnDefs"),
@@ -333,6 +439,9 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             return rows, _columns(donor_aware, True), grid_options, upload_class, action_class, status
         if source == "edit":
             return _blank_rows(donor_aware=donor_aware), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("A blank minimum-size template is ready. Replace the placeholder identifiers and counts, then add or remove rows as needed.", className="barracuda-help")
+        if source == "example":
+            frame = sample_condition_frame(donor_aware=donor_aware)
+            return table_records(frame), _columns(donor_aware, False), grid_options, upload_class, action_class, note("Synthetic example loaded", "Two fictional conditions are ready for validation and interface testing.", tone="teal")
         if not upload_contents:
             return [], _columns(donor_aware, False), grid_options, upload_class, action_class, html.P("Upload a UTF-8 CSV up to 1 MB.", className="barracuda-help")
         try:

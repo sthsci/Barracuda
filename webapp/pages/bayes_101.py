@@ -17,7 +17,7 @@ from webapp.core.coin import (
     uniform_prior_posterior,
 )
 from webapp.palette import CONDITION_BISPECIFIC, DONOR_RUST, DONOR_TEAL, MODEL_ZERO_INFLATED_GAMMA, PAPER_SPINE
-from webapp.ui import hero, markdown, metrics, note, step_card
+from webapp.ui import markdown, metrics, note, page_header, step_card
 
 
 PATH = "/bayesian-101"
@@ -347,17 +347,16 @@ def _parameter_log_prior(mean: float, scale: float) -> float:
 
 @lru_cache(maxsize=1)
 def _bayes_update_figure() -> go.Figure:
-    """Show likelihood, prior and posterior on one fixed parameter map."""
-    means, scales, likelihood, prior, unnormalised, posterior, evidence = _two_parameter_surfaces()
-    stages = [
-        ("likelihood", "01 · Data score the candidates", "Likelihood", likelihood),
-        ("prior", "02 · Beliefs before these data", "Prior density", prior),
-        ("multiply", "03 · Keep pairs supported by both", "Unnormalised density q", unnormalised),
-        ("normalise", f"04 · Same shape, total area one · Z ≈ {evidence:.3g}", "Posterior density", posterior),
-    ]
-
-    def stage_data(label: str, quantity: str, surface: np.ndarray) -> list[go.BaseTraceType]:
-        return [
+    """Compare likelihood, prior and posterior on synchronized axes."""
+    means, scales, likelihood, prior, _unnormalised, posterior, _evidence = _two_parameter_surfaces()
+    panels = (
+        ("Relative likelihood", "Likelihood", likelihood),
+        ("Prior density", "Prior density", prior),
+        ("Posterior density", "Posterior density", posterior),
+    )
+    figure = make_subplots(rows=1, cols=3, shared_xaxes=True, shared_yaxes=True, subplot_titles=[panel[0] for panel in panels], horizontal_spacing=0.075)
+    for column, (_title, quantity, surface) in enumerate(panels, 1):
+        figure.add_trace(
             go.Contour(
                 x=means,
                 y=scales,
@@ -367,68 +366,26 @@ def _bayes_update_figure() -> go.Figure:
                 zmax=1,
                 colorscale=SURFACE_COLORS,
                 contours={"coloring": "heatmap", "showlines": False},
-                showscale=False,
+                showscale=column == 3,
+                colorbar={"title": "Relative<br>support", "thickness": 10, "len": 0.7} if column == 3 else None,
                 hovertemplate=f"Mean μ: %{{x:.2f}}<br>SD σ: %{{y:.2f}}<br>{quantity}: %{{customdata:.3g}}<extra></extra>",
             ),
-            go.Scatter(
-                x=[MEAN_BOUNDS[0] + 0.04],
-                y=[SCALE_BOUNDS[1] - 0.04],
-                mode="text",
-                text=[label],
-                textposition="middle right",
-                textfont={"family": BOOK_SERIF, "size": 15, "color": BOOK_INK},
-                showlegend=False,
-                hoverinfo="skip",
-            ),
-        ]
-
-    initial = stage_data(stages[0][1], stages[0][2], stages[0][3])
-    figure = go.Figure(
-        data=initial,
-        frames=[
-            go.Frame(name=name, data=stage_data(label, quantity, surface))
-            for name, label, quantity, surface in stages
-        ],
-    )
+            row=1,
+            col=column,
+        )
     figure.update_layout(
-        **_plot_layout(height=500, bottom_margin=122, top_margin=30, left_margin=64, right_margin=24),
-        xaxis={"title": "Population mean μ", "range": list(MEAN_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
-        yaxis={"title": "Population SD σ", "range": list(SCALE_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
+        **_plot_layout(height=430, bottom_margin=64, top_margin=62, left_margin=58, right_margin=62),
         hovermode="closest",
-        updatemenus=[
-            {
-                "type": "buttons",
-                "direction": "left",
-                "x": 0,
-                "y": -0.2,
-                "showactive": False,
-                "bgcolor": BOOK_INK,
-                "bordercolor": BOOK_INK,
-                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
-                "buttons": [
-                    {"label": "Play update", "method": "animate", "args": [None, {"frame": {"duration": 850, "redraw": True}, "transition": {"duration": 180}, "fromcurrent": True}]},
-                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
-                ],
-            }
-        ],
-        sliders=[
-            {
-                "active": 0,
-                "x": 0.28,
-                "y": -0.17,
-                "len": 0.72,
-                "pad": {"t": 4},
-                "steps": [
-                    {
-                        "label": label.split(" · ", 1)[0],
-                        "method": "animate",
-                        "args": [[name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 120}}],
-                    }
-                    for name, label, _, _ in stages
-                ],
-            }
+        annotations=[
+            *list(figure.layout.annotations),
+            {"text": "×", "x": 0.33, "y": 0.5, "xref": "paper", "yref": "paper", "showarrow": False, "font": {"size": 24, "color": BOOK_RULE}},
+            {"text": "→", "x": 0.67, "y": 0.5, "xref": "paper", "yref": "paper", "showarrow": False, "font": {"size": 24, "color": BOOK_RULE}},
         ],
     )
+    for column in range(1, 4):
+        figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=1, col=column)
+        figure.update_yaxes(range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=1, col=column)
+    figure.update_yaxes(title="SD σ", row=1, col=1)
     return figure
 
 
@@ -792,11 +749,13 @@ def layout() -> html.Div:
 
     return html.Div(
         [
-            hero(
-                "Foundations",
-                "Bayesian inference, from probability to computation",
-                "Start with conditional probability, update a coin model by hand, then see how MCMC and SMC solve larger Bayesian problems.",
+            page_header(
+                "Learn",
+                "Bayesian inference for BARRACUDA",
+                "Learn how observations update parameter uncertainty and how model evidence compares alternative biological explanations.",
                 badge="Interactive lesson · no data upload required",
+                crumb="Bayesian inference",
+                educational=True,
             ),
             _contents(),
             html.Section(
@@ -901,7 +860,7 @@ def layout() -> html.Div:
                                 [
                                     html.Label(
                                         [
-                                            html.Span("True probability of heads", className="barracuda-field-label"),
+                                            html.Span("Simulation truth", className="barracuda-field-label"),
                                             dcc.Slider(
                                                 id="coin-probability",
                                                 min=0,
@@ -914,7 +873,7 @@ def layout() -> html.Div:
                                         ],
                                         className="barracuda-field",
                                     ),
-                                    html.Div(id="coin-ground-truth", children="Ground truth: P(head) = 0.50 · P(tail) = 0.50", className="barracuda-help"),
+                                    html.Div(id="coin-ground-truth", children="Simulation truth: P(head) = 0.50 · P(tail) = 0.50. This value would be unknown in real inference.", className="barracuda-help"),
                                     html.Label(
                                         [
                                             html.Span("Number of tosses", className="barracuda-field-label"),
@@ -947,7 +906,7 @@ def layout() -> html.Div:
                                     ),
                                     html.P("Choose how much posterior probability the HDI should contain.", className="barracuda-help"),
                                     html.Div([html.Strong("Fixed prior"), html.Br(), "P(head) ~ Beta(1, 1)"], className="barracuda-fixed-prior"),
-                                    html.Button("Toss once more", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
+                                    html.Button("Toss the coin", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
                                 ],
                                 className="barracuda-control-panel",
                             ),
@@ -1056,37 +1015,36 @@ def layout() -> html.Div:
                         ],
                         className="barracuda-parameter-grid",
                     ),
-                    html.H3("Build the posterior on one map"),
+                    html.Span("Bayesian updating", className="barracuda-section-label"),
+                    html.H3("From likelihood and prior to posterior"),
                     html.P(
-                        "Keep your eye on one fixed (μ, σ) map. Play the update or choose a step: the data provide the likelihood, the prior contributes what was plausible beforehand, and their product gives the posterior shape.",
+                        "The likelihood identifies parameter values supported by the observations. The prior describes which values were plausible before observing these data. Their product determines the posterior distribution.",
                         className="barracuda-copy",
                     ),
-                    html.Div(
-                        [
-                            html.Ol(
-                                [
-                                    html.Li([html.Strong("Likelihood"), html.Span("The five observations score every candidate pair.")]),
-                                    html.Li([html.Strong("Prior"), html.Span("The same map now shows uncertainty before those observations.")]),
-                                    html.Li([html.Strong("Multiply"), html.Span("Pairs remain prominent only where both surfaces agree.")]),
-                                    html.Li([html.Strong("Normalise"), html.Span("Division by Z makes the total posterior probability one; its shape does not move.")]),
-                                ],
-                                className="barracuda-update-ledger",
-                            ),
-                            html.Div(
-                                dcc.Graph(
-                                    id="bayes-update-animation",
-                                    figure=_bayes_update_figure(),
-                                    config={"displaylogo": False, "responsive": True},
-                                    className="barracuda-update-plot",
-                                    style={"height": "500px"},
-                                ),
-                                role="group",
-                                **{"aria-label": "Animated sequence showing likelihood, prior, their product and the normalised posterior over mean and standard deviation"},
-                            ),
-                        ],
-                        className="barracuda-update-workbench",
+                    html.P(
+                        "Which combinations of the population mean (μ) and standard deviation (σ) remain plausible after observing the data?",
+                        className="barracuda-question",
                     ),
-                    html.P("Darker regions indicate greater relative support at the selected step. Hover for the numerical value; the axes never change.", className="barracuda-surface-legend"),
+                    html.Div(
+                        dcc.Graph(
+                            id="bayes-update-animation",
+                            figure=_bayes_update_figure(),
+                            config={"displaylogo": False, "responsive": True},
+                            className="barracuda-update-plot",
+                            style={"height": "430px"},
+                        ),
+                        className="barracuda-bayes-triptych",
+                        role="group",
+                        **{"aria-label": "Relative likelihood times prior density produces posterior density over population mean and standard deviation"},
+                    ),
+                    html.P("All three panels use identical axes and the same low-to-high relative-support scale.", className="barracuda-surface-legend"),
+                    html.Details(
+                        [
+                            html.Summary("How normalisation turns the product into a probability density"),
+                            html.P("The likelihood-prior product is divided by its integral Z. This makes the posterior integrate to one without moving its contours."),
+                        ],
+                        className="barracuda-details",
+                    ),
                     note(
                         "Likelihood is not posterior probability",
                         "Once the observations are fixed, the likelihood ranks candidate parameter pairs. It does not have to integrate to one over μ and σ. The prior and posterior are probability densities over those parameters; the posterior combines both the likelihood and the prior.",
@@ -1410,7 +1368,7 @@ def register_callbacks(app) -> None:
         frequency_figure = _coin_frequency_figure(probability, outcomes)
         face = "Heads" if outcomes[-1] else "Tails"
         animation_class = f"barracuda-coin-stage is-tossing toss-{'a' if toss_round % 2 == 0 else 'b'}"
-        ground_truth = f"Ground truth: P(head) = {probability:.2f} · P(tail) = {1 - probability:.2f}"
+        ground_truth = f"Simulation truth: P(head) = {probability:.2f} · P(tail) = {1 - probability:.2f}. This value would be unknown in real inference."
         return (
             figure,
             frequency_figure,

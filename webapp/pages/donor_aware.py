@@ -22,8 +22,7 @@ def layout() -> html.Div:
         badge="2 to 12 donors per condition · Section 2 hierarchy",
     )
     children = list(page.children)
-    children.insert(
-        3,
+    children.append(
         html.Section(
             [
                 html.Span("How the hierarchy is read", className="barracuda-section-label"),

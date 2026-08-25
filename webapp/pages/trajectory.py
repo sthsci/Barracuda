@@ -42,7 +42,7 @@ from webapp.trajectory_reporting import (
     posterior_marginal_figure,
     render_trajectory_results,
 )
-from webapp.ui import hero, markdown, metric, note, research_warning
+from webapp.ui import analysis_stepper, hero, markdown, metric, note, page_header, research_warning
 
 
 PATH = "/trajectory"
@@ -333,7 +333,7 @@ def _preview_table(frame: pd.DataFrame):
     return data_table(preview, max_rows=8)
 
 
-def layout() -> html.Div:
+def _legacy_layout() -> html.Div:
     return html.Div(
         [
             dcc.Store(id="trajectory-synthetic-data"),
@@ -497,11 +497,14 @@ def layout() -> html.Div:
                     html.P(
                         "Use one row per cell with cell_id, condition and history. Write the ordered outcomes as a quoted comma-separated sequence such as \"0,1,0\". A blank history keeps a zero-contact cell in the contact-rate analysis.",
                     ),
-                    dcc.Upload(
-                        id="trajectory-upload",
-                        children=html.Div([html.Strong("Drop a CSV here"), " or choose a file"]),
-                        className="barracuda-upload",
-                        multiple=False,
+                    html.Label(
+                        dcc.Upload(
+                            id="trajectory-upload",
+                            children=html.Div([html.Strong("Drop a CSV here"), " or choose a file"]),
+                            className="barracuda-upload",
+                            multiple=False,
+                        ),
+                        className="barracuda-upload-label",
                     ),
                     html.Div(id="trajectory-upload-status", role="status", **{"aria-live": "polite"}),
                     html.A(
@@ -663,7 +666,43 @@ def layout() -> html.Div:
     )
 
 
+def layout() -> html.Div:
+    """Present trajectory data before the optional mathematical reference."""
+
+    legacy = _legacy_layout()
+    children = list(legacy.children)
+    stores = children[:6]
+    model_reference = children[7]
+    model_reference.className = "barracuda-trajectory-intro barracuda-model-reference-lower"
+    return html.Div(
+        [
+            *stores,
+            page_header(
+                "Analyse",
+                "Ordered contact histories",
+                "Use the order of lethal and nonlethal contacts to test whether stable differences between cells or previous encounters explain later killing decisions.",
+                crumb="Ordered contact histories",
+                badge="cell_id · condition · history",
+            ),
+            analysis_stepper("trajectory"),
+            *children[8:],
+            model_reference,
+        ]
+    )
+
+
 def register_callbacks(app) -> None:
+    @app.callback(
+        Output("trajectory-stepper", "children"),
+        Input("trajectory-active-data", "data"),
+        Input("trajectory-inference", "aria-busy"),
+        Input("trajectory-run-status", "children"),
+        Input("trajectory-download", "children"),
+    )
+    def update_stepper(active_data, busy, run_status, download):
+        current = 4 if download else 3 if run_status else 2 if busy == "true" else 1 if active_data else 0
+        return analysis_stepper("trajectory", current).children
+
     @app.callback(
         Output("trajectory-synthetic-panel", "className"),
         Output("trajectory-upload-panel", "className"),

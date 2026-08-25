@@ -183,8 +183,8 @@ def test_actual_data_analysis_starts_with_upload_and_uses_inference_language(
 
     source = by_id[f"{prefix}-source"]
     assert source.value == "upload"
-    assert {option["value"] for option in source.options} == {"upload", "edit"}
-    assert "Example" not in {str(option["label"]) for option in source.options}
+    assert {option["value"] for option in source.options} == {"upload", "edit", "example"}
+    assert "Use an example" in {str(option["label"]) for option in source.options}
     assert "is-hidden" not in by_id[f"{prefix}-upload-panel"].className
 
     assert re.search(
@@ -244,6 +244,24 @@ def test_edit_source_starts_with_a_neutral_template_instead_of_example_data(
         added_rows, *_rest = update_source("edit", None, 1, 0, rows, [])
     assert len(added_rows) == len(rows) + 1
     assert added_rows[-1]["condition"] == "Condition 1"
+
+
+@pytest.mark.parametrize(("prefix", "donor_aware"), (("counts", False), ("donor", True)))
+def test_example_source_loads_valid_fictional_conditions(app, prefix: str, donor_aware: bool) -> None:
+    update_source = _callback(app, f"{prefix}-table.rowData")
+
+    with _triggered(f"{prefix}-source", "value", "example"):
+        rows, _columns, _grid, upload_class, action_class, status = update_source(
+            "example", None, 0, 0, [], []
+        )
+
+    assert upload_class == "is-hidden"
+    assert action_class.endswith("is-hidden")
+    assert {row["condition"] for row in rows} == {"Control", "Treatment"}
+    assert all(str(row["cell_id"]).startswith(("control_", "treatment_")) for row in rows)
+    if donor_aware:
+        assert len({row["donor_id"] for row in rows}) >= 2
+    assert "Synthetic example loaded" in _text(status)
 
 
 @pytest.mark.parametrize("prefix", ("counts", "donor"))

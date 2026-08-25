@@ -21,48 +21,25 @@ def _walk(component):
             yield from _walk(child)
 
 
-def test_global_figure_controls_are_persistent_and_registered() -> None:
+def test_compact_header_replaces_sidebar_and_global_figure_controls() -> None:
     app = create_app()
-    by_id = {
-        component_id: component
-        for component in _walk(app.layout)
-        if isinstance((component_id := getattr(component, "id", None)), str)
-    }
+    components = list(_walk(app.layout))
+    ids = {getattr(component, "id", None) for component in components}
+    classes = {getattr(component, "className", None) for component in components}
 
-    width = by_id["barracuda-figure-width"]
-    height = by_id["barracuda-figure-height-scale"]
-    assert (width.min, width.max, width.value) == (60, 100, 100)
-    assert (height.min, height.max, height.value) == (0.75, 1.75, 1.0)
-    assert width.persistence is True and width.persistence_type == "local"
-    assert height.persistence is True and height.persistence_type == "local"
-    assert "barracuda-figure-sizing-applied.data" in app.callback_map
-    assert any(
-        "barracuda-figure-width.value" in key
-        and "barracuda-figure-height-scale.value" in key
-        for key in app.callback_map
-    )
+    assert "barracuda-header" in classes
+    assert "barracuda-sidebar" not in classes
+    assert {"nav-home", "nav-event-counts", "nav-contact-histories", "nav-learn", "nav-resources"} <= ids
+    assert "barracuda-figure-width" not in ids
+    assert "barracuda-figure-height-scale" not in ids
+    assert not (ROOT / "webapp" / "assets" / "figure_controls.js").exists()
+    assert not any("figure-sizing" in key for key in app.callback_map)
 
 
-def test_global_figure_javascript_resizes_current_and_future_plotly_graphs() -> None:
-    source = (ROOT / "webapp" / "assets" / "figure_controls.js").read_text()
-
-    assert '.querySelectorAll(".js-plotly-plot")' in source
-    assert "MutationObserver" in source
-    assert "Plotly.Plots.resize" in source
-    assert "(max-width: 820px)" in source
-    assert "MIN_HEIGHT = 320" in source
-    assert "MAX_HEIGHT = 1600" in source
-    assert "barracudaBaseHeight" in source
-    assert "barracudaAppliedHeight" in source
-    assert '/px\\s*$/i.test(inlineHeight)' in source
-    assert 'plot.style.height !== heightValue' in source
-    assert "root.offsetParent === null" in source
-    assert 'attributeFilter: ["style", "class"]' in source
-
+def test_scientific_figures_remain_responsive_without_global_resizing_script() -> None:
     css = (ROOT / "webapp" / "assets" / "styles.css").read_text()
+
     assert ".barracuda-trajectory-encoding-legend" in css
-    assert ".barracuda-figure-sized" in css
-    assert (
-        ".barracuda-trajectory-empirical-plot .svg-container { width: 100% !important; height: 100% !important; }"
-        not in css
-    )
+    assert ".barracuda-analysis-workbench" in css
+    assert "grid-template-columns: minmax(320px, 352px) minmax(0, 1fr)" in css
+    assert "@media (max-width: 980px)" in css

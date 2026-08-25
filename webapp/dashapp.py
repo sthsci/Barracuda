@@ -7,12 +7,13 @@ from pathlib import Path
 
 import diskcache
 import psutil
-from dash import ClientsideFunction, Dash, DiskcacheManager, Input, Output, dcc, html
+from dash import Dash, DiskcacheManager, Input, Output, dcc, html
 
 from webapp.analysis_ui import PROFILE_VALUES
 from webapp.account_ui import register_callbacks as register_account_callbacks
 from webapp.account_ui import shell_components as account_shell_components
 from webapp.pages import bayes_101, donor_aware, event_counts, event_counts_overview, home, notebooks, python_api, shared, synthetic_validation, trajectory, workspace
+from webapp.ui import app_header
 
 
 PAGES = [home, bayes_101, notebooks, python_api, event_counts_overview, event_counts, donor_aware, trajectory, workspace]
@@ -23,36 +24,35 @@ PAGE_BY_PATH = {page.PATH: page for page in PAGES}
 PAGE_BY_PATH[synthetic_validation.PATH] = event_counts
 PAGE_BY_PATH["/donor-aware"] = donor_aware
 PAGE_BY_PATH[shared.PATH] = shared
-NAV_GROUPS = [
-    ("Overview", [(home, False), (bayes_101, False)]),
-    ("Resources", [(notebooks, False), (python_api, False)]),
-    (
-        "Event counts",
-        [
-            (event_counts_overview, False),
-            (event_counts, True),
-            (donor_aware, True),
-        ],
-    ),
-    ("Trajectories", [(trajectory, False)]),
-    ("Workspace", [(workspace, False)]),
-]
-NAV_LABELS = {
-    home.PATH: "Home",
-    bayes_101.PATH: "Bayesian inference 101",
-    notebooks.PATH: "Google Colab notebooks",
-    python_api.PATH: "Python package API",
-    event_counts_overview.PATH: "Event count analysis",
-    event_counts.PATH: "Donor ignorant · Data and validation",
-    donor_aware.PATH: "Donor aware · Condition analysis",
-    trajectory.PATH: "Trajectory inference",
-    workspace.PATH: "Account and CSV sharing",
+TOP_NAV = (
+    ("Home", home.PATH, "nav-home"),
+    ("Event counts", event_counts_overview.PATH, "nav-event-counts"),
+    ("Contact histories", trajectory.PATH, "nav-contact-histories"),
+    ("Learn", bayes_101.PATH, "nav-learn"),
+    ("Resources", notebooks.PATH, "nav-resources"),
+)
+NAV_IDS = {path: item_id for _label, path, item_id in TOP_NAV}
+NAV_SECTION = {
+    home.PATH: home.PATH,
+    event_counts_overview.PATH: event_counts_overview.PATH,
+    event_counts.PATH: event_counts_overview.PATH,
+    donor_aware.PATH: event_counts_overview.PATH,
+    synthetic_validation.PATH: event_counts_overview.PATH,
+    trajectory.PATH: trajectory.PATH,
+    bayes_101.PATH: bayes_101.PATH,
+    notebooks.PATH: notebooks.PATH,
+    python_api.PATH: notebooks.PATH,
 }
-NAV_IDS = {page.PATH: f"nav-{index}" for index, page in enumerate(PAGES)}
-NAV_BASE_CLASSES = {
-    page.PATH: "barracuda-nav-link barracuda-nav-link-child" if is_child else "barracuda-nav-link"
-    for _group, entries in NAV_GROUPS
-    for page, is_child in entries
+PAGE_TYPE = {
+    home.PATH: "home",
+    bayes_101.PATH: "learning",
+    notebooks.PATH: "resource",
+    python_api.PATH: "resource",
+    event_counts_overview.PATH: "landing",
+    event_counts.PATH: "analysis",
+    donor_aware.PATH: "analysis",
+    trajectory.PATH: "analysis",
+    workspace.PATH: "workspace",
 }
 
 
@@ -129,103 +129,6 @@ class BarracudaDiskcacheManager(DiskcacheManager):
             return
 
 
-def _sidebar() -> html.Aside:
-    groups: list = []
-    for group, entries in NAV_GROUPS:
-        groups.append(
-            html.Div(
-                [
-                    html.Div(group, className="barracuda-nav-group-label"),
-                    html.Nav(
-                        [
-                            dcc.Link(
-                                NAV_LABELS[page.PATH],
-                                href=page.PATH,
-                                id=NAV_IDS[page.PATH],
-                                className=NAV_BASE_CLASSES[page.PATH],
-                            )
-                            for page, _is_child in entries
-                        ],
-                        className="barracuda-nav-links",
-                        **{"aria-label": f"{group} navigation"},
-                    ),
-                ],
-                className="barracuda-nav-group",
-            )
-        )
-    return html.Aside(
-        [
-            dcc.Link(
-                [html.Span("B", className="barracuda-mark"), html.Div([html.Strong("BARRACUDA"), html.Small("Inference for immune cell decisions")])],
-                href="/",
-                className="barracuda-brand",
-            ),
-            html.Div(groups, className="barracuda-nav"),
-            html.Details(
-                [
-                    html.Summary("Figure display"),
-                    html.Div(
-                        [
-                            html.Label(
-                                [
-                                    html.Span("Width", className="barracuda-field-label"),
-                                    dcc.Slider(
-                                        id="barracuda-figure-width",
-                                        min=60,
-                                        max=100,
-                                        step=5,
-                                        value=100,
-                                        marks={60: "60%", 80: "80%", 100: "100%"},
-                                        persistence=True,
-                                        persistence_type="local",
-                                    ),
-                                ],
-                                className="barracuda-field",
-                            ),
-                            html.Label(
-                                [
-                                    html.Span("Height", className="barracuda-field-label"),
-                                    dcc.Slider(
-                                        id="barracuda-figure-height-scale",
-                                        min=0.75,
-                                        max=1.75,
-                                        step=0.05,
-                                        value=1.0,
-                                        marks={0.75: "75%", 1.0: "100%", 1.75: "175%"},
-                                        persistence=True,
-                                        persistence_type="local",
-                                    ),
-                                ],
-                                className="barracuda-field",
-                            ),
-                            html.Button(
-                                "Reset figure size",
-                                id="barracuda-figure-reset",
-                                n_clicks=0,
-                                className="barracuda-button tertiary small full",
-                            ),
-                            html.P(
-                                "Display only. Use each figure's export menu or download buttons to save it.",
-                                className="barracuda-help",
-                            ),
-                        ],
-                        className="barracuda-sidebar-figure-body",
-                    ),
-                ],
-                className="barracuda-sidebar-figure-controls",
-            ),
-            html.Div(
-                [
-                    html.Span("Data use", className="barracuda-preview-label"),
-                    html.P("Use synthetic or approved anonymous data. Inputs are not intentionally retained.", className="barracuda-sidebar-warning"),
-                ],
-                className="barracuda-sidebar-footer",
-            ),
-        ],
-        className="barracuda-sidebar",
-    )
-
-
 def _not_found(pathname: str) -> html.Div:
     return html.Div(
         [
@@ -268,17 +171,24 @@ def create_app() -> Dash:
     app.layout = html.Div(
         [
             dcc.Location(id="barracuda-location", refresh=False),
-            dcc.Store(id="barracuda-figure-sizing-applied"),
             html.A("Skip to content", href="#barracuda-main", className="barracuda-skip-link"),
-            _sidebar(),
+            app_header(TOP_NAV, workspace_id="nav-workspace-utility"),
             html.Main(
                 [
                     html.Div(id="barracuda-page", className="barracuda-page-inner"),
                     *account_shell_components(),
                 ],
                 id="barracuda-main",
-                className="barracuda-main",
+                className="barracuda-main page-home",
                 tabIndex=-1,
+            ),
+            html.Footer(
+                [
+                    html.Strong("Research use only."),
+                    html.Span(" Use synthetic or approved anonymous data; inputs are not intentionally retained."),
+                    dcc.Link("Privacy and workspace", href="/workspace"),
+                ],
+                className="barracuda-footer",
             ),
         ],
         className="barracuda-shell",
@@ -289,12 +199,24 @@ def create_app() -> Dash:
     # mounting, without keeping hidden duplicate controls in the live DOM.
     app.validation_layout = html.Div([app.layout, *(page.layout() for page in PAGES)])
 
-    nav_outputs = [Output(NAV_IDS[page.PATH], "className") for page in PAGES]
+    nav_outputs = [
+        output
+        for _label, _path, item_id in TOP_NAV
+        for output in (
+            Output(item_id, "className"),
+            Output(f"{item_id}-mobile", "className"),
+            Output(item_id, "aria-current"),
+            Output(f"{item_id}-mobile", "aria-current"),
+        )
+    ]
 
     @app.callback(
         Output("barracuda-page", "children"),
         *nav_outputs,
+        Output("nav-workspace-utility", "className"),
+        Output("nav-workspace-utility", "aria-current"),
         Output("barracuda-account-panel", "className"),
+        Output("barracuda-main", "className"),
         Input("barracuda-location", "pathname"),
     )
     def route(pathname: str | None):
@@ -302,16 +224,30 @@ def create_app() -> Dash:
         page = PAGE_BY_PATH.get(normalized)
         content = page.layout() if page is not None else _not_found(normalized)
         active_path = page.PATH if page is not None else normalized
-        classes = [
-            f"{NAV_BASE_CLASSES[current.PATH]} active" if current.PATH == active_path else NAV_BASE_CLASSES[current.PATH]
-            for current in PAGES
-        ]
+        active_section = NAV_SECTION.get(active_path)
+        nav_state: list[str | None] = []
+        for _label, path, _item_id in TOP_NAV:
+            active = path == active_section
+            nav_state.extend([
+                "barracuda-nav-link active" if active else "barracuda-nav-link",
+                "barracuda-nav-link active" if active else "barracuda-nav-link",
+                "page" if active else None,
+                "page" if active else None,
+            ])
+        workspace_active = active_path == workspace.PATH
         workspace_class = (
             "barracuda-account-workspace-shell"
-            if active_path == workspace.PATH
+            if workspace_active
             else "barracuda-account-workspace-shell is-hidden"
         )
-        return content, *classes, workspace_class
+        return (
+            content,
+            *nav_state,
+            "barracuda-workspace-link active" if workspace_active else "barracuda-workspace-link",
+            "page" if workspace_active else None,
+            workspace_class,
+            f"barracuda-main page-{PAGE_TYPE.get(active_path, 'resource')}",
+        )
 
     for prefix in ("synthetic", "counts", "donor", "trajectory"):
         @app.callback(
@@ -332,32 +268,6 @@ def create_app() -> Dash:
     shared.register_callbacks(app)
 
     register_account_callbacks(app)
-
-    app.clientside_callback(
-        ClientsideFunction(
-            namespace="barracudaFigureControls",
-            function_name="apply",
-        ),
-        Output("barracuda-figure-sizing-applied", "data"),
-        Input("barracuda-figure-width", "value"),
-        Input("barracuda-figure-height-scale", "value"),
-        Input("barracuda-location", "pathname"),
-    )
-
-    app.clientside_callback(
-        """
-        function(clicks) {
-            if (!clicks) {
-                return [window.dash_clientside.no_update, window.dash_clientside.no_update];
-            }
-            return [100, 1.0];
-        }
-        """,
-        Output("barracuda-figure-width", "value"),
-        Output("barracuda-figure-height-scale", "value"),
-        Input("barracuda-figure-reset", "n_clicks"),
-        prevent_initial_call=True,
-    )
 
     @app.server.route("/healthz")
     def health_check():

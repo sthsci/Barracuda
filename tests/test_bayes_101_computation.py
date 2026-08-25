@@ -55,7 +55,12 @@ def test_update_and_smc_figures_end_at_readable_joint_and_marginal_views() -> No
     update = bayes_101._bayes_update_figure()
     smc = bayes_101._smc_figure()
 
-    assert [frame.name for frame in update.frames] == ["likelihood", "prior", "multiply", "normalise"]
-    assert "total area one" in update.frames[-1].data[1].text[0]
+    assert len(update.frames) == 0
+    assert [trace.type for trace in update.data] == ["contour", "contour", "contour"]
+    assert [annotation.text for annotation in update.layout.annotations[:3]] == [
+        "Relative likelihood",
+        "Prior density",
+        "Posterior density",
+    ]
     assert "marginals ready" in smc.frames[-1].data[-1].text[0]
     assert sum(trace.type == "histogram" for trace in smc.data) == 2
