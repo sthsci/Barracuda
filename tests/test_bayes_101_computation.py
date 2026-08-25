@@ -33,6 +33,7 @@ def test_mcmc_animation_contains_accepted_and_rejected_updates_in_valid_space() 
 
     assert any("accepted" in status for status in statuses)
     assert any("rejected" in status for status in statuses)
+    assert len(figure.frames[-1].data[1].x) == bayes_101.MCMC_DRAWS
     assert "marginals ready" in statuses[-1]
     assert {trace.type for trace in figure.data} >= {"contour", "histogram", "scatter"}
     assert all(bayes_101.MEAN_BOUNDS[0] <= mean <= bayes_101.MEAN_BOUNDS[1] for mean, _ in current_pairs)
@@ -41,13 +42,17 @@ def test_mcmc_animation_contains_accepted_and_rejected_updates_in_valid_space() 
 
 def test_smc_moves_a_constant_particle_population_from_prior_to_posterior() -> None:
     temperatures, states = bayes_101._smc_particle_states()
-    particle_counts = {len(means) for _, means, _ in states}
+    particle_counts = {len(means) for _, _, means, _, _ in states}
+    phases = {phase for _, phase, _, _, _ in states}
     posterior = bayes_101._two_parameter_surfaces()[5]
 
     assert temperatures[0] == 0
     assert temperatures[-1] == 1
     assert np.all(np.diff(temperatures) > 0)
     assert particle_counts == {46}
+    assert phases == {"prior", "reweight", "resample", "move"}
+    assert states[-1][0:2] == (1.0, "move")
+    assert all(np.isclose(weights.sum(), 1.0) for _, _, _, _, weights in states)
     np.testing.assert_allclose(bayes_101._tempered_surface(1.0), posterior / posterior.max())
 
 

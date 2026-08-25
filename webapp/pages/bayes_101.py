@@ -42,6 +42,8 @@ BOOK_MONO = "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace
 IMPERIAL_BLUE = "#00548F"
 IMPERIAL_SKY = "#549DC5"
 OXIDE_RED = "#B44E37"
+MCMC_DRAWS = 1_000
+MCMC_FRAME_STEP = 10
 
 TWO_PARAMETER_DATA = np.array([4.8, 4.9, 5.0, 5.1, 5.3])
 MEAN_BOUNDS = (4.35, 5.85)
@@ -427,7 +429,7 @@ def _mcmc_figure() -> go.Figure:
     accepted_updates = [True]
     decisions = ["Starting pair"]
 
-    for _ in range(59):
+    for _ in range(MCMC_DRAWS - 1):
         proposed_mean = current_mean + rng.normal(0.0, 0.075)
         proposed_scale = current_scale + rng.normal(0.0, 0.045)
         current_log_target = _parameter_log_likelihood(current_mean, current_scale) + _parameter_log_prior(current_mean, current_scale)
@@ -459,7 +461,8 @@ def _mcmc_figure() -> go.Figure:
     figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}), row=2, col=1)
     figure.add_trace(go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposal", marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
     figure.add_trace(go.Histogram(y=[scales[0]], nbinsy=18, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
-    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["Draw 1/60 · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=[f"Draw 1/{MCMC_DRAWS:,} · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    frame_indices = [0, *range(MCMC_FRAME_STEP - 1, len(means), MCMC_FRAME_STEP)]
     figure.frames = [
         go.Frame(
             name=f"mcmc-{index}",
@@ -485,9 +488,9 @@ def _mcmc_figure() -> go.Figure:
                     y=[SCALE_BOUNDS[1] - 0.04],
                     mode="text",
                     text=[
-                        "Draw 60/60 · joint sample complete · marginals ready"
+                        f"Draw {MCMC_DRAWS:,}/{MCMC_DRAWS:,} · joint sample complete · marginals ready"
                         if index == len(means) - 1
-                        else f"Draw {index + 1}/60 · {decisions[index].lower()}"
+                        else f"Draw {index + 1:,}/{MCMC_DRAWS:,} · {decisions[index].lower()}"
                     ],
                     textposition="middle right",
                     textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
@@ -496,7 +499,8 @@ def _mcmc_figure() -> go.Figure:
                 ),
             ],
         )
-        for index, (mean, scale) in enumerate(zip(means, scales, strict=True))
+        for index in frame_indices
+        for mean, scale in [(means[index], scales[index])]
     ]
     figure.update_layout(
         **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
@@ -515,7 +519,7 @@ def _mcmc_figure() -> go.Figure:
                 "bordercolor": BOOK_INK,
                 "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
                 "buttons": [
-                    {"label": "Run chain", "method": "animate", "args": [None, {"frame": {"duration": 130, "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]},
+                    {"label": "Run 1,000 draws", "method": "animate", "args": [None, {"frame": {"duration": 100, "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]},
                     {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
                 ],
             }
@@ -529,11 +533,11 @@ def _mcmc_figure() -> go.Figure:
                 "pad": {"t": 4},
                 "steps": [
                     {
-                        "label": str(index) if index % 10 == 0 or index == len(means) - 1 else "",
+                        "label": f"{index + 1:,}" if index == 0 or (index + 1) % 200 == 0 else "",
                         "method": "animate",
                         "args": [[f"mcmc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}],
                     }
-                    for index in range(len(means))
+                    for index in frame_indices
                 ],
             }
         ],
@@ -556,10 +560,10 @@ def _systematic_resample(weights: np.ndarray, rng: np.random.Generator) -> np.nd
 
 
 @lru_cache(maxsize=1)
-def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, np.ndarray, np.ndarray]]]:
+def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, str, np.ndarray, np.ndarray, np.ndarray]]]:
     """Generate deterministic tempered SMC states for the visual explanation."""
     rng = np.random.default_rng(902)
-    temperatures = np.linspace(0.0, 1.0, 7)
+    temperatures = np.linspace(0.0, 1.0, 11)
     n_particles = 46
 
     def draw_within_bounds(draw, bounds: tuple[float, float]) -> np.ndarray:
@@ -571,7 +575,8 @@ def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, np.ndarray, np
 
     means = draw_within_bounds(lambda size: rng.normal(MEAN_PRIOR_LOCATION, MEAN_PRIOR_SCALE, size), MEAN_BOUNDS)
     scales = draw_within_bounds(lambda size: np.abs(rng.normal(0.0, SCALE_PRIOR_SCALE, size)), SCALE_BOUNDS)
-    states = [(0.0, means.copy(), scales.copy())]
+    uniform_weights = np.full(n_particles, 1.0 / n_particles)
+    states = [(0.0, "prior", means.copy(), scales.copy(), uniform_weights.copy())]
 
     for previous_temperature, temperature in zip(temperatures[:-1], temperatures[1:], strict=True):
         log_likelihoods = np.array([_parameter_log_likelihood(mean, scale) for mean, scale in zip(means, scales, strict=True)])
@@ -579,9 +584,11 @@ def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, np.ndarray, np
         incremental_log_weights -= np.max(incremental_log_weights)
         weights = np.exp(incremental_log_weights)
         weights /= weights.sum()
+        states.append((float(temperature), "reweight", means.copy(), scales.copy(), weights.copy()))
         ancestors = _systematic_resample(weights, rng)
         means = means[ancestors]
         scales = scales[ancestors]
+        states.append((float(temperature), "resample", means.copy(), scales.copy(), uniform_weights.copy()))
 
         for _ in range(3):
             for particle in range(n_particles):
@@ -592,7 +599,7 @@ def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, np.ndarray, np
                 if np.log(rng.random()) < min(0.0, proposed_target - current_target):
                     means[particle] = proposed_mean
                     scales[particle] = proposed_scale
-        states.append((float(temperature), means.copy(), scales.copy()))
+        states.append((float(temperature), "move", means.copy(), scales.copy(), uniform_weights.copy()))
     return temperatures, states
 
 
@@ -607,7 +614,7 @@ def _tempered_surface(temperature: float) -> np.ndarray:
 def _smc_figure() -> go.Figure:
     """Animate tempered particles into a joint sample and marginals."""
     _, states = _smc_particle_states()
-    initial_temperature, initial_means, initial_scales = states[0]
+    initial_temperature, initial_phase, initial_means, initial_scales, initial_weights = states[0]
 
     def contour(temperature: float) -> go.Contour:
         grid_means, grid_scales, _, _, _, _, _ = _two_parameter_surfaces()
@@ -624,6 +631,34 @@ def _smc_figure() -> go.Figure:
             name="Tempered target",
         )
 
+    def particle_marker(phase: str, weights: np.ndarray) -> dict:
+        marker = {"size": 8, "opacity": 0.86, "line": {"color": BOOK_SHEET, "width": 1.2}}
+        if phase == "reweight":
+            relative_weights = weights / weights.max()
+            marker.update(
+                color=relative_weights,
+                size=6 + 10 * np.sqrt(relative_weights),
+                colorscale=[[0.0, IMPERIAL_SKY], [1.0, OXIDE_RED]],
+                cmin=0,
+                cmax=1,
+                showscale=False,
+            )
+        else:
+            marker["color"] = IMPERIAL_SKY if phase == "resample" else OXIDE_RED
+        return marker
+
+    def status_text(temperature: float, phase: str, weights: np.ndarray) -> str:
+        if phase == "prior":
+            return "β = 0.00 · particles represent the prior"
+        if phase == "reweight":
+            effective_particles = 1.0 / float(np.sum(weights**2))
+            return f"β = {temperature:.2f} · 1/3 reweight by likelihood · ESS {effective_particles:.0f}/46"
+        if phase == "resample":
+            return f"β = {temperature:.2f} · 2/3 resample supported particles"
+        if temperature == 1.0:
+            return "β = 1.00 · posterior joint cloud · marginals ready"
+        return f"β = {temperature:.2f} · 3/3 move particles to restore diversity"
+
     figure = make_subplots(
         rows=2,
         cols=2,
@@ -637,26 +672,22 @@ def _smc_figure() -> go.Figure:
     )
     figure.add_trace(go.Histogram(x=initial_means, nbinsx=22, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
     figure.add_trace(contour(initial_temperature), row=2, col=1)
-    figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker={"color": OXIDE_RED, "size": 8, "opacity": 0.86, "line": {"color": BOOK_SHEET, "width": 1.2}}, hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
+    figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker=particle_marker(initial_phase, initial_weights), hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
     figure.add_trace(go.Histogram(y=initial_scales, nbinsy=18, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
     figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["β = 0.00 · particles represent the prior"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     figure.frames = [
         go.Frame(
-            name=f"smc-{temperature:.2f}",
+            name=f"smc-{index}",
             data=[
                 go.Histogram(x=means, nbinsx=22, histnorm="probability density"),
                 contour(temperature),
-                go.Scatter(x=means, y=scales, mode="markers", marker={"color": OXIDE_RED, "size": 8, "opacity": 0.86, "line": {"color": BOOK_SHEET, "width": 1.2}}),
+                go.Scatter(x=means, y=scales, mode="markers", marker=particle_marker(phase, weights)),
                 go.Histogram(y=scales, nbinsy=18, histnorm="probability density"),
                 go.Scatter(
                     x=[MEAN_BOUNDS[0] + 0.04],
                     y=[SCALE_BOUNDS[1] - 0.04],
                     mode="text",
-                    text=[
-                        "β = 1.00 · posterior joint cloud · marginals ready"
-                        if temperature == 1.0
-                        else f"β = {temperature:.2f} · reweight, resample, move"
-                    ],
+                    text=[status_text(temperature, phase, weights)],
                     textposition="middle right",
                     textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
                     showlegend=False,
@@ -664,7 +695,7 @@ def _smc_figure() -> go.Figure:
                 ),
             ],
         )
-        for temperature, means, scales in states
+        for index, (temperature, phase, means, scales, weights) in enumerate(states)
     ]
     figure.update_layout(
         **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
@@ -683,7 +714,7 @@ def _smc_figure() -> go.Figure:
                 "bordercolor": BOOK_INK,
                 "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
                 "buttons": [
-                    {"label": "Run particles", "method": "animate", "args": [None, {"frame": {"duration": 620, "redraw": True}, "transition": {"duration": 180}, "fromcurrent": True}]},
+                    {"label": "Run SMC stages", "method": "animate", "args": [None, {"frame": {"duration": 340, "redraw": True}, "transition": {"duration": 140}, "fromcurrent": True}]},
                     {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
                 ],
             }
@@ -697,11 +728,11 @@ def _smc_figure() -> go.Figure:
                 "pad": {"t": 4},
                 "steps": [
                     {
-                        "label": f"β {temperature:.2f}",
+                        "label": f"β {temperature:.1f}" if phase in {"prior", "move"} else "",
                         "method": "animate",
-                        "args": [[f"smc-{temperature:.2f}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 80}}],
+                        "args": [[f"smc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 80}}],
                     }
-                    for temperature, _, _ in states
+                    for index, (temperature, phase, _, _, _) in enumerate(states)
                 ],
             }
         ],

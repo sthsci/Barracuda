@@ -100,7 +100,7 @@ def layout() -> html.Div:
                         **{"aria-label": "Scrollable comparison of event count models"},
                     ),
                     schematic_figure(
-                        "/assets/event_count_models.png",
+                        "/assets/event_count_models_panel_a.png",
                         "Four event-rate models compare a shared positive rate, continuous positive-rate variation, a nonengaging fraction, and both continuous variation and a nonengaging fraction.",
                         "The same four event-count models are compared throughout BARRACUDA.",
                         variant="models",

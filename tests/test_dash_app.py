@@ -191,7 +191,7 @@ def test_event_count_schematics_are_on_their_intended_routes() -> None:
         image.src
         for image in images_by_route["/event-counts/donor-ignorant"]
     }
-    assert overview_sources == {"/assets/event_count_models.png"}
+    assert overview_sources == {"/assets/event_count_models_panel_a.png"}
     model_schematic = images_by_route["/event-counts"][0]
     assert (model_schematic.width, model_schematic.height) == (4016, 1560)
     assert validation_sources == {"/assets/synthetic_validation_workflow.png"}
@@ -201,10 +201,10 @@ def test_event_count_schematics_are_on_their_intended_routes() -> None:
         for image in images
     )
     assert "synthetic_validation_workflow.png" not in " ".join(overview_sources)
-    assert "event_count_models.png" not in " ".join(validation_sources)
+    assert "event_count_models_panel_a.png" not in " ".join(validation_sources)
 
     asset_root = Path(__file__).resolve().parents[1] / "webapp" / "assets"
-    assert (asset_root / "event_count_models.png").is_file()
+    assert (asset_root / "event_count_models_panel_a.png").is_file()
     assert (asset_root / "synthetic_validation_workflow.png").is_file()
 
 
