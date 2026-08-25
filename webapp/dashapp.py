@@ -262,20 +262,23 @@ def create_app() -> Dash:
         meta_tags=[
             {"name": "viewport", "content": "width=device-width, initial-scale=1"},
             {"name": "description", "content": "Bayesian inference for heterogeneity in immune cell decision making."},
-            {"name": "theme-color", "content": "#304B3D"},
+            {"name": "theme-color", "content": "#F2F5F2"},
         ],
     )
     app.layout = html.Div(
         [
             dcc.Location(id="barracuda-location", refresh=False),
             dcc.Store(id="barracuda-figure-sizing-applied"),
+            html.A("Skip to content", href="#barracuda-main", className="barracuda-skip-link"),
             _sidebar(),
             html.Main(
                 [
                     html.Div(id="barracuda-page", className="barracuda-page-inner"),
                     *account_shell_components(),
                 ],
+                id="barracuda-main",
                 className="barracuda-main",
+                tabIndex=-1,
             ),
         ],
         className="barracuda-shell",

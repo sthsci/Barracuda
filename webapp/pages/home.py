@@ -47,6 +47,8 @@ def layout() -> html.Div:
                         html.Img(
                             src="/assets/figure_abstract.png",
                             alt="Graphical abstract showing time lapse imaging of NK and tumour cells, conversion to a single cell contact history, and inference of population heterogeneity and changes across contacts.",
+                            width=1820,
+                            height=867,
                             className="barracuda-graphic-abstract",
                         ),
                         href="/assets/figure_abstract.png",
@@ -159,17 +161,17 @@ def layout() -> html.Div:
                             html.P(
                                 [
                                     "Elephes Sung",
-                                    html.Sup("1"),
+                                    html.Sup("1,†"),
                                     ", Cathal Hosty",
-                                    html.Sup("1"),
+                                    html.Sup("1,†"),
                                     ", Leanne Peiser",
                                     html.Sup("2"),
                                     ", Lara Stepan",
                                     html.Sup("2"),
                                     ", Daniel M Davis",
-                                    html.Sup("1"),
+                                    html.Sup("1,*"),
                                     " and Ruben Perez-Carrasco",
-                                    html.Sup("1"),
+                                    html.Sup("1,*"),
                                     ".",
                                 ],
                                 className="barracuda-research-team",
@@ -178,9 +180,19 @@ def layout() -> html.Div:
                             html.Ol(
                                 [
                                     html.Li("Department of Life Sciences, Imperial College London, London SW7 2AZ, UK"),
-                                    html.Li("Immuno-Oncology Cellular Therapy Thematic Research Center, Bristol Myers Squibb, Seattle, WA 98109, USA"),
+                                    html.Li("Bristol Myers Squibb, Seattle, WA, USA"),
                                 ],
                                 className="barracuda-affiliations",
+                            ),
+                            html.P("† These authors contributed equally.", className="barracuda-author-note"),
+                            html.P(
+                                [
+                                    "* Correspondence: ",
+                                    html.A("d.davis@imperial.ac.uk", href="mailto:d.davis@imperial.ac.uk"),
+                                    " · ",
+                                    html.A("r.perez-carrasco@imperial.ac.uk", href="mailto:r.perez-carrasco@imperial.ac.uk"),
+                                ],
+                                className="barracuda-correspondence",
                             ),
                         ]
                     ),

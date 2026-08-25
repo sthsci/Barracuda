@@ -8,6 +8,7 @@ from functools import lru_cache
 import numpy as np
 import plotly.graph_objects as go
 from dash import Input, Output, dcc, html
+from plotly.subplots import make_subplots
 from scipy.stats import beta as beta_distribution
 
 from webapp.core.coin import (
@@ -31,12 +32,13 @@ THOMAS_BAYES_URL = "https://en.wikipedia.org/wiki/Thomas_Bayes"
 THOMAS_BAYES_PAPER_URL = "https://doi.org/10.1098/rstl.1763.0053"
 THOMAS_BAYES_PORTRAIT_URL = "https://commons.wikimedia.org/wiki/File:Thomas_Bayes.gif"
 
-BOOK_INK = "#25231F"
-BOOK_PAPER = "#FAF8F2"
-BOOK_SHEET = "#FFFEFA"
-BOOK_RULE = "#887B66"
-BOOK_GRID = "#D8D0C2"
+BOOK_INK = "#17272C"
+BOOK_PAPER = "#EDF2EF"
+BOOK_SHEET = "#FCFDFB"
+BOOK_RULE = "#667871"
+BOOK_GRID = "#CDD8D2"
 BOOK_SERIF = "Iowan Old Style, Baskerville, Palatino Linotype, Palatino, Georgia, serif"
+BOOK_MONO = "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
 
 TWO_PARAMETER_DATA = np.array([4.8, 4.9, 5.0, 5.1, 5.3])
 MEAN_BOUNDS = (4.35, 5.85)
@@ -44,7 +46,7 @@ SCALE_BOUNDS = (0.08, 0.85)
 MEAN_PRIOR_LOCATION = 5.45
 MEAN_PRIOR_SCALE = 0.15
 SCALE_PRIOR_SCALE = 0.45
-SURFACE_COLORS = [[0.0, "#F5F1E8"], [0.35, "#B7CDC2"], [0.72, "#486857"], [1.0, "#20372E"]]
+SURFACE_COLORS = [[0.0, "#EDF2EF"], [0.35, "#B8D0CB"], [0.72, "#34717A"], [1.0, "#172F38"]]
 
 
 def _external_link(label: str, href: str, *, class_name: str | None = None) -> html.A:
@@ -343,36 +345,89 @@ def _parameter_log_prior(mean: float, scale: float) -> float:
     return -0.5 * ((mean - MEAN_PRIOR_LOCATION) / MEAN_PRIOR_SCALE) ** 2 - 0.5 * (scale / SCALE_PRIOR_SCALE) ** 2
 
 
-@lru_cache(maxsize=4)
-def _parameter_surface_figure(surface_name: str, quantity: str) -> go.Figure:
-    means, scales, likelihood, prior, unnormalised, posterior, _ = _two_parameter_surfaces()
-    surfaces = {
-        "likelihood": likelihood,
-        "prior": prior,
-        "unnormalised": unnormalised,
-        "posterior": posterior,
-    }
-    surface = surfaces[surface_name]
-    relative_surface = surface / float(np.max(surface))
+@lru_cache(maxsize=1)
+def _bayes_update_figure() -> go.Figure:
+    """Show likelihood, prior and posterior on one fixed parameter map."""
+    means, scales, likelihood, prior, unnormalised, posterior, evidence = _two_parameter_surfaces()
+    stages = [
+        ("likelihood", "01 · Data score the candidates", "Likelihood", likelihood),
+        ("prior", "02 · Beliefs before these data", "Prior density", prior),
+        ("multiply", "03 · Keep pairs supported by both", "Unnormalised density q", unnormalised),
+        ("normalise", f"04 · Same shape, total area one · Z ≈ {evidence:.3g}", "Posterior density", posterior),
+    ]
+
+    def stage_data(label: str, quantity: str, surface: np.ndarray) -> list[go.BaseTraceType]:
+        return [
+            go.Contour(
+                x=means,
+                y=scales,
+                z=surface / float(np.max(surface)),
+                customdata=surface,
+                zmin=0,
+                zmax=1,
+                colorscale=SURFACE_COLORS,
+                contours={"coloring": "heatmap", "showlines": False},
+                showscale=False,
+                hovertemplate=f"Mean μ: %{{x:.2f}}<br>SD σ: %{{y:.2f}}<br>{quantity}: %{{customdata:.3g}}<extra></extra>",
+            ),
+            go.Scatter(
+                x=[MEAN_BOUNDS[0] + 0.04],
+                y=[SCALE_BOUNDS[1] - 0.04],
+                mode="text",
+                text=[label],
+                textposition="middle right",
+                textfont={"family": BOOK_SERIF, "size": 15, "color": BOOK_INK},
+                showlegend=False,
+                hoverinfo="skip",
+            ),
+        ]
+
+    initial = stage_data(stages[0][1], stages[0][2], stages[0][3])
     figure = go.Figure(
-        go.Contour(
-            x=means,
-            y=scales,
-            z=relative_surface,
-            customdata=surface,
-            zmin=0,
-            zmax=1,
-            colorscale=SURFACE_COLORS,
-            contours={"coloring": "heatmap", "showlines": False},
-            showscale=False,
-            hovertemplate=f"Mean μ: %{{x:.2f}}<br>SD σ: %{{y:.2f}}<br>{quantity}: %{{customdata:.3g}}<extra></extra>",
-        )
+        data=initial,
+        frames=[
+            go.Frame(name=name, data=stage_data(label, quantity, surface))
+            for name, label, quantity, surface in stages
+        ],
     )
     figure.update_layout(
-        **_plot_layout(height=300, bottom_margin=58, top_margin=12, left_margin=56, right_margin=12),
-        xaxis={"title": "Mean μ", "range": list(MEAN_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
-        yaxis={"title": "SD σ", "range": list(SCALE_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
+        **_plot_layout(height=500, bottom_margin=122, top_margin=30, left_margin=64, right_margin=24),
+        xaxis={"title": "Population mean μ", "range": list(MEAN_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
+        yaxis={"title": "Population SD σ", "range": list(SCALE_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
         hovermode="closest",
+        updatemenus=[
+            {
+                "type": "buttons",
+                "direction": "left",
+                "x": 0,
+                "y": -0.2,
+                "showactive": False,
+                "bgcolor": BOOK_INK,
+                "bordercolor": BOOK_INK,
+                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
+                "buttons": [
+                    {"label": "Play update", "method": "animate", "args": [None, {"frame": {"duration": 850, "redraw": True}, "transition": {"duration": 180}, "fromcurrent": True}]},
+                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
+                ],
+            }
+        ],
+        sliders=[
+            {
+                "active": 0,
+                "x": 0.28,
+                "y": -0.17,
+                "len": 0.72,
+                "pad": {"t": 4},
+                "steps": [
+                    {
+                        "label": label.split(" · ", 1)[0],
+                        "method": "animate",
+                        "args": [[name], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 120}}],
+                    }
+                    for name, label, _, _ in stages
+                ],
+            }
+        ],
     )
     return figure
 
@@ -397,7 +452,7 @@ def _posterior_contour_trace(*, name: str = "Posterior surface") -> go.Contour:
 
 @lru_cache(maxsize=1)
 def _mcmc_figure() -> go.Figure:
-    """Animate a two-parameter random-walk Metropolis chain."""
+    """Animate a chain becoming a joint sample with aligned marginals."""
     rng = np.random.default_rng(401)
     current_mean, current_scale = 5.66, 0.68
     means = [current_mean]
@@ -422,60 +477,108 @@ def _mcmc_figure() -> go.Figure:
         scales.append(current_scale)
         decisions.append("Accepted proposal" if accepted else "Rejected proposal; stayed here")
 
-    initial_status = "Step 0 · starting pair"
-    figure = go.Figure(
-        data=[
-            _posterior_contour_trace(),
-            go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Chain path", line={"color": PAPER_SPINE, "width": 1.5}, marker={"color": PAPER_SPINE, "size": 5}),
-            go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": CONDITION_BISPECIFIC, "size": 11, "line": {"color": BOOK_INK, "width": 1}}),
-            go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposed pair", marker={"color": DONOR_TEAL, "size": 10, "symbol": "diamond-open", "line": {"width": 2}}),
-            go.Scatter(x=[MEAN_BOUNDS[0] + 0.22], y=[SCALE_BOUNDS[1] - 0.055], mode="text", text=[initial_status], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"),
-        ],
-        frames=[
-            go.Frame(
-                name=f"mcmc-{index}",
-                traces=[1, 2, 3, 4],
-                data=[
-                    go.Scatter(x=means[: index + 1], y=scales[: index + 1], mode="lines+markers", line={"color": PAPER_SPINE, "width": 1.5}, marker={"color": PAPER_SPINE, "size": 5}),
-                    go.Scatter(x=[mean], y=[scale], mode="markers", marker={"color": CONDITION_BISPECIFIC, "size": 11, "line": {"color": BOOK_INK, "width": 1}}),
-                    go.Scatter(
-                        x=[proposed_means[index]],
-                        y=[proposed_scales[index]],
-                        mode="markers",
-                        marker={
-                            "color": DONOR_TEAL if accepted_updates[index] else DONOR_RUST,
-                            "size": 10,
-                            "symbol": "diamond-open" if accepted_updates[index] else "x-open",
-                            "line": {"width": 2},
-                        },
-                    ),
-                    go.Scatter(x=[MEAN_BOUNDS[0] + 0.22], y=[SCALE_BOUNDS[1] - 0.055], mode="text", text=[f"Step {index} · {decisions[index].lower()}"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"),
-                ],
-            )
-            for index, (mean, scale) in enumerate(zip(means, scales, strict=True))
-        ],
+    figure = make_subplots(
+        rows=2,
+        cols=2,
+        specs=[[{"type": "xy"}, None], [{"type": "xy"}, {"type": "xy"}]],
+        row_heights=[0.24, 0.76],
+        column_widths=[0.79, 0.21],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.035,
+        vertical_spacing=0.035,
     )
+    figure.add_trace(go.Histogram(x=[means[0]], nbinsx=22, histnorm="probability density", marker={"color": DONOR_TEAL, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.8, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
+    figure.add_trace(_posterior_contour_trace(), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Retained chain", line={"color": PAPER_SPINE, "width": 1.5}, marker={"color": PAPER_SPINE, "size": 5}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": CONDITION_BISPECIFIC, "size": 11, "line": {"color": BOOK_INK, "width": 1}}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposal", marker={"color": DONOR_TEAL, "size": 10, "symbol": "diamond-open", "line": {"width": 2}}), row=2, col=1)
+    figure.add_trace(go.Histogram(y=[scales[0]], nbinsy=18, histnorm="probability density", marker={"color": DONOR_TEAL, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.8, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["Draw 1/60 · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.frames = [
+        go.Frame(
+            name=f"mcmc-{index}",
+            traces=[0, 2, 3, 4, 5, 6],
+            data=[
+                go.Histogram(x=means[: index + 1], nbinsx=22, histnorm="probability density"),
+                go.Scatter(x=means[: index + 1], y=scales[: index + 1], mode="lines+markers", line={"color": PAPER_SPINE, "width": 1.5}, marker={"color": PAPER_SPINE, "size": 5}),
+                go.Scatter(x=[mean], y=[scale], mode="markers", marker={"color": CONDITION_BISPECIFIC, "size": 11, "line": {"color": BOOK_INK, "width": 1}}),
+                go.Scatter(
+                    x=[proposed_means[index]],
+                    y=[proposed_scales[index]],
+                    mode="markers",
+                    marker={
+                        "color": DONOR_TEAL if accepted_updates[index] else DONOR_RUST,
+                        "size": 10,
+                        "symbol": "diamond-open" if accepted_updates[index] else "x-open",
+                        "line": {"width": 2},
+                    },
+                ),
+                go.Histogram(y=scales[: index + 1], nbinsy=18, histnorm="probability density"),
+                go.Scatter(
+                    x=[MEAN_BOUNDS[0] + 0.04],
+                    y=[SCALE_BOUNDS[1] - 0.04],
+                    mode="text",
+                    text=[
+                        "Draw 60/60 · joint sample complete · marginals ready"
+                        if index == len(means) - 1
+                        else f"Draw {index + 1}/60 · {decisions[index].lower()}"
+                    ],
+                    textposition="middle right",
+                    textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
+                    showlegend=False,
+                    hoverinfo="skip",
+                ),
+            ],
+        )
+        for index, (mean, scale) in enumerate(zip(means, scales, strict=True))
+    ]
     figure.update_layout(
-        **_plot_layout(height=430, bottom_margin=92, top_margin=58, right_margin=20),
-        xaxis={"title": "Mean μ", "range": list(MEAN_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
-        yaxis={"title": "SD σ", "range": list(SCALE_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
-        legend={"orientation": "h", "y": 1.03, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
+        **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
+        barmode="overlay",
+        legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
         updatemenus=[
             {
                 "type": "buttons",
                 "direction": "left",
                 "x": 0,
-                "y": -0.29,
+                "y": -0.11,
                 "xanchor": "left",
                 "yanchor": "top",
                 "showactive": False,
+                "bgcolor": BOOK_INK,
+                "bordercolor": BOOK_INK,
+                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
                 "buttons": [
-                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 150, "redraw": False}, "transition": {"duration": 0}, "fromcurrent": True}]},
-                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": False}, "mode": "immediate", "transition": {"duration": 0}}]},
+                    {"label": "Run chain", "method": "animate", "args": [None, {"frame": {"duration": 130, "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]},
+                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
+                ],
+            }
+        ],
+        sliders=[
+            {
+                "active": 0,
+                "x": 0.26,
+                "y": -0.08,
+                "len": 0.74,
+                "pad": {"t": 4},
+                "steps": [
+                    {
+                        "label": str(index) if index % 10 == 0 or index == len(means) - 1 else "",
+                        "method": "animate",
+                        "args": [[f"mcmc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}],
+                    }
+                    for index in range(len(means))
                 ],
             }
         ],
     )
+    figure.update_xaxes(range=list(MEAN_BOUNDS), showgrid=False, showticklabels=False, row=1, col=1)
+    figure.update_yaxes(title="Density of μ", showgrid=False, showticklabels=False, row=1, col=1)
+    figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
+    figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
+    figure.update_xaxes(title="Density of σ", showgrid=False, showticklabels=False, row=2, col=2)
+    figure.update_yaxes(range=list(SCALE_BOUNDS), showgrid=False, showticklabels=False, row=2, col=2)
     return figure
 
 
@@ -536,56 +639,113 @@ def _tempered_surface(temperature: float) -> np.ndarray:
 
 @lru_cache(maxsize=1)
 def _smc_figure() -> go.Figure:
-    """Animate two-parameter particles through tempered distributions."""
+    """Animate tempered particles into a joint sample and marginals."""
     _, states = _smc_particle_states()
     initial_temperature, initial_means, initial_scales = states[0]
 
-    def frame_data(temperature: float, means: np.ndarray, scales: np.ndarray) -> list[go.BaseTraceType]:
+    def contour(temperature: float) -> go.Contour:
         grid_means, grid_scales, _, _, _, _, _ = _two_parameter_surfaces()
-        return [
-            go.Contour(
-                x=grid_means,
-                y=grid_scales,
-                z=_tempered_surface(temperature),
-                zmin=0,
-                zmax=1,
-                colorscale=SURFACE_COLORS,
-                contours={"coloring": "heatmap", "showlines": False},
-                showscale=False,
-                hoverinfo="skip",
-            ),
-            go.Scatter(x=means, y=scales, mode="markers", marker={"color": CONDITION_BISPECIFIC, "size": 7, "opacity": 0.76, "line": {"color": BOOK_INK, "width": 0.45}}),
-            go.Scatter(x=[MEAN_BOUNDS[0] + 0.18], y=[SCALE_BOUNDS[1] - 0.055], mode="text", text=[f"β = {temperature:.2f}"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"),
-        ]
+        return go.Contour(
+            x=grid_means,
+            y=grid_scales,
+            z=_tempered_surface(temperature),
+            zmin=0,
+            zmax=1,
+            colorscale=SURFACE_COLORS,
+            contours={"coloring": "heatmap", "showlines": False},
+            showscale=False,
+            hoverinfo="skip",
+            name="Tempered target",
+        )
 
-    initial_data = frame_data(initial_temperature, initial_means, initial_scales)
-    initial_data[0].name = "Tempered target"
-    initial_data[1].name = "Particles"
-    figure = go.Figure(
-        data=initial_data,
-        frames=[go.Frame(name=f"smc-{temperature:.2f}", data=frame_data(temperature, means, scales)) for temperature, means, scales in states],
+    figure = make_subplots(
+        rows=2,
+        cols=2,
+        specs=[[{"type": "xy"}, None], [{"type": "xy"}, {"type": "xy"}]],
+        row_heights=[0.24, 0.76],
+        column_widths=[0.79, 0.21],
+        shared_xaxes=True,
+        shared_yaxes=True,
+        horizontal_spacing=0.035,
+        vertical_spacing=0.035,
     )
+    figure.add_trace(go.Histogram(x=initial_means, nbinsx=22, histnorm="probability density", marker={"color": CONDITION_BISPECIFIC, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.78, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
+    figure.add_trace(contour(initial_temperature), row=2, col=1)
+    figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker={"color": CONDITION_BISPECIFIC, "size": 7, "opacity": 0.78, "line": {"color": BOOK_INK, "width": 0.45}}, hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
+    figure.add_trace(go.Histogram(y=initial_scales, nbinsy=18, histnorm="probability density", marker={"color": CONDITION_BISPECIFIC, "line": {"color": BOOK_SHEET, "width": 0.5}}, opacity=0.78, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["β = 0.00 · particles represent the prior"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.frames = [
+        go.Frame(
+            name=f"smc-{temperature:.2f}",
+            data=[
+                go.Histogram(x=means, nbinsx=22, histnorm="probability density"),
+                contour(temperature),
+                go.Scatter(x=means, y=scales, mode="markers"),
+                go.Histogram(y=scales, nbinsy=18, histnorm="probability density"),
+                go.Scatter(
+                    x=[MEAN_BOUNDS[0] + 0.04],
+                    y=[SCALE_BOUNDS[1] - 0.04],
+                    mode="text",
+                    text=[
+                        "β = 1.00 · posterior joint cloud · marginals ready"
+                        if temperature == 1.0
+                        else f"β = {temperature:.2f} · reweight, resample, move"
+                    ],
+                    textposition="middle right",
+                    textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
+                    showlegend=False,
+                    hoverinfo="skip",
+                ),
+            ],
+        )
+        for temperature, means, scales in states
+    ]
     figure.update_layout(
-        **_plot_layout(height=430, bottom_margin=92, top_margin=58, right_margin=20),
-        xaxis={"title": "Mean μ", "range": list(MEAN_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
-        yaxis={"title": "SD σ", "range": list(SCALE_BOUNDS), "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE, "automargin": True},
-        legend={"orientation": "h", "y": 1.03, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
+        **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
+        barmode="overlay",
+        legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
         updatemenus=[
             {
                 "type": "buttons",
                 "direction": "left",
                 "x": 0,
-                "y": -0.29,
+                "y": -0.11,
                 "xanchor": "left",
                 "yanchor": "top",
                 "showactive": False,
+                "bgcolor": BOOK_INK,
+                "bordercolor": BOOK_INK,
+                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
                 "buttons": [
-                    {"label": "Play", "method": "animate", "args": [None, {"frame": {"duration": 620, "redraw": True}, "transition": {"duration": 180}, "fromcurrent": True}]},
+                    {"label": "Run particles", "method": "animate", "args": [None, {"frame": {"duration": 620, "redraw": True}, "transition": {"duration": 180}, "fromcurrent": True}]},
                     {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
                 ],
             }
         ],
+        sliders=[
+            {
+                "active": 0,
+                "x": 0.26,
+                "y": -0.08,
+                "len": 0.74,
+                "pad": {"t": 4},
+                "steps": [
+                    {
+                        "label": f"β {temperature:.2f}",
+                        "method": "animate",
+                        "args": [[f"smc-{temperature:.2f}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 80}}],
+                    }
+                    for temperature, _, _ in states
+                ],
+            }
+        ],
     )
+    figure.update_xaxes(range=list(MEAN_BOUNDS), showgrid=False, showticklabels=False, row=1, col=1)
+    figure.update_yaxes(title="Density of μ", showgrid=False, showticklabels=False, row=1, col=1)
+    figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
+    figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
+    figure.update_xaxes(title="Density of σ", showgrid=False, showticklabels=False, row=2, col=2)
+    figure.update_yaxes(range=list(SCALE_BOUNDS), showgrid=False, showticklabels=False, row=2, col=2)
     return figure
 
 
@@ -629,7 +789,6 @@ def layout() -> html.Div:
     )
     initial_frequency = _coin_frequency_figure(probability, initial_outcomes)
     initial_face = "Heads" if initial_outcomes[-1] else "Tails"
-    evidence = _two_parameter_surfaces()[-1]
 
     return html.Div(
         [
@@ -788,7 +947,7 @@ def layout() -> html.Div:
                                     ),
                                     html.P("Choose how much posterior probability the HDI should contain.", className="barracuda-help"),
                                     html.Div([html.Strong("Fixed prior"), html.Br(), "P(head) ~ Beta(1, 1)"], className="barracuda-fixed-prior"),
-                                    html.Button("Toss the coin again", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
+                                    html.Button("Toss once more", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
                                 ],
                                 className="barracuda-control-panel",
                             ),
@@ -796,14 +955,18 @@ def layout() -> html.Div:
                                 [
                                     html.Div(
                                         [
-                                            html.Span("✋", className="barracuda-toss-hand", **{"aria-hidden": "true"}),
+                                            html.Span("Release", className="barracuda-coin-station start", **{"aria-hidden": "true"}),
+                                            html.Span("Read", className="barracuda-coin-station finish", **{"aria-hidden": "true"}),
+                                            html.Span(className="barracuda-coin-track", **{"aria-hidden": "true"}),
+                                            html.Span(className="barracuda-coin-shadow", **{"aria-hidden": "true"}),
                                             html.Span("H" if initial_face == "Heads" else "T", id="coin-visual-face", className="barracuda-toss-coin", **{"aria-hidden": "true"}),
                                         ],
                                         id="coin-toss-scene",
                                         className="barracuda-coin-stage",
-                                        **{"aria-label": "Animated hand tossing a coin"},
+                                        role="img",
+                                        **{"aria-label": "Animated coin toss between release and read stations"},
                                     ),
-                                    html.Div([html.Span("Latest toss", className="barracuda-mini-label"), html.Strong(initial_face, id="coin-face")], className="barracuda-coin-result"),
+                                    html.Div([html.Span("Latest toss", className="barracuda-mini-label"), html.Strong(initial_face, id="coin-face")], className="barracuda-coin-result", **{"aria-live": "polite"}),
                                     html.Div(
                                         [
                                             html.Span("Most recent outcomes", className="barracuda-mini-label"),
@@ -893,61 +1056,37 @@ def layout() -> html.Div:
                         ],
                         className="barracuda-parameter-grid",
                     ),
-                    html.H3("Four views of the same parameter space"),
+                    html.H3("Build the posterior on one map"),
                     html.P(
-                        "Every point in the maps below is one candidate pair (μ, σ). The axes stay fixed so you can see exactly what the data, the prior and Bayes’ theorem each contribute.",
+                        "Keep your eye on one fixed (μ, σ) map. Play the update or choose a step: the data provide the likelihood, the prior contributes what was plausible beforehand, and their product gives the posterior shape.",
                         className="barracuda-copy",
                     ),
                     html.Div(
                         [
-                            html.Article(
+                            html.Ol(
                                 [
-                                    html.Span("1", className="barracuda-surface-step"),
-                                    html.H3("Likelihood: score each pair using the data"),
-                                    html.P("Hold the observations fixed. For each candidate (μ, σ), ask how compatible those observations would be with that pair."),
-                                    markdown(r"$$L(\mu,\sigma;y)=\prod_i p(y_i\mid\mu,\sigma)$$", class_name="barracuda-equation small", mathjax=True),
-                                    dcc.Graph(id="likelihood-surface", figure=_parameter_surface_figure("likelihood", "Likelihood"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
-                                    html.P("The likelihood uses the sampling model and these data. It does not use the prior.", className="barracuda-help"),
+                                    html.Li([html.Strong("Likelihood"), html.Span("The five observations score every candidate pair.")]),
+                                    html.Li([html.Strong("Prior"), html.Span("The same map now shows uncertainty before those observations.")]),
+                                    html.Li([html.Strong("Multiply"), html.Span("Pairs remain prominent only where both surfaces agree.")]),
+                                    html.Li([html.Strong("Normalise"), html.Span("Division by Z makes the total posterior probability one; its shape does not move.")]),
                                 ],
-                                className="barracuda-surface-card",
+                                className="barracuda-update-ledger",
                             ),
-                            html.Article(
-                                [
-                                    html.Span("2", className="barracuda-surface-step"),
-                                    html.H3("Prior: describe uncertainty before these data"),
-                                    html.P("The prior is a probability density over parameter pairs before the five measurements are used."),
-                                    markdown(r"$$\mu\sim\operatorname{Normal}(5.45,0.15^2),\qquad \sigma\sim\operatorname{HalfNormal}(0.45)$$", class_name="barracuda-equation small", mathjax=True),
-                                    dcc.Graph(id="prior-surface", figure=_parameter_surface_figure("prior", "Prior density"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
-                                    html.P("The prior can favour some pairs even before the likelihood is applied.", className="barracuda-help"),
-                                ],
-                                className="barracuda-surface-card",
-                            ),
-                            html.Article(
-                                [
-                                    html.Span("3", className="barracuda-surface-step"),
-                                    html.H3("Multiply: obtain the posterior shape"),
-                                    html.P("Multiply the likelihood and prior at every pair. A pair remains prominent only when both sources support it."),
-                                    markdown(r"$$q(\mu,\sigma)=L(\mu,\sigma;y)\,p(\mu,\sigma)$$", class_name="barracuda-equation small", mathjax=True),
-                                    dcc.Graph(id="unnormalised-posterior-surface", figure=_parameter_surface_figure("unnormalised", "Unnormalised density q"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
-                                    html.P("q has the correct posterior shape, but its total area is not generally one.", className="barracuda-help"),
-                                ],
-                                className="barracuda-surface-card",
-                            ),
-                            html.Article(
-                                [
-                                    html.Span("4", className="barracuda-surface-step"),
-                                    html.H3("Normalise: obtain the posterior distribution"),
-                                    html.P("Integrate q to obtain the evidence Z, then divide by Z so the posterior density has total area one."),
-                                    markdown(r"$$Z=\iint q(\mu,\sigma)\,d\mu\,d\sigma,\qquad p(\mu,\sigma\mid y)=\frac{q(\mu,\sigma)}{Z}$$", class_name="barracuda-equation small", mathjax=True),
-                                    dcc.Graph(id="posterior-surface", figure=_parameter_surface_figure("posterior", "Posterior density"), config={"displaylogo": False, "responsive": True}, className="barracuda-surface-plot", style={"height": "300px"}),
-                                    html.P(f"On this finite grid, Z ≈ {evidence:.3g}. Normalisation changes the density scale, not the contour shape.", className="barracuda-help"),
-                                ],
-                                className="barracuda-surface-card",
+                            html.Div(
+                                dcc.Graph(
+                                    id="bayes-update-animation",
+                                    figure=_bayes_update_figure(),
+                                    config={"displaylogo": False, "responsive": True},
+                                    className="barracuda-update-plot",
+                                    style={"height": "500px"},
+                                ),
+                                role="group",
+                                **{"aria-label": "Animated sequence showing likelihood, prior, their product and the normalised posterior over mean and standard deviation"},
                             ),
                         ],
-                        className="barracuda-surface-grid",
+                        className="barracuda-update-workbench",
                     ),
-                    html.P("Darker regions have higher relative values within each panel. Hover over a map to inspect its numerical value.", className="barracuda-surface-legend"),
+                    html.P("Darker regions indicate greater relative support at the selected step. Hover for the numerical value; the axes never change.", className="barracuda-surface-legend"),
                     note(
                         "Likelihood is not posterior probability",
                         "Once the observations are fixed, the likelihood ranks candidate parameter pairs. It does not have to integrate to one over μ and σ. The prior and posterior are probability densities over those parameters; the posterior combines both the likelihood and the prior.",
@@ -970,66 +1109,98 @@ def layout() -> html.Div:
                         "MCMC iterations and SMC temperature steps do not perform new Bayesian updates with new data. The likelihood and prior already define one posterior. The algorithms provide different numerical routes to that same target.",
                         tone="navy",
                     ),
-                    html.Div(
-                        [
-                            html.Article(
-                                [
-                                    html.Span("MCMC", className="barracuda-sampler-tag"),
-                                    html.H3("Explore one parameter pair at a time"),
-                                    html.P(
-                                        "MCMC moves a chain across the fixed posterior surface. Each computational update changes the chain’s current pair, not the posterior itself.",
-                                    ),
-                                    html.Ol(
-                                        [
-                                            html.Li("Propose a new pair (μ′, σ′)."),
-                                            html.Li("Evaluate its likelihood using the same five observations."),
-                                            html.Li("Multiply by its prior density and compare the two q scores."),
-                                            html.Li("Accept or reject, then repeat. Retained pairs form a posterior sample."),
-                                        ],
-                                        className="barracuda-sampler-steps",
-                                    ),
-                                    markdown(r"$$a=\min\left(1,\frac{q(\mu',\sigma')}{q(\mu,\sigma)}\right)$$", class_name="barracuda-equation small", mathjax=True),
-                                    dcc.Graph(id="mcmc-animation", figure=_mcmc_figure(), config={"displaylogo": False, "responsive": True}, className="barracuda-sampler-plot", style={"height": "430px"}),
-                                    html.P("The unknown Z cancels in this ratio, so MCMC only needs the unnormalised posterior q.", className="barracuda-help"),
-                                    html.P(
-                                        [
-                                            "Explore several algorithms in the ",
-                                            _external_link("interactive MCMC gallery", MCMC_GALLERY_URL),
-                                            ".",
-                                        ],
-                                        className="barracuda-help",
-                                    ),
-                                ],
-                                className="barracuda-sampler-card",
+                    html.H3("One target, two sampling routes"),
+                    html.P(
+                        "Choose a method, press play, or drag its timeline. The large panel is the joint distribution of μ and σ. The aligned strips above and to the right are the corresponding marginal distributions.",
+                        className="barracuda-copy",
+                    ),
+                    dcc.Tabs(
+                        id="sampler-tabs",
+                        value="mcmc",
+                        className="barracuda-sampler-tabs",
+                        content_className="barracuda-sampler-tab-content",
+                        children=[
+                            dcc.Tab(
+                                label="MCMC · one chain",
+                                value="mcmc",
+                                className="barracuda-sampler-tab",
+                                selected_className="barracuda-sampler-tab selected",
+                                children=html.Div(
+                                    [
+                                        html.Aside(
+                                            [
+                                                html.Span("MCMC", className="barracuda-sampler-tag"),
+                                                html.H3("Retain one accepted pair at a time"),
+                                                html.P("A proposal is accepted or rejected against the fixed posterior. Repeated retained pairs gradually form a joint sample."),
+                                                html.Ol(
+                                                    [
+                                                        html.Li("Propose (μ′, σ′)."),
+                                                        html.Li("Compare its unnormalised posterior q with the current pair."),
+                                                        html.Li("Accept or stay put."),
+                                                        html.Li("Read the completed joint cloud and its marginals."),
+                                                    ],
+                                                    className="barracuda-sampler-steps",
+                                                ),
+                                                markdown(r"$$a=\min\left(1,\frac{q(\mu',\sigma')}{q(\mu,\sigma)}\right)$$", class_name="barracuda-equation small", mathjax=True),
+                                                html.P(["The normalising constant cancels. Compare algorithms in the ", _external_link("interactive MCMC gallery", MCMC_GALLERY_URL), "."], className="barracuda-help"),
+                                            ]
+                                        ),
+                                        html.Div(
+                                            dcc.Graph(
+                                                id="mcmc-animation",
+                                                figure=_mcmc_figure(),
+                                                config={"displaylogo": False, "responsive": True},
+                                                className="barracuda-sampler-plot",
+                                                style={"height": "590px"},
+                                            ),
+                                            role="group",
+                                            **{"aria-label": "Interactive MCMC animation with a joint posterior sample and aligned marginal distributions for mean and standard deviation"},
+                                        ),
+                                    ],
+                                    className="barracuda-sampler-workbench",
+                                ),
                             ),
-                            html.Article(
-                                [
-                                    html.Span("SMC", className="barracuda-sampler-tag"),
-                                    html.H3("Turn on the likelihood for many pairs"),
-                                    html.P(
-                                        "SMC begins with a population drawn from the prior. It gradually increases the influence of the same likelihood until the particles represent the posterior.",
-                                    ),
-                                    markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="barracuda-equation small", mathjax=True),
-                                    html.Ol(
-                                        [
-                                            html.Li("At β = 0, particles represent the prior."),
-                                            html.Li("Increase β and reweight particles by their likelihood."),
-                                            html.Li("Resample well weighted particles and move them to restore diversity."),
-                                            html.Li("At β = 1, the population represents the posterior."),
-                                        ],
-                                        className="barracuda-sampler-steps",
-                                    ),
-                                    dcc.Graph(id="smc-animation", figure=_smc_figure(), config={"displaylogo": False, "responsive": True}, className="barracuda-sampler-plot", style={"height": "430px"}),
-                                    html.P("The temperature stages are computational bridges, not additional observations.", className="barracuda-help"),
-                                    html.P(
-                                        ["Read the implementation details in the ", _external_link("official PyMC SMC documentation", PYMC_SMC_URL), "."],
-                                        className="barracuda-help",
-                                    ),
-                                ],
-                                className="barracuda-sampler-card",
+                            dcc.Tab(
+                                label="SMC · particle population",
+                                value="smc",
+                                className="barracuda-sampler-tab",
+                                selected_className="barracuda-sampler-tab selected",
+                                children=html.Div(
+                                    [
+                                        html.Aside(
+                                            [
+                                                html.Span("SMC", className="barracuda-sampler-tag"),
+                                                html.H3("Move a population from prior to posterior"),
+                                                html.P("The temperature β controls how strongly the same likelihood influences the particles. No new observations arrive between stages."),
+                                                html.Ol(
+                                                    [
+                                                        html.Li("β = 0: draw particles from the prior."),
+                                                        html.Li("Increase β and reweight by likelihood."),
+                                                        html.Li("Resample and move to restore diversity."),
+                                                        html.Li("β = 1: read the posterior joint cloud and marginals."),
+                                                    ],
+                                                    className="barracuda-sampler-steps",
+                                                ),
+                                                markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="barracuda-equation small", mathjax=True),
+                                                html.P(["Implementation details: ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
+                                            ]
+                                        ),
+                                        html.Div(
+                                            dcc.Graph(
+                                                id="smc-animation",
+                                                figure=_smc_figure(),
+                                                config={"displaylogo": False, "responsive": True},
+                                                className="barracuda-sampler-plot",
+                                                style={"height": "590px"},
+                                            ),
+                                            role="group",
+                                            **{"aria-label": "Interactive SMC animation with tempered particles, a joint posterior sample and aligned marginal distributions"},
+                                        ),
+                                    ],
+                                    className="barracuda-sampler-workbench",
+                                ),
                             ),
                         ],
-                        className="barracuda-sampler-grid",
                     ),
                     note(
                         "What more computation can and cannot do",
@@ -1150,6 +1321,8 @@ def layout() -> html.Div:
                                     html.Img(
                                         src="/assets/thomas_bayes.png",
                                         alt="Engraving commonly attributed to Thomas Bayes",
+                                        width=304,
+                                        height=326,
                                     ),
                                     html.Figcaption(
                                         [
@@ -1201,7 +1374,8 @@ def layout() -> html.Div:
                 id="thomas-bayes",
                 className="barracuda-lesson-section",
             ),
-        ]
+        ],
+        className="barracuda-bayes-page",
     )
 
 

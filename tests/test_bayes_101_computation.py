@@ -28,11 +28,13 @@ def test_likelihood_peak_tracks_the_sample_mean_and_spread() -> None:
 
 def test_mcmc_animation_contains_accepted_and_rejected_updates_in_valid_space() -> None:
     figure = bayes_101._mcmc_figure()
-    statuses = [frame.data[3].text[0].lower() for frame in figure.frames]
-    current_pairs = [(float(frame.data[1].x[0]), float(frame.data[1].y[0])) for frame in figure.frames]
+    statuses = [frame.data[5].text[0].lower() for frame in figure.frames]
+    current_pairs = [(float(frame.data[2].x[0]), float(frame.data[2].y[0])) for frame in figure.frames]
 
     assert any("accepted" in status for status in statuses)
     assert any("rejected" in status for status in statuses)
+    assert "marginals ready" in statuses[-1]
+    assert {trace.type for trace in figure.data} >= {"contour", "histogram", "scatter"}
     assert all(bayes_101.MEAN_BOUNDS[0] <= mean <= bayes_101.MEAN_BOUNDS[1] for mean, _ in current_pairs)
     assert all(bayes_101.SCALE_BOUNDS[0] <= scale <= bayes_101.SCALE_BOUNDS[1] for _, scale in current_pairs)
 
@@ -47,3 +49,13 @@ def test_smc_moves_a_constant_particle_population_from_prior_to_posterior() -> N
     assert np.all(np.diff(temperatures) > 0)
     assert particle_counts == {46}
     np.testing.assert_allclose(bayes_101._tempered_surface(1.0), posterior / posterior.max())
+
+
+def test_update_and_smc_figures_end_at_readable_joint_and_marginal_views() -> None:
+    update = bayes_101._bayes_update_figure()
+    smc = bayes_101._smc_figure()
+
+    assert [frame.name for frame in update.frames] == ["likelihood", "prior", "multiply", "normalise"]
+    assert "total area one" in update.frames[-1].data[1].text[0]
+    assert "marginals ready" in smc.frames[-1].data[-1].text[0]
+    assert sum(trace.type == "histogram" for trace in smc.data) == 2

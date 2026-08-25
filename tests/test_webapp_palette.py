@@ -39,11 +39,11 @@ def test_web_theme_reuses_manuscript_figure_palette() -> None:
 
 def test_dash_theme_uses_flat_print_neutrals_and_accessible_focus() -> None:
     css = Path("webapp/assets/styles.css").read_text(encoding="utf-8").upper()
-    assert "--BARRACUDA-PRIMARY: #304B3D" in css
-    assert "--BARRACUDA-PAPER: #FAF8F2" in css
-    assert "--BARRACUDA-SHEET: #FFFEFA" in css
-    assert "--BARRACUDA-MIST: #EFEAE1" in css
-    assert "--BARRACUDA-INK: #25231F" in css
+    assert "--BARRACUDA-PRIMARY: #1D515B" in css
+    assert "--BARRACUDA-PAPER: #F2F5F2" in css
+    assert "--BARRACUDA-SHEET: #FCFDFB" in css
+    assert "--BARRACUDA-MIST: #DCE5E0" in css
+    assert "--BARRACUDA-INK: #17272C" in css
     assert "GRADIENT(" not in css
     assert ":FOCUS-VISIBLE" in css
     assert "PREFERS-REDUCED-MOTION" in css
