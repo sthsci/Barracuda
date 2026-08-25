@@ -387,7 +387,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
             html.Span("Condition comparison", className="barracuda-section-label"),
             html.H3("Compare any two experimental conditions"),
             html.P(
-                "Comparison minus reference is calculated from both complete posterior particle distributions. Independent condition inference runs do not share chain or draw positions, so Barracuda uses every Cartesian particle pair when practical and a reproducible uniform sample of independent pairs for larger runs. It never reduces the comparison to a difference between two posterior means.",
+                "The comparison uses comparison minus reference for complete posterior particle distributions. Independent conditions do not share chain or draw positions. BARRACUDA uses every Cartesian particle pair when feasible and a reproducible uniform sample of independent pairs for larger runs. It does not reduce the comparison to a difference between two posterior means.",
                 className="barracuda-help",
             ),
             dcc.Store(id=f"{prefix}-contrast-data", data=payload),

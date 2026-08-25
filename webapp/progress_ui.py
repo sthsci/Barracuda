@@ -58,7 +58,7 @@ def pymc_progress(prefix: str) -> html.Div:
                     ),
                     html.P(
                         (
-                            "Start inference to see each chain's SMC stage and "
+                            "Start inference to view each chain's SMC stage and "
                             "tempering value β."
                         ),
                         id=f"{component_prefix}-pymc-progress-meta",

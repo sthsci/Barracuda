@@ -51,7 +51,7 @@ def layout() -> html.Div:
             hero(
                 "Event counts · Validation",
                 "Synthetic data validation",
-                "Choose a known population structure, generate event counts, then ask whether Bayesian inference recovers the parameters and ranks the generating model.",
+                "Choose known population parameters, generate event counts, then test whether inference recovers those parameters and ranks the generating model.",
                 badge="Ground truth is visible",
             ),
             schematic_figure(
@@ -60,7 +60,7 @@ def layout() -> html.Div:
                 "The paper's validation workflow starts from known μλ, σλ and φ₀, generates cell-level event counts, and compares the inferred posterior with those known values.",
                 variant="validation",
             ),
-            html.P("The public demo accepts generated counts up to 100. If a setting exceeds that limit, reduce it and generate again. Choose priors that cover the truth you set.", className="barracuda-help"),
+            html.P("Each generated event count must be no greater than 100. If a simulation exceeds that limit, adjust the parameters and generate it again. Choose priors that cover the truth you set.", className="barracuda-help"),
             html.Div(
                 [
                     html.Span("Step A", className="barracuda-section-label"),
@@ -84,7 +84,7 @@ def layout() -> html.Div:
                                     clearable=False,
                                     disabled=True,
                                 ),
-                                "The generating model sets this automatically, so the two controls cannot contradict each other.",
+                                "The generating model sets this field automatically.",
                             ),
                             field("Mean event rate among engaging cells, μλ", dcc.Input(id="synthetic-mu-lambda", type="number", min=0.01, max=100, step=0.25, value=4.0)),
                             field("Continuous cell-to-cell heterogeneity in event rates, σλ", dcc.Input(id="synthetic-sigma-lambda", type="number", min=0, max=50, step=0.25, value=3.0)),
@@ -99,7 +99,7 @@ def layout() -> html.Div:
                                     html.Span("Live model design", className="barracuda-section-label"),
                                     html.H3("Population distribution of cell-specific event rates λᵢ"),
                                     html.P(
-                                        "This includes every cell. A zero-inflated model places probability φ₀ at λᵢ = 0, while the remaining population follows the rate structure named by the model.",
+                                        "The distribution includes every cell. In zero-inflated models, probability φ₀ is placed at λᵢ = 0; the remaining cells follow the selected rate model.",
                                         className="barracuda-help",
                                     ),
                                 ],
@@ -119,7 +119,7 @@ def layout() -> html.Div:
                         [
                             html.Summary("Alternative rate distributions · in development"),
                             html.P(
-                                "Lognormal, truncated Normal and other positive rate families are not used to generate data in this release. Keeping them separate ensures that every public simulation matches one of the four models evaluated below.",
+                                "Lognormal, truncated Normal, and other positive rate families are not used in this release. Every public simulation therefore matches one of the four fitted models.",
                                 className="barracuda-help",
                             ),
                         ],
@@ -168,7 +168,7 @@ def layout() -> html.Div:
                                 [
                                     html.Strong("Posterior and Bayes factor plots"),
                                     html.P(
-                                        "Run inference for one or more models. Posterior distributions appear for every completed model, and comparative Bayes factors appear when at least two models are included.",
+                                        "Fit one or more models to view their posterior distributions. Bayes factors are shown when at least two models are fitted.",
                                     ),
                                 ],
                                 className="barracuda-results-placeholder",
@@ -182,9 +182,9 @@ def layout() -> html.Div:
                     html.Div(id="synthetic-download", className="barracuda-download-slot"),
                     html.Details(
                         [
-                            html.Summary("Run the complete demonstration in Jupyter"),
+                            html.Summary("Run the demonstration in Jupyter"),
                             html.P(
-                                "The notebook contains the Gamma simulator, all four PyMC models, the joint posterior plot, the Bayes factor plot and the code for reopening downloaded InferenceData files.",
+                                "The notebook contains the Gamma simulator, all four PyMC models, both result plots, and code for reopening downloaded InferenceData files.",
                                 className="barracuda-help",
                             ),
                             html.A(

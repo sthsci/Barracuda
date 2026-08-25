@@ -173,7 +173,7 @@ def _legacy_layout(
 ) -> html.Div:
     default_models = None
     privacy_note = (
-        note("Treat donor codes carefully", "A label such as donor_01 can still be pseudonymised personal data when a separate key can reconnect it to an individual. Use synthetic or approved anonymised data in this web application.", tone="amber")
+        note("Treat donor codes carefully", "A code such as donor_01 is still pseudonymised personal data if a separate key can identify the donor. Use only synthetic or approved anonymised data.", tone="amber")
         if donor_aware
         else note("Input scope", "Use one row per cell and one count outcome, such as contacts or kills. Do not upload names, clinical metadata, raw microscopy, or other identifiers.", tone="navy")
     )
@@ -190,7 +190,7 @@ def _legacy_layout(
                     html.Span("Step A", className="barracuda-section-label"),
                     html.H2("Provide counts with donor labels" if donor_aware else "Provide your count data"),
                     html.P(
-                        "Include an experimental condition column to compare as many as four groups. A table without that column is treated as one group.",
+                        "Add a condition column to compare up to four groups. Without that column, all rows form one group.",
                         className="barracuda-help",
                     ),
                     html.H3("Choose your data source"),
@@ -247,7 +247,7 @@ def _legacy_layout(
                                     html.Span("Common observation time T", className="barracuda-field-label"),
                                     dcc.Input(id=f"{prefix}-observation-time", type="number", min=0.01, max=100, step=0.25, value=1.0),
                                     html.Small(
-                                        "Counts follow Nᵢ | λᵢ,T ~ Poisson(λᵢT). With T = 1, rates are events per complete observation window. Edit T only when you want rates per another time unit.",
+                                        "Counts follow Nᵢ | λᵢ,T ~ Poisson(λᵢT). With T = 1, rates are events per complete observation window. Change T only to express rates in a different time unit.",
                                         className="barracuda-help",
                                     ),
                                 ],
@@ -260,7 +260,7 @@ def _legacy_layout(
                         [
                             html.H3("Condition colours"),
                             html.P(
-                                "Use the Apple-inspired presets or open the colour well to choose any colour. These choices are used consistently in the posterior and comparison plots.",
+                                "Choose a preset or use the colour picker. The same colours identify conditions in all posterior and comparison plots.",
                                 className="barracuda-help",
                             ),
                             html.Div(id=f"{prefix}-condition-colour-controls"),
@@ -275,7 +275,7 @@ def _legacy_layout(
             html.Div(
                 [
                     html.Span("Step B", className="barracuda-section-label"),
-                    html.H2("Configure and run donor aware inference" if donor_aware else "Configure and run donor ignorant inference"),
+                    html.H2("Configure and run donor-aware inference" if donor_aware else "Configure and run donor-ignorant inference"),
                     html.Fieldset(
                         [
                             model_selector(prefix, default_models),

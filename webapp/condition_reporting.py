@@ -385,7 +385,7 @@ def render_condition_results(
                     html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
-                        "Every condition has its own best model. Bars use the raw log₁₀ BF(best model / candidate model) scale; the boundaries are exactly log₁₀(3), 1 and 2.",
+                        "Each condition has its own best model. Bars show log₁₀ BF(best model / candidate model) on a linear scale, with exact boundaries at log₁₀(3), 1, and 2.",
                         className="barracuda-help",
                     ),
                     dcc.Graph(

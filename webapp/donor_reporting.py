@@ -1778,10 +1778,9 @@ def _donor_model_panel(
         variance_content = [
             html.H4("Where population heterogeneity comes from"),
             html.P(
-                "The total population variance is split into within-donor and "
-                "between-donor components for every posterior draw. Bars show "
-                "posterior means; zero-inflated models use the inferred active-cell "
-                "weights.",
+                "For each posterior draw, total population variance is split into "
+                "within-donor and between-donor components. Bars show posterior "
+                "means. Zero-inflated models use inferred active-cell weights.",
                 className="barracuda-help",
             ),
             _graph_component(
@@ -1803,9 +1802,9 @@ def _donor_model_panel(
             *variance_content,
             html.H4("Population posterior by condition"),
             html.P(
-                "Each curve is a population mixture moment from one condition, with "
-                "inference run independently for every condition. These are not the shared reference parameters of "
-                "the donor hierarchy.",
+                "Each curve is a population mixture moment from one independently "
+                "fitted condition. These are not the shared reference parameters "
+                "of the donor hierarchy.",
                 className="barracuda-help",
             ),
             _graph_component(
@@ -1820,8 +1819,8 @@ def _donor_model_panel(
                         [
                             html.H4("Compare donors within one condition"),
                             html.P(
-                                "Mean, heterogeneity and fraction of nonengaging cells "
-                                "remain paired by SMC chain and draw within this inference run.",
+                                "Mean, heterogeneity, and nonengaging fraction remain "
+                                "paired by SMC chain and draw within this inference run.",
                                 className="barracuda-help",
                             ),
                             dcc.Dropdown(
@@ -1854,9 +1853,8 @@ def _donor_model_panel(
                         [
                             html.H4("Compare conditions for one donor"),
                             html.P(
-                                "Conditions are independent posterior distributions. "
-                                "The plot overlays them but never pairs their chain or "
-                                "draw indices.",
+                                "Conditions have independent posterior distributions. "
+                                "The plot overlays them without pairing chain or draw indices.",
                                 className="barracuda-help",
                             ),
                             dcc.Dropdown(
@@ -1970,7 +1968,7 @@ def render_donor_condition_results(
         [
             note(
                 "Inference complete",
-                "Inference was run independently for each condition with the same donor aware "
+                "Inference was run independently for each condition with the same donor-aware "
                 "models and prior settings.",
                 tone="teal",
             ),
@@ -1979,9 +1977,9 @@ def render_donor_condition_results(
                     html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
-                        "Every condition has its own best model. The horizontal axis "
-                        "uses the unmodified log₁₀ BF(best model / candidate model) "
-                        "scale, with exact boundaries at log₁₀(3), 1 and 2.",
+                        "Each condition has its own best model. The horizontal axis "
+                        "shows log₁₀ BF(best model / candidate model) on a linear "
+                        "scale, with exact boundaries at log₁₀(3), 1, and 2.",
                         className="barracuda-help",
                     ),
                     _graph_component(
@@ -1997,9 +1995,9 @@ def render_donor_condition_results(
                     ),
                     html.H3("Evidence combined across conditions"),
                     html.P(
-                        "Because inference was run independently for each condition, their log "
-                        "marginal likelihoods add. Aggregation is performed only after "
-                        "checking that every model has one result for every condition.",
+                        "Independent condition log marginal likelihoods can be added. "
+                        "Aggregation occurs only after confirming that every model has "
+                        "one result for every condition.",
                         className="barracuda-help",
                     ),
                     _graph_component(

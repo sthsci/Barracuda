@@ -9,16 +9,16 @@ from webapp.pages.analysis_page import register_callbacks as register_analysis_c
 
 
 PATH = "/event-counts/donor-aware"
-TITLE = "Donor aware analysis"
+TITLE = "Donor-aware analysis"
 
 
 def layout() -> html.Div:
     page = analysis_layout(
         prefix="donor",
         donor_aware=True,
-        kicker="Event counts · Donor aware",
-        title="Donor aware condition analysis",
-        lead="Run inference for one to four experimental conditions while allowing the mean event rate μλ,d, continuous cell-to-cell heterogeneity σλ,d and fraction of nonengaging cells φ₀,d to vary between donors.",
+        kicker="Event counts · Donor-aware",
+        title="Donor-aware condition analysis",
+        lead="Fit one to four experimental conditions while allowing mean event rate μλ,d, cell-to-cell heterogeneity σλ,d, and nonengaging fraction φ₀,d to vary by donor.",
         badge="2 to 12 donors per condition · Section 2 hierarchy",
     )
     children = list(page.children)
@@ -28,7 +28,7 @@ def layout() -> html.Div:
                 html.Span("How the hierarchy is read", className="barracuda-section-label"),
                 html.H2("Cells within donors, then donors within each condition"),
                 html.P(
-                    "Inference is run independently for each experimental condition. Within a condition, donor parameters are estimated jointly around shared reference priors, while reported population parameters are cell-weighted moments of the donor mixture.",
+                    "Each experimental condition is fitted independently. Within a condition, donor parameters are estimated jointly around shared reference priors. Reported population parameters are cell-weighted moments of the donor mixture.",
                     className="barracuda-section-lead",
                 ),
                 html.Div(
@@ -36,7 +36,7 @@ def layout() -> html.Div:
                         html.Div(
                             [
                                 html.Strong("1 · Model evidence"),
-                                html.P("Compare the four candidate count models with SMC marginal likelihoods and Bayes factors."),
+                                html.P("Compare the four candidate count models with sequential Monte Carlo (SMC) marginal likelihoods and Bayes factors."),
                             ]
                         ),
                         html.Div(
@@ -48,13 +48,13 @@ def layout() -> html.Div:
                         html.Div(
                             [
                                 html.Strong("3 · Posterior views"),
-                                html.P("Inspect population posteriors by condition, all donors within a condition, and conditions within each donor."),
+                                html.P("Inspect population posteriors across conditions, donor posteriors within a condition, and condition-specific posteriors for each donor."),
                             ]
                         ),
                         html.Div(
                             [
                                 html.Strong("4 · Condition contrasts"),
-                                html.P("Choose any two conditions and compare their independent posterior particle distributions."),
+                                html.P("Compare independent posterior particle distributions for any two conditions."),
                             ]
                         ),
                     ],

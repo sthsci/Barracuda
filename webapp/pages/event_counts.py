@@ -13,7 +13,7 @@ from webapp.ui import page_header
 
 
 PATH = "/event-counts/donor-ignorant"
-TITLE = "Donor ignorant analysis"
+TITLE = "Donor-ignorant analysis"
 
 WORKFLOW_ID: Final[str] = "donor-ignorant-workflow"
 SYNTHETIC_PANEL_ID: Final[str] = "donor-ignorant-synthetic-panel"
@@ -52,11 +52,11 @@ def _own_data_body() -> html.Div:
     page = analysis_layout(
         prefix="counts",
         donor_aware=False,
-        kicker="Event counts · Donor ignorant · Real data",
+        kicker="Event counts · Donor-ignorant · Real data",
         title="Event counts without donor labels",
         lead=(
-            "Analyse as many as four experimental conditions. Upload a CSV, "
-            "or enter counts directly in the browser."
+            "Analyse up to four experimental conditions by uploading a CSV "
+            "or entering counts in the browser."
         ),
         badge="Up to four experimental conditions · maximum 1,000 cells per condition",
     )
@@ -78,7 +78,7 @@ def layout() -> html.Div:
                     html.Span("Start here", className="barracuda-section-label"),
                     html.H2("Which data do you want to use?"),
                     html.P(
-                        "The choice changes the input workflow only. Provide a small dataset or generate one from a known truth; both routes run inference with the same four donor ignorant event count models.",
+                        "Both options fit the same four donor-ignorant event-count models. Generate synthetic counts from known parameters to check recovery, or provide your own data for up to four experimental conditions.",
                         className="barracuda-section-lead",
                     ),
                     dcc.RadioItems(
@@ -87,14 +87,14 @@ def layout() -> html.Div:
                             {
                                 "label": _workflow_option(
                                     "Synthetic data",
-                                    "Set a known ground truth, generate counts and check parameter recovery and model evidence.",
+                                    "Choose known parameters, generate counts, then check parameter recovery and model evidence.",
                                 ),
                                 "value": "synthetic",
                             },
                             {
                                 "label": _workflow_option(
                                     "My own data",
-                                    "Provide a small dataset by uploading or entering one to four experimental conditions, then run inference for each condition independently.",
+                                    "Upload a CSV or enter counts for one to four conditions. Each condition is fitted independently.",
                                 ),
                                 "value": "own-data",
                             },

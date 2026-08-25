@@ -831,7 +831,7 @@ def render_validation_results(
                         className="barracuda-result-heading",
                     ),
                     html.P(
-                        "Diagonal panels show marginal posterior densities and 95% HDIs. Lower panels retain dependence between parameters. For the homogeneous and zero inflated models, the mean-rate axis contains the shared rate λ; for the Gamma models it contains μλ.",
+                        "Diagonal panels show marginal posterior densities and 95% HDIs. Lower panels show dependence between parameters. For homogeneous and zero-inflated models, the mean-rate axis is the shared rate λ; for Gamma models, it is μλ.",
                         className="barracuda-help",
                     ),
                     dcc.Store(
@@ -910,7 +910,7 @@ def render_validation_results(
                         className="barracuda-result-heading",
                     ),
                     html.P(
-                        "Bars use the untransformed linear log₁₀ BF(best model / candidate model) scale computed from the SMC log marginal likelihoods. The highest-evidence model is labelled Best model and sits at zero by definition. The background boundaries are exactly log₁₀(3) ≈ 0.477, 1 and 2, corresponding to Bayes factors of 3, 10 and 100.",
+                        "Bars show log₁₀ BF(best model / candidate model) on a linear scale, calculated from SMC log marginal likelihoods. The best model is at zero by definition. Boundaries at log₁₀(3) ≈ 0.477, 1, and 2 correspond to Bayes factors of 3, 10, and 100.",
                         className="barracuda-help",
                     ),
                     dcc.Graph(

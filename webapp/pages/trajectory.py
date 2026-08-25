@@ -343,9 +343,9 @@ def _legacy_layout() -> html.Div:
             dcc.Store(id="trajectory-active-truth"),
             dcc.Store(id="trajectory-active-observation-time", data=1.0),
             hero(
-                "Contact trajectories · Donor ignorant",
+                "Contact trajectories · Donor-ignorant",
                 "Trajectory inference",
-                "Use ordered lethal and non-lethal contacts to separate stable differences between cells from changes caused by previous encounters.",
+                "Use ordered lethal and nonlethal contacts to distinguish stable cell-to-cell differences from effects of previous encounters.",
                 badge="Synthetic validation • Up to four experimental conditions",
             ),
             html.Section(
@@ -353,7 +353,7 @@ def _legacy_layout() -> html.Div:
                     html.Span("Model", className="barracuda-section-label"),
                     html.H2("From ordered contacts to killing decisions"),
                     html.P(
-                        "Every candidate model shares a Gamma-Poisson contact layer. They differ in whether baseline killing propensity varies between cells and whether previous lethal or non-lethal contacts change the next decision.",
+                        "All models share a Gamma-Poisson contact layer. They differ in whether baseline killing propensity varies among cells and whether previous lethal or nonlethal contacts affect the next decision.",
                         className="barracuda-section-lead",
                     ),
                     html.Div(
@@ -374,7 +374,7 @@ def _legacy_layout() -> html.Div:
                         className="barracuda-equation-row",
                     ),
                     html.P(
-                        "Here f is the number of previous non-lethal contacts and s is the number of previous lethal contacts. Positive β increases the odds of a later kill; negative β reduces them.",
+                        "Here f counts previous nonlethal contacts and s counts previous lethal contacts. A positive β increases the odds that the next contact is lethal; a negative β decreases them.",
                         className="barracuda-help",
                     ),
                     html.Div(
@@ -532,7 +532,7 @@ def _legacy_layout() -> html.Div:
                         className="barracuda-details barracuda-observation-details",
                     ),
                     html.P(
-                        "The paper's wide format with Cell and numbered contact columns is also accepted. Do not include donor labels; this model is donor ignorant.",
+                        "The paper's wide format, with Cell and numbered contact columns, is also accepted. Do not include donor labels; trajectory models are donor-ignorant.",
                         className="barracuda-help",
                     ),
                 ],
@@ -562,7 +562,7 @@ def _legacy_layout() -> html.Div:
                                 [
                                     html.Span("Figure display", className="barracuda-section-label"),
                                     html.P(
-                                        "Increase the canvas for dense state maps or reduce the arrows when neighbouring states look crowded. These settings change only the display, never the data or inference.",
+                                        "Increase the figure height for dense state maps or reduce arrow size when neighbouring states overlap. These settings affect only the display.",
                                         className="barracuda-help",
                                     ),
                                 ],
@@ -605,7 +605,7 @@ def _legacy_layout() -> html.Div:
                         style={"height": "700px"},
                     ),
                     html.P(
-                        "Arrow direction and colour show the empirical probability that the next contact is lethal. Arrow-tail length shows the number of cells reaching the state on a log2 scale.",
+                        "Arrow direction and colour encode the empirical probability that the next contact is lethal. Arrow-tail length encodes the number of cells reaching the state on a log₂ scale.",
                         className="barracuda-help",
                     ),
                     html.Details(
@@ -621,12 +621,12 @@ def _legacy_layout() -> html.Div:
                     html.Span("02 · Bayesian inference", className="barracuda-section-label"),
                     html.H2("Compare trajectory mechanisms"),
                     html.P(
-                        "Inference runs independently for each experimental condition. Bayes factors compare candidate mechanisms within a condition, while posterior plots overlay conditions using your selected colours.",
+                        "Each experimental condition is fitted independently. Bayes factors compare candidate mechanisms within a condition; posterior plots overlay conditions using the selected colours.",
                         className="barracuda-section-lead",
                     ),
                     note(
                         "How model evidence is computed",
-                        "PyMC SMC estimates each model's marginal likelihood while moving particles from the prior to the posterior. Bayes factors compare those marginal likelihood estimates; they are not ratios of posterior means.",
+                        "PyMC SMC estimates each model's marginal likelihood as particles move from the prior to the posterior. Bayes factors compare these estimates, not posterior means.",
                         tone="navy",
                     ),
                     html.Fieldset(
@@ -647,7 +647,7 @@ def _legacy_layout() -> html.Div:
                             html.Div(
                                 [
                                     html.Strong("Bayes factors and posterior distributions"),
-                                    html.P("Run inference to compare model evidence and inspect marginal or joint posterior distributions."),
+                                    html.P("Run inference to compare model evidence and inspect marginal and joint posterior distributions."),
                                 ],
                                 className="barracuda-results-placeholder",
                             ),
@@ -680,7 +680,7 @@ def layout() -> html.Div:
             page_header(
                 "Analyse",
                 "Ordered contact histories",
-                "Use the order of lethal and nonlethal contacts to test whether stable differences between cells or previous encounters explain later killing decisions.",
+                "Use ordered lethal and nonlethal contacts to test whether cell-to-cell differences or previous encounters explain later killing decisions.",
                 crumb="Ordered contact histories",
                 badge="cell_id · condition · history",
             ),

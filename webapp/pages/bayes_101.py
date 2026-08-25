@@ -845,7 +845,7 @@ def layout() -> html.Div:
                                 class_name="barracuda-equation barracuda-equation-feature",
                                 mathjax=True,
                             ),
-                            html.P("Updated probability = compatibility with the observation × initial probability ÷ probability of the observation.", className="barracuda-equation-caption"),
+                            html.P("Posterior probability = likelihood × prior probability ÷ evidence.", className="barracuda-equation-caption"),
                         ],
                         className="barracuda-theorem-panel",
                     ),
@@ -884,7 +884,7 @@ def layout() -> html.Div:
                     html.Span("02 · Coin experiment", className="barracuda-section-label"),
                     html.H2("Learn the unknown bias of a coin"),
                     html.P(
-                        "Suppose each toss is independent and has an unknown chance θ of heads. With a uniform Beta(1, 1) prior, h heads and t tails produce an exact Beta posterior.",
+                        "Assume independent tosses with an unknown probability θ of heads. A uniform Beta(1, 1) prior and observations of h heads and t tails yield an exact Beta posterior.",
                         className="barracuda-section-lead",
                     ),
                     html.Div(
@@ -1002,7 +1002,7 @@ def layout() -> html.Div:
                     ),
                     note(
                         "How to read the HDI",
-                        "For this one dimensional Beta posterior, the selected HDI is the shortest interval containing the chosen percentage of posterior probability. It describes parameter uncertainty, not the long run frequency of future intervals.",
+                        "For this one-dimensional Beta posterior, the HDI is the shortest interval containing the selected posterior probability. It describes uncertainty in θ, not the long-run frequency of future intervals.",
                         tone="teal",
                     ),
                     html.P(
@@ -1027,7 +1027,7 @@ def layout() -> html.Div:
                     html.Span("03 · Computation", className="barracuda-section-label"),
                     html.H2("The model defines the posterior; computation finds it"),
                     html.P(
-                        "The coin example has a closed form posterior because its prior and likelihood are conjugate. Bayes’ theorem still defines a posterior when no familiar formula is available, but we then need a numerical way to explore it.",
+                        "The coin model has a closed-form posterior because its prior and likelihood are conjugate. For other models, Bayes’ theorem still defines the posterior, but numerical methods are needed to explore it.",
                         className="barracuda-section-lead",
                     ),
                     html.Div(
@@ -1078,22 +1078,22 @@ def layout() -> html.Div:
                         role="group",
                         **{"aria-label": "Relative likelihood times prior density produces posterior density over population mean and standard deviation"},
                     ),
-                    html.P("All three panels use identical axes and the same low-to-high relative-support scale.", className="barracuda-surface-legend"),
+                    html.P("All panels use identical axes and one shared relative-support scale.", className="barracuda-surface-legend"),
                     html.Details(
                         [
                             html.Summary("How normalisation turns the product into a probability density"),
-                            html.P("The likelihood-prior product is divided by its integral Z. This makes the posterior integrate to one without moving its contours."),
+                            html.P("Dividing the likelihood-prior product by its integral Z makes the posterior integrate to one; the contour locations do not change."),
                         ],
                         className="barracuda-details",
                     ),
                     note(
                         "Likelihood is not posterior probability",
-                        "Once the observations are fixed, the likelihood ranks candidate parameter pairs. It does not have to integrate to one over μ and σ. The prior and posterior are probability densities over those parameters; the posterior combines both the likelihood and the prior.",
+                        "With fixed observations, the likelihood ranks candidate parameter pairs; it need not integrate to one over μ and σ. The prior and posterior are densities over these parameters.",
                         tone="teal",
                     ),
                     html.H3("Why a numerical method becomes necessary"),
                     html.P(
-                        "With two parameters, a grid can approximate the normalising integral. A grid becomes impossible surprisingly quickly: checking K values for each of d parameters requires Kᵈ evaluations. Hierarchical models may also contain latent variables and parameter dependencies that prevent a closed form calculation.",
+                        "A grid can approximate the normalising integral for two parameters. Evaluating K values for each of d parameters requires Kᵈ points, so grids become impractical as dimension increases. Hierarchical models can also include latent variables or dependencies that prevent a closed-form calculation.",
                         className="barracuda-copy",
                     ),
                     html.Div(
@@ -1105,12 +1105,12 @@ def layout() -> html.Div:
                     ),
                     note(
                         "The posterior stays fixed",
-                        "MCMC iterations and SMC temperature steps do not perform new Bayesian updates with new data. The likelihood and prior already define one posterior. The algorithms provide different numerical routes to that same target.",
+                        "MCMC iterations and SMC temperatures do not introduce new data or redefine the posterior. The prior and likelihood already define one target; the algorithms provide different numerical routes to it.",
                         tone="navy",
                     ),
                     html.H3("One target, two sampling routes"),
                     html.P(
-                        "Choose a method, press play, or drag its timeline. The large panel is the joint distribution of μ and σ. The aligned strips above and to the right are the corresponding marginal distributions.",
+                        "Choose a method, press play, or drag the timeline. The large panel shows the joint distribution of μ and σ; the top and right strips show their marginal distributions.",
                         className="barracuda-copy",
                     ),
                     dcc.Tabs(
@@ -1130,7 +1130,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Span("MCMC", className="barracuda-sampler-tag"),
                                                 html.H3("Retain one accepted pair at a time"),
-                                                html.P("A proposal is accepted or rejected against the fixed posterior. Repeated retained pairs gradually form a joint sample."),
+                                                html.P("Each proposal is accepted or rejected against the fixed posterior. The retained pairs form a joint sample."),
                                                 html.Ol(
                                                     [
                                                         html.Li("Propose (μ′, σ′)."),
@@ -1170,7 +1170,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Span("SMC", className="barracuda-sampler-tag"),
                                                 html.H3("Move a population from prior to posterior"),
-                                                html.P("The temperature β controls how strongly the same likelihood influences the particles. No new observations arrive between stages."),
+                                                html.P("The temperature β controls the contribution of the fixed likelihood. No new observations are added between stages."),
                                                 html.Ol(
                                                     [
                                                         html.Li("β = 0: draw particles from the prior."),
@@ -1202,8 +1202,8 @@ def layout() -> html.Div:
                         ],
                     ),
                     note(
-                        "What more computation can and cannot do",
-                        "More draws or particles can reduce Monte Carlo error. They cannot add information that is absent from the data, identify an unidentified parameter or repair a poor model.",
+                        "What additional computation changes",
+                        "More draws or particles can reduce Monte Carlo error, but cannot add missing information, identify an unidentified parameter, or repair a poor model.",
                         tone="amber",
                     ),
                     _source_note(
@@ -1222,7 +1222,7 @@ def layout() -> html.Div:
                     html.Span("04 · Model comparison", className="barracuda-section-label"),
                     html.H2("Bayes factors from SMC"),
                     html.P(
-                        "A marginal likelihood measures how well a model predicted the observed data on average over the parameter values allowed by its prior.",
+                        "A marginal likelihood averages the likelihood of the observed data over the parameter values allowed by a model's prior.",
                         className="barracuda-section-lead",
                     ),
                     html.Div(
@@ -1246,7 +1246,7 @@ def layout() -> html.Div:
                     ),
                     html.H3("How SMC estimates the evidence"),
                     html.P(
-                        "Each change in temperature contributes an incremental likelihood weight. Adding those contributions on the log scale gives an estimate of the log marginal likelihood.",
+                        "Each temperature change produces an incremental likelihood weight. Summing the log contributions estimates the log marginal likelihood.",
                         className="barracuda-copy",
                     ),
                     markdown(

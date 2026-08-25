@@ -148,7 +148,7 @@ def shell_components() -> list[Any]:
                 html.Span("Optional service", className="barracuda-section-label"),
                 html.H2("Account and CSV sharing"),
                 html.P(
-                    "You can keep using every analysis without registering. Sign in only to save CSV datasets for later use or create a controlled spreadsheet link.",
+                    "All analyses work without an account. Sign in only to save a CSV dataset or create a read-only sharing link.",
                     className="barracuda-help",
                 ),
                 html.Div(id="barracuda-account-summary"),
@@ -201,8 +201,8 @@ def shell_components() -> list[Any]:
                 dcc.Dropdown(
                     id="barracuda-save-source",
                     options=[
-                        {"label": "Current donor ignorant count table", "value": "counts"},
-                        {"label": "Current donor aware count table", "value": "donor"},
+                        {"label": "Current donor-ignorant count table", "value": "counts"},
+                        {"label": "Current donor-aware count table", "value": "donor"},
                         {"label": "Current trajectory table", "value": "trajectory"},
                     ],
                     value="counts",
@@ -245,7 +245,7 @@ def workspace_layout() -> html.Div:
             hero(
                 "Optional workspace",
                 "Save and share CSV data",
-                "Every analysis works without an account. Sign in only when you want to keep a spreadsheet or create a read-only sharing link.",
+                "All analyses work without an account. Sign in only to save a CSV dataset or create a read-only sharing link.",
                 badge="Accounts optional · CSV only · No imaging files",
             ),
         ],
@@ -326,7 +326,7 @@ def register_callbacks(app) -> None:
     def account_summary(session):
         if session and session.get("token"):
             return _message("Account active", f"Signed in as {session.get('username', 'researcher')}. Saved projects do not expire automatically.")
-        return _message("Guest mode", "The scientific pages work normally. Nothing is saved unless you explicitly use this panel.")
+        return _message("Guest mode", "Analyses work normally. Data are saved only when you use this panel.")
 
     @app.callback(
         Output("barracuda-account-projects", "data"),

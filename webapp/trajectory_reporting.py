@@ -1618,7 +1618,7 @@ def render_trajectory_results(
                     html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
-                        "The axis is the continuous log₁₀ BF(candidate model / best model) scale. Best models sit at zero; evidence against alternatives extends left through the exact BF boundaries 3, 10 and 100.",
+                        "The axis shows log₁₀ BF(candidate model / best model) on a linear scale. The best model is at zero; evidence against alternatives extends left across the exact BF boundaries 3, 10, and 100.",
                         className="barracuda-help",
                     ),
                     bayes_result,
@@ -1657,7 +1657,7 @@ def render_trajectory_results(
                         labelClassName="barracuda-posterior-model-option",
                     ),
                     html.P(
-                        "Condition colours are retained across every posterior. Parameters fixed by a candidate model are omitted rather than shown as artificial zero-width distributions.",
+                        "Condition colours are retained across posterior plots. Parameters fixed by a candidate model are omitted rather than plotted as zero-width distributions.",
                         className="barracuda-help",
                     ),
                     html.Div(panels, className="barracuda-condition-model-panels"),

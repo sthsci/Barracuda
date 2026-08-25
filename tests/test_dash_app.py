@@ -69,10 +69,10 @@ def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:
         "/": "Identify where variation in killer cell behaviour comes from",
         "/bayesian-101": "The update at the heart of Bayesian inference",
         "/notebooks": "Learn and analyse in Google Colab",
-        "/python-api": "Run BARRACUDA simulation, inference and result export directly from Python",
+        "/python-api": "Use BARRACUDA's simulation, inference, and export functions directly from Python",
         "/event-counts": "What information is present in your table?",
         "/event-counts/donor-ignorant": "Which data do you want to use?",
-        "/event-counts/donor-aware": "Donor aware condition analysis",
+        "/event-counts/donor-aware": "Donor-aware condition analysis",
         "/trajectory": "Which trajectory data do you want to use?",
         "/workspace": "Save and share CSV data",
     }

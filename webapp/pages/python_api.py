@@ -140,7 +140,7 @@ def layout() -> html.Div:
             page_header(
                 "Resources",
                 "Python package API",
-                "Run BARRACUDA simulation, inference and result export directly from Python without starting the web application.",
+                "Use BARRACUDA's simulation, inference, and export functions directly from Python.",
                 badge="PyPI: cyto-barracuda · Import: barracuda · Python 3.12",
                 crumb="Python API",
             ),
@@ -151,7 +151,7 @@ def layout() -> html.Div:
                         [
                             html.Li(html.A([html.Span("01"), "Install"], href="#install")),
                             html.Li(html.A([html.Span("02"), "Event counts"], href="#event-counts-api")),
-                            html.Li(html.A([html.Span("03"), "Donor aware"], href="#donor-api")),
+                            html.Li(html.A([html.Span("03"), "Donor-aware"], href="#donor-api")),
                             html.Li(html.A([html.Span("04"), "Trajectories"], href="#trajectory-api")),
                             html.Li(html.A([html.Span("05"), "Reference"], href="#api-reference")),
                         ],
@@ -166,7 +166,7 @@ def layout() -> html.Div:
                     html.Span("Distribution and import name", className="barracuda-section-label"),
                     html.H2("Install from PyPI"),
                     html.P(
-                        "The PyPI project is named cyto-barracuda because barracuda was already registered. The Python import remains barracuda.",
+                        "The PyPI project is cyto-barracuda because the name barracuda was already registered. Import it as barracuda.",
                         className="barracuda-section-lead",
                     ),
                     _code("python -m pip install cyto-barracuda\n\npython -c \"import barracuda; print(barracuda.__version__)\""),
@@ -184,7 +184,7 @@ def layout() -> html.Div:
                     html.Span("Donor-ignorant workflow", className="barracuda-section-label"),
                     html.H2("Event counts"),
                     html.P(
-                        "Provide one non-negative integer count per cell. Add a condition column and use run_condition_models to analyse up to four conditions independently.",
+                        "Provide one non-negative integer count per cell. To analyse up to four conditions independently, add a condition column and call run_condition_models.",
                         className="barracuda-section-lead",
                     ),
                     _code(COUNT_EXAMPLE),
@@ -197,7 +197,7 @@ def layout() -> html.Div:
                     html.Span("Hierarchical workflow", className="barracuda-section-label"),
                     html.H2("Donor-aware event counts"),
                     html.P(
-                        "Include a donor_id for every cell to separate within-donor heterogeneity from differences between donors.",
+                        "Include donor_id for every cell to separate within-donor heterogeneity from differences among donor means.",
                         className="barracuda-section-lead",
                     ),
                     _code(DONOR_EXAMPLE),
@@ -210,7 +210,7 @@ def layout() -> html.Div:
                     html.Span("Ordered-contact workflow", className="barracuda-section-label"),
                     html.H2("Contact trajectories"),
                     html.P(
-                        "Encode each cell's ordered outcomes in history, for example 0,0,1,0. A blank history retains a cell with no observed contacts.",
+                        "Store each cell's ordered outcomes in history, for example 0,0,1,0. Use a blank history for a cell with no observed contacts.",
                         className="barracuda-section-lead",
                     ),
                     _code(TRAJECTORY_EXAMPLE),
@@ -223,7 +223,7 @@ def layout() -> html.Div:
                     html.Span("Top-level imports", className="barracuda-section-label"),
                     html.H2("Public API reference"),
                     html.P(
-                        "All supported public names are available directly from barracuda. Underscore-prefixed modules are implementation details.",
+                        "Import all supported public names directly from barracuda. Names beginning with an underscore are implementation details.",
                         className="barracuda-section-lead",
                     ),
                     *[_api_group(title, entries) for title, entries in API_GROUPS],

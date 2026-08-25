@@ -21,7 +21,7 @@ def layout() -> html.Div:
                             html.Span("Bayesian analysis of single cell cytotoxicity", className="barracuda-eyebrow"),
                             html.H1("Identify where variation in killer cell behaviour comes from"),
                             html.P(
-                                "BARRACUDA compares stochastic, heterogeneous, donor structured, and history dependent explanations of contact and killing data.",
+                                "BARRACUDA tests whether variation in contact and killing data is consistent with chance, stable cell-to-cell differences, donor effects, or contact history.",
                                 className="barracuda-home-lead",
                             ),
                             html.Div(
@@ -89,12 +89,12 @@ def layout() -> html.Div:
             html.Section(
                 [
                     html.Span("How it works", className="barracuda-eyebrow"),
-                    html.H2("One auditable path from cells to evidence"),
+                    html.H2("From cell-level data to model evidence"),
                     html.Ol(
                         [
                             html.Li([html.Span("1"), html.Strong("Prepare cell-level data"), html.P("Validate a compact CSV or generate a synthetic example.")]),
-                            html.Li([html.Span("2"), html.Strong("Compare mechanistic models"), html.P("Fit competing population explanations with sequential Monte Carlo.")]),
-                            html.Li([html.Span("3"), html.Strong("Interpret uncertainty and evidence"), html.P("Read posterior intervals, marginal distributions and Bayes factors together.")]),
+                            html.Li([html.Span("2"), html.Strong("Compare mechanistic models"), html.P("Fit candidate population models with sequential Monte Carlo (SMC).")]),
+                            html.Li([html.Span("3"), html.Strong("Interpret uncertainty and evidence"), html.P("Assess parameter uncertainty with posterior distributions and compare models with Bayes factors.")]),
                         ],
                         className="barracuda-process",
                     ),

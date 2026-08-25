@@ -28,9 +28,9 @@ def _route(title: str, internal: str, body: str, schema: str, path: str) -> html
 def layout() -> html.Div:
     rows = (
         ("homo", "One shared rate", "No", "Random count variation only", "μλ"),
-        ("dis2p", "Varies continuously", "No", "Stable continuous cell-to-cell differences", "μλ, σλ"),
+        ("dis2p", "Varies continuously", "No", "Continuous cell-to-cell rate variation", "μλ, σλ"),
         ("z2p", "One shared positive rate", "Yes", "A nonengaging group plus engaging cells", "μλ, φ₀"),
-        ("hetero3", "Varies continuously", "Yes", "Continuous differences plus nonengaging cells", "μλ, σλ, φ₀"),
+        ("hetero3", "Varies continuously", "Yes", "Continuous rate variation plus nonengaging cells", "μλ, σλ, φ₀"),
     )
     return html.Div(
         [
@@ -48,14 +48,14 @@ def layout() -> html.Div:
                         [
                             _route(
                                 "Counts without donor labels",
-                                "Donor ignorant",
+                                "Donor-ignorant",
                                 "Use one total count per cell when donor identity is unavailable or outside the question.",
                                 "cell_id · condition · count",
                                 "/event-counts/donor-ignorant",
                             ),
                             _route(
                                 "Counts grouped by donor",
-                                "Donor aware",
+                                "Donor-aware",
                                 "Add donor identifiers to separate variation among cells within donors from differences between donors.",
                                 "cell_id · donor_id · condition · count",
                                 "/event-counts/donor-aware",

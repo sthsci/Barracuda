@@ -16,7 +16,7 @@ NOTEBOOKS = (
         "category": "Start here",
         "title": "Run the BARRACUDA web app",
         "path": "notebooks/00_run_the_barracuda_web_app.ipynb",
-        "description": "Launch the complete interactive BARRACUDA website inside Google Colab.",
+        "description": "Launch the interactive BARRACUDA web app in Google Colab.",
     },
     {
         "category": "Teaching",
@@ -60,7 +60,7 @@ NOTEBOOKS = (
 def layout() -> html.Div:
     sections = []
     introductions = {
-        "Start here": "Open the complete interface before choosing a focused notebook.",
+        "Start here": "Open the web app before choosing a focused notebook.",
         "Teaching": "Build intuition with guided examples and synthetic data.",
         "Analysis": "Use the reusable workflows as a starting point for your own data.",
     }
@@ -99,13 +99,13 @@ def layout() -> html.Div:
             page_header(
                 "Resources",
                 "Learn and analyse in Google Colab",
-                "Run BARRACUDA without a local installation, follow the teaching material, or adapt an analysis workflow to your own approved data.",
+                "Run BARRACUDA in Google Colab, follow guided examples, or adapt a workflow to approved data.",
                 badge="Seven notebooks · Opens in a new tab",
                 crumb="Google Colab notebooks",
             ),
             html.Div(
                 [
-                    html.Div([html.Strong("Prefer local Python?"), html.P("Install the package and use the simulation, inference, and export API directly.")]),
+                    html.Div([html.Strong("Prefer local Python?"), html.P("Install the package to use the simulation, inference, and export API directly.")]),
                     dcc.Link("Open the Python API", href="/python-api", className="barracuda-button secondary"),
                 ],
                 className="barracuda-resource-switcher",
