@@ -25,7 +25,7 @@ TITLE = "Bayesian inference 101"
 
 BDA3_URL = "https://sites.stat.columbia.edu/gelman/book/BDA3.pdf"
 SEEING_THEORY_URL = "https://seeing-theory.brown.edu/bayesian-inference/index.html"
-MCMC_GALLERY_URL = "https://chi-feng.github.io/mcmc-demo/"
+MCMC_GUIDE_URL = "https://mc-stan.org/docs/cmdstan-guide/mcmc_config.html"
 PYMC_SMC_URL = "https://www.pymc.io/projects/docs/en/stable/api/generated/pymc.smc.sample_smc.html"
 PYMC_BF_URL = "https://www.pymc.io/projects/examples/en/latest/diagnostics_and_criticism/Bayes_factor.html"
 THOMAS_BAYES_URL = "https://en.wikipedia.org/wiki/Thomas_Bayes"
@@ -42,8 +42,11 @@ BOOK_MONO = "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace
 IMPERIAL_BLUE = "#00548F"
 IMPERIAL_SKY = "#549DC5"
 OXIDE_RED = "#B44E37"
+MCMC_WARMUP = 200
 MCMC_DRAWS = 1_000
+MCMC_STATES = MCMC_WARMUP + MCMC_DRAWS
 MCMC_FRAME_STEP = 10
+MCMC_RECENT_PATH = 40
 
 TWO_PARAMETER_DATA = np.array([4.8, 4.9, 5.0, 5.1, 5.3])
 MEAN_BOUNDS = (4.35, 5.85)
@@ -51,6 +54,11 @@ SCALE_BOUNDS = (0.08, 0.85)
 MEAN_PRIOR_LOCATION = 5.45
 MEAN_PRIOR_SCALE = 0.15
 SCALE_PRIOR_SCALE = 0.45
+MEAN_MARGINAL_EDGES = np.linspace(*MEAN_BOUNDS, 25)
+SCALE_MARGINAL_EDGES = np.linspace(*SCALE_BOUNDS, 21)
+SMC_PARTICLES = 180
+SMC_ESS_FRACTION = 0.70
+SMC_MOVE_STEPS = 8
 SURFACE_COLORS = [[0.0, BOOK_PAPER], [0.35, "#C4D8DC"], [0.72, IMPERIAL_SKY], [1.0, "#003E6B"]]
 SAMPLER_PLATE_SHAPES = [
     {"type": "rect", "xref": "paper", "yref": "paper", "x0": -0.01, "x1": 0.772, "y0": 0.758, "y1": 1.01, "fillcolor": BOOK_SHEET, "line": {"color": BOOK_RULE, "width": 1}, "layer": "below"},
@@ -355,48 +363,35 @@ def _parameter_log_prior(mean: float, scale: float) -> float:
     return -0.5 * ((mean - MEAN_PRIOR_LOCATION) / MEAN_PRIOR_SCALE) ** 2 - 0.5 * (scale / SCALE_PRIOR_SCALE) ** 2
 
 
-@lru_cache(maxsize=1)
-def _bayes_update_figure() -> go.Figure:
-    """Compare likelihood, prior and posterior on synchronized axes."""
-    means, scales, likelihood, prior, _unnormalised, posterior, _evidence = _two_parameter_surfaces()
-    panels = (
-        ("Relative likelihood", "Likelihood", likelihood),
-        ("Prior density", "Prior density", prior),
-        ("Posterior density", "Posterior density", posterior),
-    )
-    figure = make_subplots(rows=1, cols=3, shared_xaxes=True, shared_yaxes=True, subplot_titles=[panel[0] for panel in panels], horizontal_spacing=0.075)
-    for column, (_title, quantity, surface) in enumerate(panels, 1):
-        figure.add_trace(
-            go.Contour(
-                x=means,
-                y=scales,
-                z=surface / float(np.max(surface)),
-                customdata=surface,
-                zmin=0,
-                zmax=1,
-                colorscale=SURFACE_COLORS,
-                contours={"coloring": "heatmap", "showlines": False},
-                showscale=column == 3,
-                colorbar={"title": "Relative<br>support", "thickness": 10, "len": 0.7} if column == 3 else None,
-                hovertemplate=f"Mean μ: %{{x:.2f}}<br>SD σ: %{{y:.2f}}<br>{quantity}: %{{customdata:.3g}}<extra></extra>",
-            ),
-            row=1,
-            col=column,
-        )
-    figure.update_layout(
-        **_plot_layout(height=430, bottom_margin=64, top_margin=62, left_margin=58, right_margin=62),
-        hovermode="closest",
-        annotations=[
-            *list(figure.layout.annotations),
-            {"text": "×", "x": 0.33, "y": 0.5, "xref": "paper", "yref": "paper", "showarrow": False, "font": {"size": 24, "color": BOOK_RULE}},
-            {"text": "→", "x": 0.67, "y": 0.5, "xref": "paper", "yref": "paper", "showarrow": False, "font": {"size": 24, "color": BOOK_RULE}},
-        ],
-    )
-    for column in range(1, 4):
-        figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=1, col=column)
-        figure.update_yaxes(range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=1, col=column)
-    figure.update_yaxes(title="SD σ", row=1, col=1)
-    return figure
+@lru_cache(maxsize=32)
+def _tempered_surface(temperature: float) -> np.ndarray:
+    _, _, likelihood, prior, _, _, _ = _two_parameter_surfaces()
+    log_likelihood = np.log(np.clip(likelihood, 1e-300, None))
+    log_prior = np.log(np.clip(prior, 1e-300, None))
+    return _relative_density(log_prior + float(temperature) * log_likelihood)
+
+
+def _relative_histogram(
+    values: Sequence[float] | np.ndarray,
+    edges: np.ndarray,
+    *,
+    weights: np.ndarray | None = None,
+) -> np.ndarray:
+    """Return fixed-bin frequencies scaled to their largest bin."""
+
+    if len(values) == 0:
+        return np.zeros(len(edges) - 1)
+    counts, _ = np.histogram(values, bins=edges, weights=weights)
+    maximum = float(np.max(counts))
+    return counts / maximum if maximum > 0 else np.zeros_like(counts, dtype=float)
+
+
+@lru_cache(maxsize=32)
+def _target_marginals(temperature: float) -> tuple[np.ndarray, np.ndarray]:
+    target = _tempered_surface(float(temperature))
+    mean_marginal = target.sum(axis=0)
+    scale_marginal = target.sum(axis=1)
+    return mean_marginal / mean_marginal.max(), scale_marginal / scale_marginal.max()
 
 
 def _posterior_contour_trace(*, name: str = "Posterior surface") -> go.Contour:
@@ -419,7 +414,7 @@ def _posterior_contour_trace(*, name: str = "Posterior surface") -> go.Contour:
 
 @lru_cache(maxsize=1)
 def _mcmc_figure() -> go.Figure:
-    """Animate a chain becoming a joint sample with aligned marginals."""
+    """Animate warm-up and retained Metropolis draws with fixed marginals."""
     rng = np.random.default_rng(401)
     current_mean, current_scale = 5.66, 0.68
     means = [current_mean]
@@ -429,7 +424,7 @@ def _mcmc_figure() -> go.Figure:
     accepted_updates = [True]
     decisions = ["Starting pair"]
 
-    for _ in range(MCMC_DRAWS - 1):
+    for _ in range(MCMC_STATES - 1):
         proposed_mean = current_mean + rng.normal(0.0, 0.075)
         proposed_scale = current_scale + rng.normal(0.0, 0.045)
         current_log_target = _parameter_log_likelihood(current_mean, current_scale) + _parameter_log_prior(current_mean, current_scale)
@@ -444,6 +439,11 @@ def _mcmc_figure() -> go.Figure:
         scales.append(current_scale)
         decisions.append("Accepted proposal" if accepted else "Rejected proposal; stayed here")
 
+    grid_means, grid_scales, *_ = _two_parameter_surfaces()
+    target_mean, target_scale = _target_marginals(1.0)
+    mean_centres = (MEAN_MARGINAL_EDGES[:-1] + MEAN_MARGINAL_EDGES[1:]) / 2.0
+    scale_centres = (SCALE_MARGINAL_EDGES[:-1] + SCALE_MARGINAL_EDGES[1:]) / 2.0
+
     figure = make_subplots(
         rows=2,
         cols=2,
@@ -455,21 +455,25 @@ def _mcmc_figure() -> go.Figure:
         horizontal_spacing=0.035,
         vertical_spacing=0.035,
     )
-    figure.add_trace(go.Histogram(x=[means[0]], nbinsx=22, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
+    figure.add_trace(go.Bar(x=mean_centres, y=np.zeros_like(mean_centres), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9, name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, hovertemplate="Mean μ: %{x:.3f}<br>Relative frequency: %{y:.3f}<extra>Retained marginal</extra>"), row=1, col=1)
+    figure.add_trace(go.Scatter(x=grid_means, y=target_mean, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}), row=1, col=1)
     figure.add_trace(_posterior_contour_trace(), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Retained chain", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[], y=[], mode="markers", name="Retained draws", marker={"color": IMPERIAL_BLUE, "size": 4, "opacity": 0.32}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Recent chain path", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}), row=2, col=1)
     figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}), row=2, col=1)
     figure.add_trace(go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposal", marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
-    figure.add_trace(go.Histogram(y=[scales[0]], nbinsy=18, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
-    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=[f"Draw 1/{MCMC_DRAWS:,} · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.add_trace(go.Bar(x=np.zeros_like(scale_centres), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h", name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Relative frequency: %{x:.3f}<extra>Retained marginal</extra>"), row=2, col=2)
+    figure.add_trace(go.Scatter(x=target_scale, y=grid_scales, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}, showlegend=False), row=2, col=2)
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=[f"Warm-up 1/{MCMC_WARMUP:,} · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     frame_indices = [0, *range(MCMC_FRAME_STEP - 1, len(means), MCMC_FRAME_STEP)]
     figure.frames = [
         go.Frame(
             name=f"mcmc-{index}",
-            traces=[0, 2, 3, 4, 5, 6],
+            traces=[0, 3, 4, 5, 6, 7, 9],
             data=[
-                go.Histogram(x=means[: index + 1], nbinsx=22, histnorm="probability density"),
-                go.Scatter(x=means[: index + 1], y=scales[: index + 1], mode="lines+markers", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}),
+                go.Bar(x=mean_centres, y=_relative_histogram(retained_means, MEAN_MARGINAL_EDGES), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9),
+                go.Scatter(x=retained_means, y=retained_scales, mode="markers", marker={"color": IMPERIAL_BLUE, "size": 4, "opacity": 0.32}),
+                go.Scatter(x=means[path_start : index + 1], y=scales[path_start : index + 1], mode="lines+markers", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}),
                 go.Scatter(x=[mean], y=[scale], mode="markers", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}),
                 go.Scatter(
                     x=[proposed_means[index]],
@@ -482,16 +486,12 @@ def _mcmc_figure() -> go.Figure:
                         "line": {"color": IMPERIAL_SKY if accepted_updates[index] else OXIDE_RED, "width": 2},
                     },
                 ),
-                go.Histogram(y=scales[: index + 1], nbinsy=18, histnorm="probability density"),
+                go.Bar(x=_relative_histogram(retained_scales, SCALE_MARGINAL_EDGES), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h"),
                 go.Scatter(
                     x=[MEAN_BOUNDS[0] + 0.04],
                     y=[SCALE_BOUNDS[1] - 0.04],
                     mode="text",
-                    text=[
-                        f"Draw {MCMC_DRAWS:,}/{MCMC_DRAWS:,} · joint sample complete · marginals ready"
-                        if index == len(means) - 1
-                        else f"Draw {index + 1:,}/{MCMC_DRAWS:,} · {decisions[index].lower()}"
-                    ],
+                    text=[status],
                     textposition="middle right",
                     textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
                     showlegend=False,
@@ -501,6 +501,21 @@ def _mcmc_figure() -> go.Figure:
         )
         for index in frame_indices
         for mean, scale in [(means[index], scales[index])]
+        for retained_means, retained_scales in [
+            (
+                means[MCMC_WARMUP : index + 1] if index >= MCMC_WARMUP else [],
+                scales[MCMC_WARMUP : index + 1] if index >= MCMC_WARMUP else [],
+            )
+        ]
+        for path_start in [max(0, index - MCMC_RECENT_PATH + 1)]
+        for retained_count in [len(retained_means)]
+        for status in [
+            (
+                f"Warm-up {index + 1:,}/{MCMC_WARMUP:,} · {decisions[index].lower()}"
+                if index < MCMC_WARMUP
+                else f"Retained {retained_count:,}/{MCMC_DRAWS:,} · {decisions[index].lower()}"
+            )
+        ]
     ]
     figure.update_layout(
         **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
@@ -519,7 +534,7 @@ def _mcmc_figure() -> go.Figure:
                 "bordercolor": BOOK_INK,
                 "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
                 "buttons": [
-                    {"label": "Run 1,000 draws", "method": "animate", "args": [None, {"frame": {"duration": 100, "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]},
+                    {"label": f"Run {MCMC_STATES:,} chain states", "method": "animate", "args": [None, {"frame": {"duration": 85, "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]},
                     {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
                 ],
             }
@@ -544,10 +559,10 @@ def _mcmc_figure() -> go.Figure:
     )
     figure.update_layout(plot_bgcolor="rgba(0,0,0,0)", shapes=SAMPLER_PLATE_SHAPES)
     figure.update_xaxes(range=list(MEAN_BOUNDS), showgrid=False, showticklabels=False, row=1, col=1)
-    figure.update_yaxes(title="Density of μ", showgrid=False, showticklabels=False, row=1, col=1)
+    figure.update_yaxes(title="Relative marginal of μ", range=[0, 1.05], showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
     figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
-    figure.update_xaxes(title="Density of σ", showgrid=False, showticklabels=False, row=2, col=2)
+    figure.update_xaxes(title="Relative marginal of σ", range=[0, 1.05], showgrid=False, showticklabels=False, row=2, col=2)
     figure.update_yaxes(range=list(SCALE_BOUNDS), showgrid=False, showticklabels=False, row=2, col=2)
     return figure
 
@@ -559,65 +574,87 @@ def _systematic_resample(weights: np.ndarray, rng: np.random.Generator) -> np.nd
     return np.searchsorted(cumulative, positions)
 
 
+def _importance_weights(log_likelihoods: np.ndarray, temperature_step: float) -> np.ndarray:
+    log_weights = temperature_step * log_likelihoods
+    log_weights -= np.max(log_weights)
+    weights = np.exp(log_weights)
+    return weights / weights.sum()
+
+
+def _next_smc_temperature(current: float, log_likelihoods: np.ndarray) -> float:
+    """Choose the next temperature so incremental-weight ESS stays usable."""
+    target_ess = SMC_ESS_FRACTION * len(log_likelihoods)
+    full_step_weights = _importance_weights(log_likelihoods, 1.0 - current)
+    if 1.0 / np.sum(full_step_weights**2) >= target_ess:
+        return 1.0
+
+    lower, upper = current, 1.0
+    for _ in range(40):
+        candidate = (lower + upper) / 2.0
+        weights = _importance_weights(log_likelihoods, candidate - current)
+        if 1.0 / np.sum(weights**2) < target_ess:
+            upper = candidate
+        else:
+            lower = candidate
+    return lower
+
+
 @lru_cache(maxsize=1)
 def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, str, np.ndarray, np.ndarray, np.ndarray]]]:
-    """Generate deterministic tempered SMC states for the visual explanation."""
+    """Generate deterministic adaptive-tempering SMC states."""
     rng = np.random.default_rng(902)
-    temperatures = np.linspace(0.0, 1.0, 11)
-    n_particles = 46
 
     def draw_within_bounds(draw, bounds: tuple[float, float]) -> np.ndarray:
         accepted: list[float] = []
-        while len(accepted) < n_particles:
-            candidates = np.asarray(draw(n_particles * 2))
+        while len(accepted) < SMC_PARTICLES:
+            candidates = np.asarray(draw(SMC_PARTICLES * 2))
             accepted.extend(candidates[(candidates >= bounds[0]) & (candidates <= bounds[1])].tolist())
-        return np.asarray(accepted[:n_particles])
+        return np.asarray(accepted[:SMC_PARTICLES])
 
     means = draw_within_bounds(lambda size: rng.normal(MEAN_PRIOR_LOCATION, MEAN_PRIOR_SCALE, size), MEAN_BOUNDS)
     scales = draw_within_bounds(lambda size: np.abs(rng.normal(0.0, SCALE_PRIOR_SCALE, size)), SCALE_BOUNDS)
-    uniform_weights = np.full(n_particles, 1.0 / n_particles)
+    uniform_weights = np.full(SMC_PARTICLES, 1.0 / SMC_PARTICLES)
     states = [(0.0, "prior", means.copy(), scales.copy(), uniform_weights.copy())]
+    temperatures = [0.0]
 
-    for previous_temperature, temperature in zip(temperatures[:-1], temperatures[1:], strict=True):
+    while temperatures[-1] < 1.0:
+        previous_temperature = temperatures[-1]
         log_likelihoods = np.array([_parameter_log_likelihood(mean, scale) for mean, scale in zip(means, scales, strict=True)])
-        incremental_log_weights = (temperature - previous_temperature) * log_likelihoods
-        incremental_log_weights -= np.max(incremental_log_weights)
-        weights = np.exp(incremental_log_weights)
-        weights /= weights.sum()
-        states.append((float(temperature), "reweight", means.copy(), scales.copy(), weights.copy()))
+        temperature = _next_smc_temperature(previous_temperature, log_likelihoods)
+        weights = _importance_weights(log_likelihoods, temperature - previous_temperature)
+        temperatures.append(temperature)
+        states.append((temperature, "reweight", means.copy(), scales.copy(), weights.copy()))
+
+        particles = np.column_stack((means, scales))
+        proposal_covariance = np.cov(particles, rowvar=False, aweights=weights, ddof=0)
+        proposal_covariance = proposal_covariance * (2.38**2 / 2.0) + np.diag([1e-5, 1e-5])
         ancestors = _systematic_resample(weights, rng)
         means = means[ancestors]
         scales = scales[ancestors]
-        states.append((float(temperature), "resample", means.copy(), scales.copy(), uniform_weights.copy()))
+        states.append((temperature, "resample", means.copy(), scales.copy(), uniform_weights.copy()))
 
-        for _ in range(3):
-            for particle in range(n_particles):
-                proposed_mean = means[particle] + rng.normal(0.0, 0.055)
-                proposed_scale = scales[particle] + rng.normal(0.0, 0.032)
+        for _ in range(SMC_MOVE_STEPS):
+            proposals = np.column_stack((means, scales)) + rng.multivariate_normal([0.0, 0.0], proposal_covariance, SMC_PARTICLES)
+            for particle, (proposed_mean, proposed_scale) in enumerate(proposals):
                 current_target = _parameter_log_prior(means[particle], scales[particle]) + temperature * _parameter_log_likelihood(means[particle], scales[particle])
                 proposed_target = _parameter_log_prior(proposed_mean, proposed_scale) + temperature * _parameter_log_likelihood(proposed_mean, proposed_scale)
                 if np.log(rng.random()) < min(0.0, proposed_target - current_target):
                     means[particle] = proposed_mean
                     scales[particle] = proposed_scale
-        states.append((float(temperature), "move", means.copy(), scales.copy(), uniform_weights.copy()))
-    return temperatures, states
-
-
-def _tempered_surface(temperature: float) -> np.ndarray:
-    _, _, likelihood, prior, _, _, _ = _two_parameter_surfaces()
-    log_likelihood = np.log(np.clip(likelihood, 1e-300, None))
-    log_prior = np.log(np.clip(prior, 1e-300, None))
-    return _relative_density(log_prior + temperature * log_likelihood)
+        states.append((temperature, "move", means.copy(), scales.copy(), uniform_weights.copy()))
+    return np.asarray(temperatures), states
 
 
 @lru_cache(maxsize=1)
 def _smc_figure() -> go.Figure:
-    """Animate tempered particles into a joint sample and marginals."""
+    """Animate adaptive tempering, resampling, and mutation."""
     _, states = _smc_particle_states()
     initial_temperature, initial_phase, initial_means, initial_scales, initial_weights = states[0]
+    grid_means, grid_scales, *_ = _two_parameter_surfaces()
+    mean_centres = (MEAN_MARGINAL_EDGES[:-1] + MEAN_MARGINAL_EDGES[1:]) / 2.0
+    scale_centres = (SCALE_MARGINAL_EDGES[:-1] + SCALE_MARGINAL_EDGES[1:]) / 2.0
 
     def contour(temperature: float) -> go.Contour:
-        grid_means, grid_scales, _, _, _, _, _ = _two_parameter_surfaces()
         return go.Contour(
             x=grid_means,
             y=grid_scales,
@@ -628,16 +665,16 @@ def _smc_figure() -> go.Figure:
             contours={"coloring": "heatmap", "showlines": False},
             showscale=False,
             hoverinfo="skip",
-            name="Tempered target",
+            name="Tempered grid target",
         )
 
     def particle_marker(phase: str, weights: np.ndarray) -> dict:
-        marker = {"size": 8, "opacity": 0.86, "line": {"color": BOOK_SHEET, "width": 1.2}}
+        marker = {"size": 6, "opacity": 0.78, "line": {"color": BOOK_SHEET, "width": 0.8}}
         if phase == "reweight":
             relative_weights = weights / weights.max()
             marker.update(
                 color=relative_weights,
-                size=6 + 10 * np.sqrt(relative_weights),
+                size=4 + 8 * np.sqrt(relative_weights),
                 colorscale=[[0.0, IMPERIAL_SKY], [1.0, OXIDE_RED]],
                 cmin=0,
                 cmax=1,
@@ -649,15 +686,24 @@ def _smc_figure() -> go.Figure:
 
     def status_text(temperature: float, phase: str, weights: np.ndarray) -> str:
         if phase == "prior":
-            return "β = 0.00 · particles represent the prior"
+            return f"β = 0.00 · {SMC_PARTICLES} particles drawn from the prior"
         if phase == "reweight":
             effective_particles = 1.0 / float(np.sum(weights**2))
-            return f"β = {temperature:.2f} · 1/3 reweight by likelihood · ESS {effective_particles:.0f}/46"
+            return f"β = {temperature:.3f} · 1/3 reweight · ESS {effective_particles:.0f}/{SMC_PARTICLES}"
         if phase == "resample":
-            return f"β = {temperature:.2f} · 2/3 resample supported particles"
+            return f"β = {temperature:.3f} · 2/3 resample · equal weights restored"
         if temperature == 1.0:
-            return "β = 1.00 · posterior joint cloud · marginals ready"
-        return f"β = {temperature:.2f} · 3/3 move particles to restore diversity"
+            return "β = 1.000 · finite particle approximation to the posterior"
+        return f"β = {temperature:.3f} · 3/3 mutate · mutation step complete"
+
+    def marginal_traces(temperature: float, means: np.ndarray, scales: np.ndarray, weights: np.ndarray) -> tuple[go.Bar, go.Scatter, go.Bar, go.Scatter]:
+        target_mean, target_scale = _target_marginals(temperature)
+        return (
+            go.Bar(x=mean_centres, y=_relative_histogram(means, MEAN_MARGINAL_EDGES, weights=weights), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9),
+            go.Scatter(x=grid_means, y=target_mean, mode="lines", line={"color": IMPERIAL_BLUE, "width": 2}),
+            go.Bar(x=_relative_histogram(scales, SCALE_MARGINAL_EDGES, weights=weights), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h"),
+            go.Scatter(x=target_scale, y=grid_scales, mode="lines", line={"color": IMPERIAL_BLUE, "width": 2}),
+        )
 
     figure = make_subplots(
         rows=2,
@@ -670,19 +716,28 @@ def _smc_figure() -> go.Figure:
         horizontal_spacing=0.035,
         vertical_spacing=0.035,
     )
-    figure.add_trace(go.Histogram(x=initial_means, nbinsx=22, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="Mean μ: %{x:.3f}<br>Density: %{y:.3f}<extra>μ marginal</extra>"), row=1, col=1)
+    initial_mean_bar, initial_mean_target, initial_scale_bar, initial_scale_target = marginal_traces(initial_temperature, initial_means, initial_scales, initial_weights)
+    initial_mean_bar.update(name="Particle marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, hovertemplate="Mean μ: %{x:.3f}<br>Relative frequency: %{y:.3f}<extra>Particle marginal</extra>")
+    initial_mean_target.update(name="Grid stage target", line={"color": IMPERIAL_BLUE, "width": 2})
+    initial_scale_bar.update(marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Relative frequency: %{x:.3f}<extra>Particle marginal</extra>")
+    initial_scale_target.update(line={"color": IMPERIAL_BLUE, "width": 2}, showlegend=False)
+    figure.add_trace(initial_mean_bar, row=1, col=1)
+    figure.add_trace(initial_mean_target, row=1, col=1)
     figure.add_trace(contour(initial_temperature), row=2, col=1)
     figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker=particle_marker(initial_phase, initial_weights), hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
-    figure.add_trace(go.Histogram(y=initial_scales, nbinsy=18, histnorm="probability density", marker={"color": IMPERIAL_BLUE, "line": {"color": BOOK_SHEET, "width": 0.8}}, opacity=0.76, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Density: %{x:.3f}<extra>σ marginal</extra>"), row=2, col=2)
-    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=["β = 0.00 · particles represent the prior"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.add_trace(initial_scale_bar, row=2, col=2)
+    figure.add_trace(initial_scale_target, row=2, col=2)
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=[status_text(initial_temperature, initial_phase, initial_weights)], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     figure.frames = [
         go.Frame(
             name=f"smc-{index}",
             data=[
-                go.Histogram(x=means, nbinsx=22, histnorm="probability density"),
+                mean_bar,
+                mean_target,
                 contour(temperature),
                 go.Scatter(x=means, y=scales, mode="markers", marker=particle_marker(phase, weights)),
-                go.Histogram(y=scales, nbinsy=18, histnorm="probability density"),
+                scale_bar,
+                scale_target,
                 go.Scatter(
                     x=[MEAN_BOUNDS[0] + 0.04],
                     y=[SCALE_BOUNDS[1] - 0.04],
@@ -696,6 +751,7 @@ def _smc_figure() -> go.Figure:
             ],
         )
         for index, (temperature, phase, means, scales, weights) in enumerate(states)
+        for mean_bar, mean_target, scale_bar, scale_target in [marginal_traces(temperature, means, scales, weights)]
     ]
     figure.update_layout(
         **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
@@ -728,7 +784,7 @@ def _smc_figure() -> go.Figure:
                 "pad": {"t": 4},
                 "steps": [
                     {
-                        "label": f"β {temperature:.1f}" if phase in {"prior", "move"} else "",
+                        "label": f"β {temperature:.2f}" if phase in {"prior", "move"} else "",
                         "method": "animate",
                         "args": [[f"smc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 80}}],
                     }
@@ -739,10 +795,10 @@ def _smc_figure() -> go.Figure:
     )
     figure.update_layout(plot_bgcolor="rgba(0,0,0,0)", shapes=SAMPLER_PLATE_SHAPES)
     figure.update_xaxes(range=list(MEAN_BOUNDS), showgrid=False, showticklabels=False, row=1, col=1)
-    figure.update_yaxes(title="Density of μ", showgrid=False, showticklabels=False, row=1, col=1)
+    figure.update_yaxes(title="Relative marginal of μ", range=[0, 1.05], showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
     figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
-    figure.update_xaxes(title="Density of σ", showgrid=False, showticklabels=False, row=2, col=2)
+    figure.update_xaxes(title="Relative marginal of σ", range=[0, 1.05], showgrid=False, showticklabels=False, row=2, col=2)
     figure.update_yaxes(range=list(SCALE_BOUNDS), showgrid=False, showticklabels=False, row=2, col=2)
     return figure
 
@@ -1059,32 +1115,41 @@ def layout() -> html.Div:
                     html.Span("Bayesian updating", className="barracuda-section-label"),
                     html.H3("From likelihood and prior to posterior"),
                     html.P(
-                        "The likelihood identifies parameter values supported by the observations. The prior describes which values were plausible before observing these data. Their product determines the posterior distribution.",
+                        "Bayesian updating combines what the data support with what was plausible before these data were observed.",
                         className="barracuda-copy",
                     ),
-                    html.P(
-                        "Which combinations of the population mean (μ) and standard deviation (σ) remain plausible after observing the data?",
-                        className="barracuda-question",
-                    ),
                     html.Div(
-                        dcc.Graph(
-                            id="bayes-update-animation",
-                            figure=_bayes_update_figure(),
-                            config={"displaylogo": False, "responsive": True},
-                            className="barracuda-update-plot",
-                            style={"height": "430px"},
-                        ),
-                        className="barracuda-bayes-triptych",
-                        role="group",
-                        **{"aria-label": "Relative likelihood times prior density produces posterior density over population mean and standard deviation"},
-                    ),
-                    html.P("All panels use identical axes and one shared relative-support scale.", className="barracuda-surface-legend"),
-                    html.Details(
                         [
-                            html.Summary("How normalisation turns the product into a probability density"),
-                            html.P("Dividing the likelihood-prior product by its integral Z makes the posterior integrate to one; the contour locations do not change."),
+                            html.Div(
+                                [
+                                    html.Span("01"),
+                                    html.Strong("Likelihood"),
+                                    html.P("The likelihood asks which pairs of μ and σ are compatible with the five measurements. It uses the data but not the prior."),
+                                ]
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("02"),
+                                    html.Strong("Prior"),
+                                    html.P("The prior assigns greater density to values considered plausible before these measurements were observed."),
+                                ]
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("03"),
+                                    html.Strong("Combine"),
+                                    html.P("Multiplication retains parameter pairs supported by both the likelihood and the prior."),
+                                ]
+                            ),
+                            html.Div(
+                                [
+                                    html.Span("04"),
+                                    html.Strong("Normalise"),
+                                    html.P("Dividing by the integral Z gives a posterior density with total probability one. It changes the scale, not the relative support."),
+                                ]
+                            ),
                         ],
-                        className="barracuda-details",
+                        className="barracuda-bf-flow",
                     ),
                     note(
                         "Likelihood is not posterior probability",
@@ -1129,19 +1194,19 @@ def layout() -> html.Div:
                                         html.Aside(
                                             [
                                                 html.Span("MCMC", className="barracuda-sampler-tag"),
-                                                html.H3("Retain one accepted pair at a time"),
-                                                html.P("Each proposal is accepted or rejected against the fixed posterior. The retained pairs form a joint sample."),
+                                                html.H3("Follow one chain through the posterior"),
+                                                html.P("The first 200 chain states are discarded as warm-up. The next 1,000 retained states form the displayed sample."),
                                                 html.Ol(
                                                     [
-                                                        html.Li("Propose (μ′, σ′)."),
+                                                        html.Li("Use a symmetric random walk to propose (μ′, σ′)."),
                                                         html.Li("Compare its unnormalised posterior q with the current pair."),
-                                                        html.Li("Accept or stay put."),
-                                                        html.Li("Read the completed joint cloud and its marginals."),
+                                                        html.Li("If accepted, move to the proposal; if rejected, retain the current pair again."),
+                                                        html.Li("Add each retained state to the joint cloud and fixed-bin marginal bars."),
                                                     ],
                                                     className="barracuda-sampler-steps",
                                                 ),
                                                 markdown(r"$$a=\min\left(1,\frac{q(\mu',\sigma')}{q(\mu,\sigma)}\right)$$", class_name="barracuda-equation small", mathjax=True),
-                                                html.P(["The normalising constant cancels. Compare algorithms in the ", _external_link("interactive MCMC gallery", MCMC_GALLERY_URL), "."], className="barracuda-help"),
+                                                html.P(["The blue lines show grid-based reference marginals; the bars show the retained sample. Their agreement is useful visually, but formal assessment requires diagnostics such as effective sample size. See ", _external_link("Stan’s MCMC guidance", MCMC_GUIDE_URL), "."], className="barracuda-help"),
                                             ]
                                         ),
                                         html.Div(
@@ -1170,18 +1235,19 @@ def layout() -> html.Div:
                                             [
                                                 html.Span("SMC", className="barracuda-sampler-tag"),
                                                 html.H3("Move a population from prior to posterior"),
-                                                html.P("The temperature β controls the contribution of the fixed likelihood. No new observations are added between stages."),
+                                                html.P("The temperature β controls the contribution of the fixed likelihood. The blue contour and lines show a grid-based target at each stage."),
                                                 html.Ol(
                                                     [
-                                                        html.Li("β = 0: draw particles from the prior."),
-                                                        html.Li("Increase β and reweight by likelihood."),
-                                                        html.Li("Resample and move to restore diversity."),
-                                                        html.Li("β = 1: read the posterior joint cloud and marginals."),
+                                                        html.Li(f"At β = 0, draw {SMC_PARTICLES} particles from the prior."),
+                                                        html.Li(f"Choose the largest next β that keeps effective sample size near {SMC_ESS_FRACTION:.0%}; finish at β = 1 when it remains above that threshold."),
+                                                        html.Li("Resample supported particles and reset their weights."),
+                                                        html.Li(f"Attempt {SMC_MOVE_STEPS} Metropolis mutation steps per particle at the current tempered target."),
+                                                        html.Li("At β = 1, compare the finite particle approximation with the posterior target."),
                                                     ],
                                                     className="barracuda-sampler-steps",
                                                 ),
                                                 markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="barracuda-equation small", mathjax=True),
-                                                html.P(["Implementation details: ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
+                                                html.P(["The bars are weighted during reweighting and use fixed bins throughout. This sequence follows the stages documented for ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
                                             ]
                                         ),
                                         html.Div(
