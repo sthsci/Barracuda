@@ -38,10 +38,10 @@ def layout() -> html.Div:
                     html.Figure(
                         [
                             html.Img(
-                                src="/assets/figure_abstract_papercraft.png",
-                                alt="Paper diorama showing microscopy observations becoming an ordered contact history and then two candidate biological mechanisms.",
-                                width=1672,
-                                height=941,
+                                src="/assets/figure_abstract.png",
+                                alt="Time lapse imaging becomes an ordered immune-cell contact history, then Bayesian models compare population heterogeneity with changes after previous contacts.",
+                                width=1820,
+                                height=867,
                             ),
                             html.Figcaption("From single-cell observations to biological explanations with quantified uncertainty."),
                         ]
@@ -62,7 +62,6 @@ def layout() -> html.Div:
                                 "Compare homogeneous, continuously heterogeneous, and nonengaging population structures.",
                                 "/event-counts/donor-ignorant",
                                 "Analyse event counts",
-                                specimen="counts",
                             ),
                             task_card(
                                 "Counts grouped by donor",
@@ -71,7 +70,6 @@ def layout() -> html.Div:
                                 "Separate within donor cellular variation from differences between donors.",
                                 "/event-counts/donor-aware",
                                 "Analyse donor grouped counts",
-                                specimen="donors",
                             ),
                             task_card(
                                 "Ordered contact histories",
@@ -80,7 +78,6 @@ def layout() -> html.Div:
                                 "Test whether previous contacts alter later killing decisions.",
                                 "/trajectory",
                                 "Analyse contact histories",
-                                specimen="history",
                             ),
                         ],
                         className="barracuda-task-grid",

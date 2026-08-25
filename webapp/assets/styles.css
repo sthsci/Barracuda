@@ -786,7 +786,7 @@ button { touch-action: manipulation; }
   .barracuda-workflow-panel, .barracuda-interactive-section { padding: 1rem; border-radius: 2px; }
   .barracuda-model-definition-grid { grid-template-columns: 1fr; }
   .barracuda-schematic-scroll-hint { display: block; }
-  .barracuda-schematic-models img { width: auto; min-width: 780px; max-width: none; }
+  .barracuda-schematic-models img { width: 780px; min-width: 780px; max-width: none; }
   .barracuda-schematic-validation img { width: auto; min-width: 860px; max-width: none; }
   .barracuda-metrics { grid-template-columns: 1fr; }
   .barracuda-download-grid { grid-template-columns: 1fr; }
@@ -910,38 +910,12 @@ h3 { margin: 1.4rem 0 0.6rem; }
 .barracuda-config-rail .barracuda-note { grid-template-columns: 1fr; gap: 4px; }
 .barracuda-upload-requirements { margin: 8px 0 0; color: var(--barracuda-ink-soft); font-size: .74rem; }
 .barracuda-task-grid { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 16px; }
-.barracuda-task-card { position: relative; display: flex; flex-direction: column; min-height: 390px; padding: 20px 22px 22px; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line); border-top: 3px double var(--barracuda-primary); border-radius: 0; box-shadow: 3px 4px 0 rgba(23,39,44,.08); }
+.barracuda-task-card { position: relative; display: flex; flex-direction: column; min-height: 330px; padding: 20px 22px 22px; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line); border-top: 3px double var(--barracuda-primary); border-radius: 0; box-shadow: 3px 4px 0 rgba(23,39,44,.08); }
 .barracuda-task-card:hover { border-color: var(--barracuda-primary); box-shadow: 3px 4px 0 rgba(0,84,143,.14); }
-.barracuda-task-card h3 { margin-top: 1rem; font-size: 1.25rem; }
+.barracuda-task-card h3 { margin-top: 0; font-size: 1.25rem; }
 .barracuda-task-card p { color: var(--barracuda-ink-soft); font-size: .9rem; }
 .barracuda-task-card code { color: var(--barracuda-ink); font-family: var(--barracuda-mono); font-size: .75rem; }
 .barracuda-task-card .barracuda-card-link { margin-top: auto; font-weight: 800; }
-.barracuda-specimen-diagram { position: relative; height: 88px; overflow: hidden; border-bottom: 1px solid var(--barracuda-line-soft); }
-.barracuda-specimen-diagram span { position: absolute; display: block; border: 2px solid var(--barracuda-primary); background: rgba(84,157,197,.28); }
-.barracuda-specimen-diagram.counts span { bottom: 14px; width: 13px; border-bottom-width: 4px; }
-.barracuda-specimen-diagram.counts span:nth-child(1) { left: 9%; height: 18px; }
-.barracuda-specimen-diagram.counts span:nth-child(2) { left: 24%; height: 34px; }
-.barracuda-specimen-diagram.counts span:nth-child(3) { left: 39%; height: 52px; background: rgba(0,84,143,.32); }
-.barracuda-specimen-diagram.counts span:nth-child(4) { left: 54%; height: 65px; background: rgba(0,84,143,.42); }
-.barracuda-specimen-diagram.counts span:nth-child(5) { left: 69%; height: 39px; }
-.barracuda-specimen-diagram.counts span:nth-child(6) { left: 84%; height: 24px; border-color: var(--barracuda-rust); background: rgba(180,78,55,.22); }
-.barracuda-specimen-diagram.donors::before { content: ""; position: absolute; left: 12%; right: 12%; bottom: 18px; border-top: 2px solid var(--barracuda-primary); }
-.barracuda-specimen-diagram.donors span { bottom: 18px; width: 22px; height: 42px; border-bottom-width: 5px; }
-.barracuda-specimen-diagram.donors span:nth-child(1) { left: 12%; height: 30px; }
-.barracuda-specimen-diagram.donors span:nth-child(2) { left: 28%; height: 48px; }
-.barracuda-specimen-diagram.donors span:nth-child(3) { left: 45%; height: 60px; border-color: var(--barracuda-rust); background: rgba(180,78,55,.2); }
-.barracuda-specimen-diagram.donors span:nth-child(4) { left: 62%; height: 38px; }
-.barracuda-specimen-diagram.donors span:nth-child(5) { left: 78%; height: 54px; }
-.barracuda-specimen-diagram.donors span:nth-child(6) { right: 7%; bottom: 14px; width: 7px; height: 7px; border: 0; background: var(--barracuda-primary); }
-.barracuda-specimen-diagram.history::before { content: ""; position: absolute; left: 7%; right: 9%; top: 44px; border-top: 2px solid var(--barracuda-primary); }
-.barracuda-specimen-diagram.history::after { content: ""; position: absolute; right: 7%; top: 38px; width: 10px; height: 10px; border-top: 2px solid var(--barracuda-primary); border-right: 2px solid var(--barracuda-primary); transform: rotate(45deg); }
-.barracuda-specimen-diagram.history span { top: 30px; width: 19px; height: 29px; border-width: 2px 2px 5px; }
-.barracuda-specimen-diagram.history span:nth-child(1) { left: 8%; }
-.barracuda-specimen-diagram.history span:nth-child(2) { left: 23%; border-color: var(--barracuda-rust); background: rgba(180,78,55,.22); }
-.barracuda-specimen-diagram.history span:nth-child(3) { left: 38%; }
-.barracuda-specimen-diagram.history span:nth-child(4) { left: 53%; }
-.barracuda-specimen-diagram.history span:nth-child(5) { left: 68%; border-color: var(--barracuda-rust); background: rgba(180,78,55,.22); }
-.barracuda-specimen-diagram.history span:nth-child(6) { left: 83%; }
 .barracuda-home-hero { display: grid; grid-template-columns: minmax(0,1.05fr) minmax(420px,.95fr); gap: 48px; align-items: center; min-height: min(640px, calc(100vh - 104px)); padding: 32px 0 48px; }
 .barracuda-home-hero h1 { max-width: 720px; margin: 12px 0 20px; font-size: clamp(2.8rem,4.4vw,3.5rem); line-height: 1.06; letter-spacing: -.035em; }
 .barracuda-home-lead { max-width: 670px; color: var(--barracuda-ink-soft); font-size: 1.12rem; }

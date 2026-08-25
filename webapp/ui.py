@@ -116,22 +116,9 @@ def task_card(
     outcome: str,
     path: str,
     action: str,
-    *,
-    specimen: str | None = None,
 ) -> html.Article:
     return html.Article(
         [
-            *(
-                [
-                    html.Div(
-                        [html.Span() for _ in range(6)],
-                        className=f"barracuda-specimen-diagram {specimen}",
-                        **{"aria-hidden": "true"},
-                    )
-                ]
-                if specimen
-                else []
-            ),
             html.H3(title),
             html.P([html.Strong("Use when: "), use_when]),
             html.P([html.Strong("Required data: "), html.Code(schema)]),
@@ -233,8 +220,8 @@ def schematic_figure(
                 html.Img(
                     src=src,
                     alt=alt,
-                    width=2520,
-                    height=688 if variant == "models" else 672,
+                    width=4016 if variant == "models" else 2520,
+                    height=1560 if variant == "models" else 672,
                 ),
                 className="barracuda-schematic-scroll",
                 tabIndex=0,
