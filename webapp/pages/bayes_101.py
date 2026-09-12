@@ -8,6 +8,7 @@ from functools import lru_cache
 import numpy as np
 import plotly.graph_objects as go
 from dash import Input, Output, dcc, html
+from dash.exceptions import PreventUpdate
 from plotly.subplots import make_subplots
 from scipy.integrate import trapezoid
 from scipy.stats import beta as beta_distribution
@@ -18,6 +19,7 @@ from webapp.core.coin import (
     uniform_prior_posterior,
 )
 from webapp.palette import CONDITION_BISPECIFIC, DONOR_RUST, DONOR_TEAL, MODEL_ZERO_INFLATED_GAMMA, PAPER_SPINE
+from webapp.pages.bayes_resources import learning_resources
 from webapp.ui import markdown, metrics, note, page_header, step_card
 
 
@@ -25,7 +27,6 @@ PATH = "/bayesian-101"
 TITLE = "Bayesian inference 101"
 
 BDA3_URL = "https://sites.stat.columbia.edu/gelman/book/BDA3.pdf"
-SEEING_THEORY_URL = "https://seeing-theory.brown.edu/bayesian-inference/index.html"
 MCMC_GUIDE_URL = "https://mc-stan.org/docs/cmdstan-guide/mcmc_config.html"
 PYMC_SMC_URL = "https://www.pymc.io/projects/docs/en/stable/api/generated/pymc.smc.sample_smc.html"
 PYMC_BF_URL = "https://www.pymc.io/projects/examples/en/latest/diagnostics_and_criticism/Bayes_factor.html"
@@ -113,7 +114,7 @@ def _coin_figure(
     interval_mass = float(hdi_percent) / 100.0
     interval = beta_highest_density_interval(posterior_alpha, posterior_beta, interval_mass)
 
-    x = np.linspace(0.0, 1.0, 700)
+    x = np.unique(np.r_[np.linspace(0.0, 1.0, 700), interval])
     posterior = beta_distribution.pdf(x, posterior_alpha, posterior_beta)
     density_limit = max(float(np.max(posterior)) * 1.08, 1.15)
     in_interval = (x >= interval[0]) & (x <= interval[1])
@@ -124,7 +125,7 @@ def _coin_figure(
             x=x,
             y=np.ones_like(x),
             mode="lines",
-            name="Uniform prior",
+            name="Prior: Beta(1, 1)",
             line={"color": PAPER_SPINE, "width": 2},
             hovertemplate="Prior density: 1<extra></extra>",
         )
@@ -134,9 +135,9 @@ def _coin_figure(
             x=x,
             y=posterior,
             mode="lines",
-            name=f"Posterior, Beta({posterior_alpha}, {posterior_beta})",
+            name=f"Posterior: Beta({posterior_alpha}, {posterior_beta})",
             line={"color": DONOR_TEAL, "width": 3},
-            hovertemplate="P(head): %{x:.3f}<br>Density: %{y:.3f}<extra></extra>",
+            hovertemplate="θ: %{x:.3f}<br>Posterior density: %{y:.3f}<extra></extra>",
         )
     )
     figure.add_trace(
@@ -156,8 +157,8 @@ def _coin_figure(
             x=[probability_heads, probability_heads],
             y=[0.0, density_limit],
             mode="lines",
-            name=f"True probability {probability_heads:.2f}",
-            line={"color": CONDITION_BISPECIFIC, "width": 2},
+            name=f"Generating θ₀ = {probability_heads:.2f}",
+            line={"color": CONDITION_BISPECIFIC, "width": 2, "dash": "dot"},
             hoverinfo="skip",
         )
     )
@@ -166,7 +167,7 @@ def _coin_figure(
             x=[observed, observed],
             y=[0.0, density_limit],
             mode="lines",
-            name=f"Observed frequency {observed:.2f}",
+            name=f"MLE h/n = {observed:.2f}",
             line={"color": MODEL_ZERO_INFLATED_GAMMA, "width": 2, "dash": "dash"},
             hoverinfo="skip",
         )
@@ -174,7 +175,7 @@ def _coin_figure(
     figure.update_layout(
         **_plot_layout(height=430, bottom_margin=66),
         xaxis={
-            "title": "Probability of heads",
+            "title": "Success probability θ",
             "range": [0, 1],
             "gridcolor": BOOK_GRID,
             "linecolor": BOOK_RULE,
@@ -207,9 +208,9 @@ def _coin_figure(
 
     posterior_mean = posterior_alpha / (posterior_alpha + posterior_beta)
     values = [
-        ("Tosses observed", f"{heads} heads · {tails} tails"),
-        ("Observed P(head)", f"{observed:.3f}"),
-        ("Posterior mean P(head)", f"{posterior_mean:.3f}"),
+        ("Observed data", f"{heads} heads · {tails} tails"),
+        ("Maximum likelihood · h/n", f"{observed:.3f}"),
+        ("Posterior mean · E[θ | y]", f"{posterior_mean:.3f}"),
         (f"Posterior {hdi_percent}% HDI", f"{interval[0]:.3f}–{interval[1]:.3f}"),
     ]
     return figure, values
@@ -218,88 +219,66 @@ def _coin_figure(
 def _coin_frequency_figure(
     probability_heads: float,
     outcomes: Sequence[int] | np.ndarray,
+    interval_percent: int = 95,
 ) -> go.Figure:
-    """Plot cumulative empirical frequencies for heads and tails."""
-    tosses = np.arange(1, len(outcomes) + 1)
-    heads = np.cumsum(np.asarray(outcomes, dtype=float)) / tosses
-    tails = 1.0 - heads
-    true_heads = float(probability_heads)
-    true_tails = 1.0 - true_heads
+    """Show exact sequential posterior means and pointwise equal-tailed intervals."""
+    tosses = np.arange(len(outcomes) + 1)
+    heads = np.r_[0, np.cumsum(outcomes)]
+    alpha, beta = heads + 1, tosses - heads + 1
+    posterior_mean = alpha / (alpha + beta)
+    tail = (1 - interval_percent / 100) / 2
+    lower = beta_distribution.ppf(tail, alpha, beta)
+    upper = beta_distribution.ppf(1 - tail, alpha, beta)
 
     figure = go.Figure()
-    figure.add_trace(
-        go.Scatter(
-            x=tosses,
-            y=heads,
-            mode="lines+markers" if len(tosses) <= 40 else "lines",
-            name="Empirical heads",
-            line={"color": DONOR_TEAL, "width": 2.5},
-            marker={"size": 5},
-            hovertemplate="Toss %{x}<br>Heads: %{y:.3f}<extra></extra>",
-        )
-    )
-    figure.add_trace(
-        go.Scatter(
-            x=tosses,
-            y=tails,
-            mode="lines+markers" if len(tosses) <= 40 else "lines",
-            name="Empirical tails",
-            line={"color": DONOR_RUST, "width": 2.5},
-            marker={"size": 5},
-            hovertemplate="Toss %{x}<br>Tails: %{y:.3f}<extra></extra>",
-        )
-    )
-    figure.add_trace(
-        go.Scatter(
-            x=[1, max(1, len(tosses))],
-            y=[true_heads, true_heads],
-            mode="lines",
-            name=f"True heads {true_heads:.2f}",
-            line={"color": DONOR_TEAL, "width": 1.5, "dash": "dot"},
-            hoverinfo="skip",
-        )
-    )
-    figure.add_trace(
-        go.Scatter(
-            x=[1, max(1, len(tosses))],
-            y=[true_tails, true_tails],
-            mode="lines",
-            name=f"True tails {true_tails:.2f}",
-            line={"color": DONOR_RUST, "width": 1.5, "dash": "dot"},
-            hoverinfo="skip",
-        )
-    )
+    figure.add_trace(go.Scatter(
+        x=tosses, y=lower, mode="lines", line={"width": 0},
+        name="Lower credible limit", showlegend=False, hoverinfo="skip",
+    ))
+    figure.add_trace(go.Scatter(
+        x=tosses, y=upper, mode="lines", line={"width": 0},
+        fill="tonexty", fillcolor="rgba(0,133,133,0.18)",
+        name=f"{interval_percent}% equal-tailed interval", hoverinfo="skip",
+    ))
+    figure.add_trace(go.Scatter(
+        x=tosses, y=posterior_mean,
+        customdata=np.column_stack((lower, upper)),
+        mode="lines+markers" if len(tosses) <= 40 else "lines",
+        name="Posterior mean", line={"color": DONOR_TEAL, "width": 2.5},
+        marker={"size": 4},
+        hovertemplate="n = %{x}<br>E[θ | y]: %{y:.3f}<br>Credible interval: [%{customdata[0]:.3f}, %{customdata[1]:.3f}]<extra></extra>",
+    ))
+    figure.add_trace(go.Scatter(
+        x=tosses[1:], y=heads[1:] / tosses[1:],
+        mode="lines+markers" if len(tosses) <= 40 else "lines",
+        name="MLE h/n", line={"color": MODEL_ZERO_INFLATED_GAMMA, "width": 1.5, "dash": "dash"},
+        marker={"size": 4},
+        hovertemplate="n = %{x}<br>h/n: %{y:.3f}<extra></extra>",
+    ))
+    figure.add_trace(go.Scatter(
+        x=[0, len(outcomes)], y=[probability_heads, probability_heads],
+        mode="lines", name=f"Generating θ₀ = {probability_heads:.2f}",
+        line={"color": CONDITION_BISPECIFIC, "width": 2, "dash": "dot"},
+        hoverinfo="skip",
+    ))
     figure.update_layout(
-        **_plot_layout(height=410, bottom_margin=64),
+        **_plot_layout(height=430, bottom_margin=66),
         xaxis={
-            "title": "Number of tosses",
-            "range": [1, max(2, len(tosses))],
-            "gridcolor": BOOK_GRID,
-            "linecolor": BOOK_RULE,
-            "ticks": "outside",
-            "tickcolor": BOOK_RULE,
-            "zeroline": False,
-            "automargin": True,
+            "title": "Observations included, n (0 = prior)",
+            "range": [0, max(2, len(outcomes))],
+            "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE,
+            "ticks": "outside", "tickcolor": BOOK_RULE,
+            "zeroline": False, "automargin": True,
         },
         yaxis={
-            "title": "Empirical frequency",
-            "range": [0, 1],
-            "tickformat": ".0%",
-            "gridcolor": BOOK_GRID,
-            "linecolor": BOOK_RULE,
-            "ticks": "outside",
-            "tickcolor": BOOK_RULE,
-            "zeroline": False,
-            "automargin": True,
+            "title": "Success probability θ", "range": [0, 1],
+            "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE,
+            "ticks": "outside", "tickcolor": BOOK_RULE,
+            "zeroline": False, "automargin": True,
         },
         legend={
-            "orientation": "h",
-            "y": 1.02,
-            "yanchor": "bottom",
-            "x": 0,
-            "xanchor": "left",
-            "bgcolor": "rgba(255,254,250,0.88)",
-            "font": {"size": 11},
+            "orientation": "h", "y": 1.02, "yanchor": "bottom",
+            "x": 0, "xanchor": "left", "font": {"size": 11},
         },
         hovermode="x unified",
     )
@@ -307,10 +286,54 @@ def _coin_frequency_figure(
 
 
 def _recent_outcomes(outcomes: Sequence[int] | np.ndarray) -> list[html.Span]:
-    recent = list(outcomes)[-24:]
     return [
-        html.Span("H" if outcome else "T", className=f"barracuda-outcome {'heads' if outcome else 'tails'}")
-        for outcome in recent
+        html.Span(
+            str(int(outcome)),
+            className=f"barracuda-outcome {'heads' if outcome else 'tails'}",
+            title=f"Observation {index + 1}: {'head' if outcome else 'tail'}",
+        )
+        for index, outcome in enumerate(outcomes[:24])
+    ]
+
+
+def _coin_experiment_summary(outcomes: np.ndarray, probability_heads: float, seed: int) -> list:
+    """Keep the observed data, exact update and predictive calculation together."""
+    n = len(outcomes)
+    heads = int(outcomes.sum())
+    alpha, beta = uniform_prior_posterior(heads, n)
+    predictive = alpha / (alpha + beta)
+    return [
+        html.Span("Observed sample → inference → prediction", className="barracuda-section-label"),
+        html.H3("One dataset, an exact update"),
+        html.P(
+            f"n = {n}; h = {heads}; n − h = {n - heads}. The count h is sufficient for θ under the independent, constant-probability model.",
+            className="barracuda-bernoulli-copy",
+        ),
+        html.P(f"First {min(n, 24)} observations · head = 1, tail = 0", className="barracuda-mini-label"),
+        html.Div(_recent_outcomes(outcomes), id="coin-outcomes", className="barracuda-outcome-strip"),
+        markdown(
+            rf"$$p(\theta\mid y)=\frac{{\theta^{{{heads}}}(1-\theta)^{{{n-heads}}}}}{{B({alpha},{beta})}}$$",
+            class_name="barracuda-equation small barracuda-bernoulli-equation", mathjax=True,
+        ),
+        html.P(
+            f"Exact posterior: Beta({alpha}, {beta}). B is the beta function, which normalizes the density; no posterior sampling is required.",
+            className="barracuda-bernoulli-copy",
+        ),
+        html.Div([
+            html.Span("Posterior predictive · next trial", className="barracuda-mini-label"),
+            html.Strong(f"P(next head | y) = {predictive:.3f}", id="coin-predictive"),
+            html.P("Averaging θ over its posterior gives (h + 1)/(n + 2). This probability is the posterior mean, even when h/n is 0 or 1."),
+        ], className="barracuda-bernoulli-predictive"),
+        html.Details([
+            html.Summary(f"Reproduce this dataset · seed {seed}"),
+            html.P(f"NumPy {np.__version__} Generator(PCG64) generates the Bernoulli observations. The posterior depends only on the observations and prior; θ₀ is used only to generate and assess the simulation."),
+            html.Pre(
+                f"import numpy as np\ntheta_0 = {probability_heads!r}\n"
+                f"rng = np.random.default_rng({seed})\ny = rng.binomial(1, theta_0, size={n})",
+            ),
+            html.P("Complete observed sequence (in order):"),
+            html.Pre(", ".join(str(int(outcome)) for outcome in outcomes), id="coin-observed-sequence"),
+        ], className="barracuda-bernoulli-reproducibility"),
     ]
 
 
@@ -457,14 +480,14 @@ def _mcmc_figure() -> go.Figure:
         horizontal_spacing=0.035,
         vertical_spacing=0.035,
     )
-    figure.add_trace(go.Bar(x=mean_centres, y=np.zeros_like(mean_centres), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9, name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, hovertemplate="Mean μ: %{x:.3f}<br>Relative frequency: %{y:.3f}<extra>Retained marginal</extra>"), row=1, col=1)
+    figure.add_trace(go.Bar(x=mean_centres, y=np.zeros_like(mean_centres), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9, name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, hovertemplate="Mean μ: %{x:.3f}<br>Fraction of largest bin: %{y:.3f}<extra>Retained marginal</extra>"), row=1, col=1)
     figure.add_trace(go.Scatter(x=grid_means, y=target_mean, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}), row=1, col=1)
     figure.add_trace(_posterior_contour_trace(), row=2, col=1)
     figure.add_trace(go.Scatter(x=[], y=[], mode="markers", name="Retained draws", marker={"color": IMPERIAL_BLUE, "size": 4, "opacity": 0.32}), row=2, col=1)
     figure.add_trace(go.Scatter(x=[means[initial_index]], y=[scales[initial_index]], mode="lines+markers", name="Recent chain path", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}), row=2, col=1)
     figure.add_trace(go.Scatter(x=[means[initial_index]], y=[scales[initial_index]], mode="markers", name="Current pair", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}), row=2, col=1)
     figure.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="Proposal", line={"color": IMPERIAL_SKY, "width": 2, "dash": "dot"}, marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
-    figure.add_trace(go.Bar(x=np.zeros_like(scale_centres), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h", name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Relative frequency: %{x:.3f}<extra>Retained marginal</extra>"), row=2, col=2)
+    figure.add_trace(go.Bar(x=np.zeros_like(scale_centres), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h", name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Fraction of largest bin: %{x:.3f}<extra>Retained marginal</extra>"), row=2, col=2)
     figure.add_trace(go.Scatter(x=target_scale, y=grid_scales, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}, showlegend=False), row=2, col=2)
     figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[f"{MCMC_WARMUP} warm-up states discarded<br>Watch a proposal, then its decision."], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     frames = [go.Frame(name="mcmc-start", traces=[0, 3, 4, 5, 6, 7, 9], data=[figure.data[index] for index in [0, 3, 4, 5, 6, 7, 9]])]
@@ -737,9 +760,9 @@ def _smc_figure() -> go.Figure:
         vertical_spacing=0.035,
     )
     initial_mean_bar, initial_mean_target, initial_scale_bar, initial_scale_target = marginal_traces(initial_temperature, initial_means, initial_scales, initial_weights)
-    initial_mean_bar.update(name="Particle marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, hovertemplate="Mean μ: %{x:.3f}<br>Relative frequency: %{y:.3f}<extra>Particle marginal</extra>")
+    initial_mean_bar.update(name="Particle marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, hovertemplate="Mean μ: %{x:.3f}<br>Fraction of largest bin: %{y:.3f}<extra>Particle marginal</extra>")
     initial_mean_target.update(name="Grid stage target", line={"color": IMPERIAL_BLUE, "width": 2})
-    initial_scale_bar.update(marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Relative frequency: %{x:.3f}<extra>Particle marginal</extra>")
+    initial_scale_bar.update(marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Fraction of largest bin: %{x:.3f}<extra>Particle marginal</extra>")
     initial_scale_target.update(line={"color": IMPERIAL_BLUE, "width": 2}, showlegend=False)
     figure.add_trace(initial_mean_bar, row=1, col=1)
     figure.add_trace(initial_mean_target, row=1, col=1)
@@ -846,10 +869,11 @@ def _source_note(*children) -> html.P:
 def _contents() -> html.Nav:
     items = [
         ("01", "Bayes theorem", "#bayes-theorem"),
-        ("02", "Coin experiment", "#coin-experiment"),
+        ("02", "Bernoulli model", "#coin-experiment"),
         ("03", "MCMC and SMC", "#computation"),
         ("04", "Bayes factors", "#bayes-factors"),
         ("05", "Thomas Bayes", "#thomas-bayes"),
+        ("06", "Further learning", "#learning-resources"),
     ]
     return html.Nav(
         [
@@ -878,15 +902,14 @@ def layout() -> html.Div:
         outcomes=initial_outcomes,
     )
     initial_frequency = _coin_frequency_figure(probability, initial_outcomes)
-    initial_face = "Heads" if initial_outcomes[-1] else "Tails"
 
     return html.Div(
         [
             page_header(
                 "Learn",
                 "Bayesian inference for BARRACUDA",
-                "Learn how observations update parameter uncertainty and how model evidence compares alternative biological explanations.",
-                badge="Interactive lesson · no data upload required",
+                "A scientific introduction to probability models, posterior uncertainty and computational inference, with reproducible experiments and an annotated reading pathway.",
+                badge="Interactive methods companion · simulated data",
                 crumb="Bayesian inference",
                 educational=True,
             ),
@@ -897,7 +920,7 @@ def layout() -> html.Div:
                     html.H2("The update at the heart of Bayesian inference"),
                     html.P(
                         "Conditional probability describes how the probability of one event changes after another event is known. "
-                        "Write the same joint event in two ways, then rearrange.",
+                        "For events with positive conditioning probabilities, write the same joint event in two ways, then rearrange.",
                         className="barracuda-section-lead",
                     ),
                     html.Div(
@@ -943,7 +966,7 @@ def layout() -> html.Div:
                     ),
                     html.H3("From events to model parameters"),
                     html.P(
-                        "For data y, parameter θ and model M, the same rule becomes the Bayesian update used in statistics.",
+                        "For data y, parameter θ and model M, the same rule becomes the Bayesian update used in statistics. Here p denotes a probability mass function or density, as appropriate; every inference is conditional on the specified model and prior.",
                         className="barracuda-copy",
                     ),
                     markdown(
@@ -961,9 +984,7 @@ def layout() -> html.Div:
                         className="barracuda-card-grid four barracuda-bayes-terms",
                     ),
                     _source_note(
-                        "Sources: Miller and Miller, ",
-                        html.Em("John E. Freund’s Mathematical Statistics with Applications"),
-                        ", 8th ed., Ch. 2 §§6 and 8; Gelman et al., ",
+                        "Source: Gelman et al., ",
                         _external_link("Bayesian Data Analysis, 3rd ed.", BDA3_URL),
                         ", §1.3.",
                     ),
@@ -973,50 +994,47 @@ def layout() -> html.Div:
             ),
             html.Section(
                 [
-                    html.Span("02 · Coin experiment", className="barracuda-section-label"),
-                    html.H2("Learn the unknown bias of a coin"),
+                    html.Span("02 · Exact inference", className="barracuda-section-label"),
+                    html.H2("A controlled Bernoulli experiment"),
                     html.P(
-                        "Assume independent tosses with an unknown probability θ of heads. A uniform Beta(1, 1) prior and observations of h heads and t tails yield an exact Beta posterior.",
+                        "A coin provides a simple statistical model: each observation is a head (1) or tail (0). Assume independent trials with the same unknown success probability θ. We generate a dataset, compute its exact posterior and distinguish parameter uncertainty from the randomness of the next observation.",
                         className="barracuda-section-lead",
                     ),
                     html.Div(
                         [
-                            markdown(r"$$h\mid\theta,n\sim\operatorname{Binomial}(n,\theta)$$", class_name="barracuda-equation small", mathjax=True),
+                            markdown(r"$$Y_i\mid\theta\overset{\mathrm{iid}}{\sim}\operatorname{Bernoulli}(\theta)$$", class_name="barracuda-equation small", mathjax=True),
                             markdown(r"$$\theta\sim\operatorname{Beta}(1,1)$$", class_name="barracuda-equation small", mathjax=True),
-                            markdown(r"$$\theta\mid h,t\sim\operatorname{Beta}(1+h,1+t)$$", class_name="barracuda-equation small", mathjax=True),
+                            markdown(r"$$\theta\mid y\sim\operatorname{Beta}(h+1,n-h+1)$$", class_name="barracuda-equation small", mathjax=True),
                         ],
                         className="barracuda-equation-triptych",
+                    ),
+                    html.P(
+                        "Here n is the sample size and h = Σᵢyᵢ is the number of heads. The count H | θ follows Binomial(n, θ); its likelihood is proportional to θʰ(1 − θ)ⁿ⁻ʰ. Multiplying by the uniform prior gives the Beta posterior above.",
+                        className="barracuda-copy",
                     ),
                     html.Div(
                         [
                             html.Div(
                                 [
+                                    html.Span("Experiment settings", className="barracuda-section-label"),
                                     html.Label(
                                         [
-                                            html.Span("Simulation truth", className="barracuda-field-label"),
+                                            html.Span("Generating probability θ₀", className="barracuda-field-label"),
                                             dcc.Slider(
-                                                id="coin-probability",
-                                                min=0,
-                                                max=1,
-                                                step=0.01,
-                                                value=probability,
-                                                marks={0: "0", 0.5: "0.5", 1: "1"},
+                                                id="coin-probability", min=0, max=1, step=0.01,
+                                                value=probability, marks={0: "0", 0.5: "0.5", 1: "1"},
                                                 tooltip={"placement": "bottom"},
                                             ),
                                         ],
                                         className="barracuda-field",
                                     ),
-                                    html.Div(id="coin-ground-truth", children="Simulation truth: P(head) = 0.50 · P(tail) = 0.50. This value would be unknown in real inference.", className="barracuda-help"),
+                                    html.Div(id="coin-ground-truth", children="θ₀ = 0.50 is known only because this is a simulation; it is not supplied to the posterior calculation.", className="barracuda-help"),
                                     html.Label(
                                         [
-                                            html.Span("Number of tosses", className="barracuda-field-label"),
+                                            html.Span("Sample size n", className="barracuda-field-label"),
                                             dcc.Slider(
-                                                id="coin-tosses",
-                                                min=1,
-                                                max=500,
-                                                step=1,
-                                                value=n_tosses,
-                                                marks={1: "1", 100: "100", 250: "250", 500: "500"},
+                                                id="coin-tosses", min=1, max=500, step=1,
+                                                value=n_tosses, marks={1: "1", 100: "100", 250: "250", 500: "500"},
                                                 tooltip={"placement": "bottom"},
                                             ),
                                         ],
@@ -1024,91 +1042,65 @@ def layout() -> html.Div:
                                     ),
                                     html.Label(
                                         [
-                                            html.Span("Highest density interval", className="barracuda-field-label"),
+                                            html.Span("Posterior interval probability (%)", className="barracuda-field-label"),
                                             dcc.Slider(
-                                                id="coin-hdi-percent",
-                                                min=50,
-                                                max=99,
-                                                step=1,
-                                                value=hdi_percent,
-                                                marks={50: "50%", 75: "75%", 99: "99%"},
+                                                id="coin-hdi-percent", min=50, max=99, step=1,
+                                                value=hdi_percent, marks={50: "50%", 75: "75%", 99: "99%"},
                                                 tooltip={"placement": "bottom"},
                                             ),
                                         ],
                                         className="barracuda-field",
                                     ),
-                                    html.P("Choose how much posterior probability the HDI should contain.", className="barracuda-help"),
-                                    html.Div([html.Strong("Fixed prior"), html.Br(), "P(head) ~ Beta(1, 1)"], className="barracuda-fixed-prior"),
-                                    html.Button("Toss the coin", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
+                                    html.P("Changing interval probability leaves the observed data unchanged.", className="barracuda-help"),
+                                    html.Div([html.Strong("Fixed prior: θ ∼ Beta(1, 1)"), html.P("Equal-length intervals in θ have equal prior probability. Uniformity is specific to this parameterization.")], className="barracuda-bernoulli-prior"),
+                                    html.Button("Simulate a new dataset", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
+                                    html.P("Replaces all n observations using the next seed. At fixed θ₀ and seed, changing n reveals a longer or shorter prefix of the same sequence. Changing θ₀ generates a different experiment.", className="barracuda-help"),
                                 ],
-                                className="barracuda-control-panel",
+                                className="barracuda-control-panel barracuda-bernoulli-controls",
                             ),
                             html.Div(
-                                [
-                                    html.Div(
-                                        [
-                                            html.Span("Release", className="barracuda-coin-station start", **{"aria-hidden": "true"}),
-                                            html.Span("Read", className="barracuda-coin-station finish", **{"aria-hidden": "true"}),
-                                            html.Span(className="barracuda-coin-track", **{"aria-hidden": "true"}),
-                                            html.Span(className="barracuda-coin-shadow", **{"aria-hidden": "true"}),
-                                            html.Span("H" if initial_face == "Heads" else "T", id="coin-visual-face", className="barracuda-toss-coin", **{"aria-hidden": "true"}),
-                                        ],
-                                        id="coin-toss-scene",
-                                        className="barracuda-coin-stage",
-                                        role="img",
-                                        **{"aria-label": "Animated coin toss between release and read stations"},
-                                    ),
-                                    html.Div([html.Span("Latest toss", className="barracuda-mini-label"), html.Strong(initial_face, id="coin-face")], className="barracuda-coin-result", **{"aria-live": "polite"}),
-                                    html.Div(
-                                        [
-                                            html.Span("Most recent outcomes", className="barracuda-mini-label"),
-                                            html.Div(_recent_outcomes(initial_outcomes), id="coin-outcomes", className="barracuda-outcome-strip"),
-                                        ],
-                                        className="barracuda-recent-outcomes",
-                                    ),
-                                ],
-                                className="barracuda-coin-demo",
+                                _coin_experiment_summary(initial_outcomes, probability, 2026 + toss_round),
+                                id="coin-summary", className="barracuda-bernoulli-summary",
+                                **{"aria-live": "polite"},
                             ),
                         ],
-                        className="barracuda-coin-lab-grid",
+                        className="barracuda-bernoulli-lab-grid",
                     ),
                     html.Div(id="coin-metrics", children=metrics(initial_metrics)),
                     html.Div(
                         [
-                            html.Div(
+                            html.Figure(
                                 [
-                                    html.H3("Prior and posterior for the chance of heads"),
-                                    dcc.Graph(id="coin-figure", figure=initial_figure, config={"displaylogo": False, "responsive": True}, className="barracuda-coin-plot"),
+                                    html.H3("a · Prior and exact posterior"),
+                                    dcc.Graph(id="coin-figure", figure=initial_figure, config={"displayModeBar": False, "responsive": True}, className="barracuda-coin-plot", style={"height": "430px"}),
+                                    html.Figcaption("Each density integrates to one. Shading marks the selected highest-density interval (HDI). The dashed line is the observed proportion h/n, which maximizes the likelihood; the dotted line is the generating θ₀."),
                                 ],
-                                className="barracuda-coin-chart",
+                                className="barracuda-coin-chart barracuda-bernoulli-figure",
                             ),
-                            html.Div(
+                            html.Figure(
                                 [
-                                    html.H3("Cumulative empirical frequencies"),
-                                    dcc.Graph(id="coin-frequency-figure", figure=initial_frequency, config={"displaylogo": False, "responsive": True}, className="barracuda-coin-plot"),
+                                    html.H3("b · Learning from successive observations"),
+                                    dcc.Graph(id="coin-frequency-figure", figure=initial_frequency, config={"displayModeBar": False, "responsive": True}, className="barracuda-coin-plot", style={"height": "430px"}),
+                                    html.Figcaption("At each n, the solid line is E[θ | y₁,…,yₙ] and the shaded band is a pointwise equal-tailed credible interval with the selected probability. Equal-tailed limits use posterior quantiles and can differ from the HDI in panel a."),
                                 ],
-                                className="barracuda-coin-chart",
+                                className="barracuda-coin-chart barracuda-bernoulli-figure",
                             ),
                         ],
                         className="barracuda-coin-plot-grid",
                     ),
                     note(
-                        "How to read the HDI",
-                        "For this one-dimensional Beta posterior, the HDI is the shortest interval containing the selected posterior probability. It describes uncertainty in θ, not the long-run frequency of future intervals.",
+                        "What the uncertainty means",
+                        "A 95% credible interval contains 95% of the posterior probability for θ, conditional on this dataset, prior and model. It is not an interval for individual 0/1 outcomes, and does not assert 95% repeated-sampling coverage. The sequential band is pointwise, not a simultaneous statement about the entire curve.",
                         tone="teal",
                     ),
                     html.P(
-                        [
-                            "As the number of tosses grows, the empirical frequencies usually settle near the true probabilities and the posterior becomes more concentrated. Try the same update visually in ",
-                            _external_link("Seeing Theory’s Bayesian inference lesson", SEEING_THEORY_URL),
-                            ".",
-                        ],
+                        "Under the assumed model, more informative data generally concentrate the posterior, although a realized interval need not shrink after every observation. The prior regularizes small samples: h/n may be 0 or 1 while the posterior predictive probability remains between them. More data do not repair dependence, selection bias or a success probability that changes between trials.",
                         className="barracuda-copy",
                     ),
                     _source_note(
-                        "Sources: Miller and Miller, Ch. 5 §4 and Ch. 10 §9; Gelman et al., ",
-                        _external_link("Bayesian Data Analysis, 3rd ed.", BDA3_URL),
-                        ", Ch. 2 §§2.1–2.3.",
+                        "Derivation and interpretation: Gelman et al., ",
+                        _external_link("Bayesian Data Analysis, 3rd ed., Chapter 2", BDA3_URL),
+                        ". Numerical implementation: SciPy evaluates the Beta density and quantiles; a one-dimensional optimization locates the HDI. The simulation and inference are separate steps.",
                     ),
                 ],
                 id="coin-experiment",
@@ -1133,7 +1125,7 @@ def layout() -> html.Div:
                             ),
                             html.Div(
                                 [
-                                    html.P("Assume five measurements come from a Normal population with an unknown mean μ and unknown standard deviation σ."),
+                                    html.P("Assume five measurements are conditionally independent and identically distributed given an unknown population mean μ and standard deviation σ."),
                                     markdown(r"$$y_i\mid\mu,\sigma\sim\operatorname{Normal}(\mu,\sigma^2),\qquad \sigma>0$$", class_name="barracuda-equation small", mathjax=True),
                                 ],
                                 className="barracuda-example-model",
@@ -1197,6 +1189,15 @@ def layout() -> html.Div:
                         ],
                         className="barracuda-dimension-contrast",
                     ),
+                    html.P(
+                        "Posterior means, event probabilities and predictions require integrating over parameter uncertainty. Sampling replaces such integrals with averages over draws; SMC uses weighted averages. The number of effectively independent draws, rather than the number of plotted points alone, controls Monte Carlo precision.",
+                        className="barracuda-copy",
+                    ),
+                    markdown(
+                        r"$$\mathbb{E}[g(\theta)\mid y]=\int g(\theta)p(\theta\mid y)\,d\theta\ \approx\ \frac{1}{N}\sum_{s=1}^{N}g(\theta^{(s)})$$",
+                        class_name="barracuda-equation small",
+                        mathjax=True,
+                    ),
                     note(
                         "The posterior stays fixed",
                         "MCMC iterations and SMC temperatures do not introduce new data or redefine the posterior. The prior and likelihood already define one target; the algorithms provide different numerical routes to it.",
@@ -1235,7 +1236,7 @@ def layout() -> html.Div:
                                                     className="barracuda-sampler-steps",
                                                 ),
                                                 markdown(r"$$a=\min\left(1,\frac{q(\mu',\sigma')}{q(\mu,\sigma)}\right)$$", class_name="barracuda-equation small", mathjax=True),
-                                                html.P(["The blue lines show grid-based reference marginals; the bars show the retained sample. Their agreement is useful visually, but formal assessment requires diagnostics such as effective sample size. See ", _external_link("Stan’s MCMC guidance", MCMC_GUIDE_URL), "."], className="barracuda-help"),
+                                                html.P(["The blue lines show grid-based reference marginals; the bars show the retained sample. Bars and reference curves are each scaled to their own peak, so compare their shapes. Formal assessment also requires multiple-chain diagnostics, effective sample sizes and Monte Carlo standard errors. See ", _external_link("Stan’s MCMC guidance", MCMC_GUIDE_URL), "."], className="barracuda-help"),
                                             ]
                                         ),
                                         html.Div(
@@ -1276,7 +1277,7 @@ def layout() -> html.Div:
                                                     className="barracuda-sampler-steps",
                                                 ),
                                                 markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="barracuda-equation small", mathjax=True),
-                                                html.P([f"β = 0 uses only the prior; β = 1 uses the full likelihood. Each increase keeps effective sample size (ESS) near {SMC_ESS_FRACTION:.0%} unless the posterior is already reachable. Bars show weighted marginals; blue lines show the current target. See ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
+                                                html.P([f"β = 0 uses only the prior; β = 1 uses the full likelihood. Each increase keeps effective sample size (ESS) near {SMC_ESS_FRACTION:.0%} unless the posterior is already reachable. Bars show weighted marginals; blue lines show the current target. Each is scaled to its own peak to compare shape. See ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
                                             ]
                                         ),
                                         html.Div(
@@ -1341,13 +1342,17 @@ def layout() -> html.Div:
                     ),
                     html.H3("How SMC estimates the evidence"),
                     html.P(
-                        "Each temperature change produces an incremental likelihood weight. Summing the log contributions estimates the log marginal likelihood.",
+                        "Each temperature change produces an incremental likelihood weight. Its weighted average estimates a ratio of successive normalizing constants. With a normalized, proper prior and β progressing from 0 to 1, multiplying these ratios estimates the marginal likelihood.",
                         className="barracuda-copy",
                     ),
                     markdown(
-                        r"$$\log \widehat Z_M=\sum_t\log\left[\frac{1}{N}\sum_{i=1}^{N}p(y\mid\theta_i,M)^{\,\beta_t-\beta_{t-1}}\right]$$",
+                        r"$$\log \widehat Z_M=\sum_t\log\left[\sum_{i=1}^{N}W_{t-1}^{(i)}p(y\mid\theta_{t-1}^{(i)},M)^{\,\beta_t-\beta_{t-1}}\right],\quad \sum_i W_{t-1}^{(i)}=1$$",
                         class_name="barracuda-equation",
                         mathjax=True,
+                    ),
+                    html.P(
+                        "W denotes the normalized particle weight before reweighting; immediately after resampling, W = 1/N. Retain all likelihood normalization constants when estimating evidence. The logarithm of a finite-sample evidence estimate is not generally unbiased; assess stability across independent runs.",
+                        className="barracuda-help",
                     ),
                     html.Div(
                         [
@@ -1362,7 +1367,7 @@ def layout() -> html.Div:
                         [
                             html.Table(
                                 [
-                                    html.Thead(html.Tr([html.Th("Bayes factor BF₁₂"), html.Th("Likelihood of the data under M₁ relative to M₂")])),
+                                    html.Thead(html.Tr([html.Th("Bayes factor BF₁₂"), html.Th("Prior-averaged support for the data under M₁ relative to M₂")])),
                                     html.Tbody(
                                         [
                                             html.Tr([html.Td("100"), html.Td("100 to 1")]),
@@ -1377,6 +1382,15 @@ def layout() -> html.Div:
                             )
                         ],
                         className="barracuda-simple-table-wrap",
+                    ),
+                    markdown(
+                        r"$$\frac{P(M_1\mid y)}{P(M_2\mid y)}=BF_{12}\,\frac{P(M_1)}{P(M_2)}$$",
+                        class_name="barracuda-equation small",
+                        mathjax=True,
+                    ),
+                    html.P(
+                        "The Bayes factor multiplies prior model odds to give posterior model odds; it is not itself a posterior model probability. These ratios are numerical comparisons, not universal thresholds for scientific discovery.",
+                        className="barracuda-copy",
                     ),
                     note(
                         "Interpret with the priors in view",
@@ -1450,24 +1464,11 @@ def layout() -> html.Div:
                         ],
                         className="barracuda-bayes-history-grid",
                     ),
-                    html.Div(
-                        [
-                            html.Strong("References used for this lesson"),
-                            html.Ul(
-                                [
-                                    html.Li("Miller, I. and Miller, M. John E. Freund’s Mathematical Statistics with Applications, 8th ed., Pearson."),
-                                    html.Li(["Gelman, A. et al. ", _external_link("Bayesian Data Analysis, 3rd ed.", BDA3_URL), ". CRC Press."]),
-                                    html.Li([_external_link("Seeing Theory: Bayesian inference", SEEING_THEORY_URL), ". Brown University."]),
-                                    html.Li([_external_link("PyMC: Sequential Monte Carlo", PYMC_SMC_URL), " and ", _external_link("Bayes factors and marginal likelihood", PYMC_BF_URL), "."]),
-                                ]
-                            ),
-                        ],
-                        className="barracuda-reference-box",
-                    ),
                 ],
                 id="thomas-bayes",
                 className="barracuda-lesson-section",
             ),
+            learning_resources(),
         ],
         className="barracuda-bayes-page",
     )
@@ -1479,20 +1480,22 @@ def register_callbacks(app) -> None:
         Output("coin-frequency-figure", "figure"),
         Output("coin-metrics", "children"),
         Output("coin-ground-truth", "children"),
-        Output("coin-toss-scene", "className"),
-        Output("coin-visual-face", "children"),
-        Output("coin-face", "children"),
-        Output("coin-outcomes", "children"),
+        Output("coin-summary", "children"),
         Input("coin-probability", "value"),
         Input("coin-tosses", "value"),
         Input("coin-hdi-percent", "value"),
         Input("coin-toss-again", "n_clicks"),
     )
     def update_coin(probability: float, tosses: int, hdi_percent: int, clicks: int):
-        probability = float(probability)
-        tosses = int(tosses)
-        hdi_percent = int(hdi_percent)
-        toss_round = int(clicks or 0)
+        try:
+            probability = float(probability)
+            tosses = int(tosses)
+            hdi_percent = int(hdi_percent)
+            toss_round = int(clicks or 0)
+        except (TypeError, ValueError, OverflowError):
+            raise PreventUpdate
+        if not (0 <= probability <= 1 and 1 <= tosses <= 500 and 50 <= hdi_percent <= 99 and 0 <= toss_round < 2**32 - 2026):
+            raise PreventUpdate
         outcomes = simulate_coin_tosses(probability, tosses, seed=2026 + toss_round)
         figure, values = _coin_figure(
             probability,
@@ -1501,17 +1504,12 @@ def register_callbacks(app) -> None:
             hdi_percent,
             outcomes=outcomes,
         )
-        frequency_figure = _coin_frequency_figure(probability, outcomes)
-        face = "Heads" if outcomes[-1] else "Tails"
-        animation_class = f"barracuda-coin-stage is-tossing toss-{'a' if toss_round % 2 == 0 else 'b'}"
-        ground_truth = f"Simulation truth: P(head) = {probability:.2f} · P(tail) = {1 - probability:.2f}. This value would be unknown in real inference."
+        frequency_figure = _coin_frequency_figure(probability, outcomes, hdi_percent)
+        ground_truth = f"θ₀ = {probability:.2f} is known only because this is a simulation; it is not supplied to the posterior calculation."
         return (
             figure,
             frequency_figure,
             metrics(values),
             ground_truth,
-            animation_class,
-            "H" if face == "Heads" else "T",
-            face,
-            _recent_outcomes(outcomes),
+            _coin_experiment_summary(outcomes, probability, 2026 + toss_round),
         )

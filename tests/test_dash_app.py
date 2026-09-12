@@ -139,7 +139,9 @@ def test_dash_layout_contains_upload_edit_inference_and_download_surfaces() -> N
         "coin-tosses",
         "coin-hdi-percent",
         "coin-frequency-figure",
-        "coin-toss-scene",
+        "coin-summary",
+        "coin-predictive",
+        "coin-observed-sequence",
         "mcmc-animation",
         "smc-animation",
         "synthetic-generate",
@@ -351,11 +353,41 @@ def test_foundations_coin_uses_fixed_uniform_prior_and_known_extreme_truth() -> 
     figure, values = bayes_101._coin_figure(1.0, 12, 0)
     metrics = dict(values)
 
-    assert metrics["Tosses observed"] == "12 heads · 0 tails"
-    assert metrics["Observed P(head)"] == "1.000"
-    assert metrics["Posterior mean P(head)"] == "0.929"
+    assert metrics["Observed data"] == "12 heads · 0 tails"
+    assert metrics["Maximum likelihood · h/n"] == "1.000"
+    assert metrics["Posterior mean · E[θ | y]"] == "0.929"
     assert metrics["Posterior 95% HDI"] == "0.794–1.000"
-    assert figure.data[0].name == "Uniform prior"
+    assert figure.data[0].name == "Prior: Beta(1, 1)"
+
+
+def test_coin_callback_preserves_data_for_interval_changes_and_reports_prediction() -> None:
+    import pytest
+    from dash import Dash
+    from dash.exceptions import PreventUpdate
+
+    app = Dash(__name__)
+    bayes_101.register_callbacks(app)
+    callback = next(iter(app.callback_map.values()))["callback"].__wrapped__
+    first = callback(0.7, 40, 95, 0)
+    narrower = callback(0.7, 40, 80, 0)
+    resimulated = callback(0.7, 40, 95, 1)
+    assert first[0].data[1].name == narrower[0].data[1].name
+    assert _text(first[4]) == _text(narrower[4])
+    assert _text(first[4]) != _text(resimulated[4])
+    assert "seed 2026" in _text(first[4]) and "seed 2027" in _text(resimulated[4])
+    assert first[1].data[1].name == "95% equal-tailed interval"
+    assert narrower[1].data[1].name == "80% equal-tailed interval"
+    assert "P(next head | y) = 0.929" in _text(callback(1, 12, 95, 0)[4])
+    assert "P(next head | y) = 0.071" in _text(callback(0, 12, 95, 0)[4])
+
+    code = next(component.children for component in _walk(first[4]) if component.__class__.__name__ == "Pre")
+    namespace = {}
+    exec(code, namespace)
+    sequence = next(component.children for component in _walk(first[4]) if getattr(component, "id", None) == "coin-observed-sequence")
+    assert namespace["y"].tolist() == [int(value) for value in sequence.split(", ")]
+    for arguments in ((None, 40, 95, 0), (float("nan"), 40, 95, 0), (0.5, 10**9, 95, 0), (0.5, 40, 100, 0), (0.5, 40, 95, -1)):
+        with pytest.raises(PreventUpdate):
+            callback(*arguments)
 
 
 def test_foundations_page_has_linkable_sections_portrait_and_animated_samplers() -> None:
@@ -366,7 +398,7 @@ def test_foundations_page_has_linkable_sections_portrait_and_animated_samplers()
         if isinstance((component_id := getattr(component, "id", None)), str)
     }
 
-    assert {"bayes-theorem", "coin-experiment", "computation", "bayes-factors", "thomas-bayes"} <= by_id.keys()
+    assert {"bayes-theorem", "coin-experiment", "computation", "bayes-factors", "thomas-bayes", "learning-resources"} <= by_id.keys()
     assert by_id["mcmc-animation"].figure.frames
     assert by_id["smc-animation"].figure.frames
     assert {"bayesian-update-prior", "bayesian-update-likelihood", "bayesian-update-posterior"} <= by_id.keys()

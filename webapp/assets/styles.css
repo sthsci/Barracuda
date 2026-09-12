@@ -537,7 +537,7 @@ button { touch-action: manipulation; }
 
 .barracuda-toc { margin: 1.4rem 0 3rem; padding: 1.1rem 1.2rem 1.25rem; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line); border-top: 3px double var(--barracuda-ink); }
 .barracuda-toc .barracuda-section-label { margin-bottom: 0.7rem; }
-.barracuda-toc-list { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
+.barracuda-toc-list { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 0.55rem; margin: 0; padding: 0; list-style: none; }
 .barracuda-toc-list a { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0.55rem; align-items: center; min-height: 3.25rem; padding: 0.6rem 0.7rem; color: var(--barracuda-ink); background: var(--barracuda-paper); border: 1px solid var(--barracuda-line-soft); font-family: var(--barracuda-sans); font-size: 0.72rem; font-weight: 700; line-height: 1.28; text-decoration: none; }
 .barracuda-toc-list a:hover { color: var(--barracuda-ink); background: var(--barracuda-paper-warm); border-color: var(--barracuda-line); }
 .barracuda-toc-list a span { color: var(--barracuda-rust); font-family: var(--barracuda-mono); font-size: 0.68rem; }
@@ -558,26 +558,6 @@ button { touch-action: manipulation; }
 .barracuda-equation-triptych { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.8rem; margin: 1rem 0 1.5rem; }
 .barracuda-equation-triptych .barracuda-equation { display: grid; min-height: 5.4rem; place-items: center; margin: 0; }
 .barracuda-coin-lab-grid { display: grid; grid-template-columns: minmax(280px, 0.9fr) minmax(260px, 1.1fr); gap: 1rem; align-items: start; }
-.barracuda-coin-demo { display: grid; grid-template-rows: 280px auto auto; min-width: 0; padding: 1rem; background: var(--barracuda-paper-warm); border: 1px solid var(--barracuda-line); }
-.barracuda-coin-stage { position: relative; min-height: 0; height: 280px; overflow: hidden; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); perspective: 700px; }
-.barracuda-coin-stage::before, .barracuda-coin-stage::after { content: ""; position: absolute; bottom: 18%; width: 1px; height: 58%; background: var(--barracuda-line-soft); }
-.barracuda-coin-stage::before { left: 16%; }
-.barracuda-coin-stage::after { right: 16%; }
-.barracuda-coin-track { position: absolute; z-index: 1; left: 10%; right: 10%; bottom: 18%; height: 1px; background: var(--barracuda-line); }
-.barracuda-coin-station { position: absolute; top: 0.8rem; color: var(--barracuda-ink-soft); font-family: var(--barracuda-mono); font-size: 0.62rem; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
-.barracuda-coin-station.start { left: 1rem; }
-.barracuda-coin-station.finish { right: 1rem; }
-.barracuda-coin-shadow { position: absolute; z-index: 2; left: 75.5%; bottom: calc(18% - 0.18rem); width: 3.5rem; height: 0.4rem; background: rgba(23, 39, 44, 0.2); transform: scaleX(0.75); transform-origin: center; }
-.barracuda-toss-coin { position: absolute; z-index: 3; left: 78%; bottom: 18%; display: grid; width: 3.75rem; height: 3.75rem; place-items: center; color: var(--barracuda-ink); background: #D9B45E; border: 0.28rem double var(--barracuda-ink); border-radius: 50%; box-shadow: inset 0 0 0 0.18rem rgba(252, 253, 251, 0.42), 0 0.28rem 0 rgba(23, 39, 44, 0.2); font-family: var(--barracuda-mono); font-size: 1rem; font-weight: 900; transform: translate(-50%, -0.2rem); transform-style: preserve-3d; }
-.barracuda-toss-coin::after { content: "B"; position: absolute; inset: 0.22rem; display: grid; place-items: center; border: 1px solid rgba(23, 39, 44, 0.45); border-radius: 50%; font-size: 0.48rem; opacity: 0.38; transform: rotateY(180deg) translateZ(1px); }
-.barracuda-coin-stage.is-tossing.toss-a .barracuda-toss-coin { animation: barracuda-coin-a 1050ms cubic-bezier(0.2, 0.72, 0.35, 1) both; }
-.barracuda-coin-stage.is-tossing.toss-b .barracuda-toss-coin { animation: barracuda-coin-b 1050ms cubic-bezier(0.2, 0.72, 0.35, 1) both; }
-.barracuda-coin-stage.is-tossing .barracuda-coin-shadow { animation: barracuda-coin-shadow 1050ms ease-in-out both; }
-@keyframes barracuda-coin-a { 0% { left: 16%; bottom: 18%; transform: translate(-50%, -0.2rem) rotateY(0deg) rotateZ(-4deg); } 52% { left: 48%; bottom: 67%; transform: translate(-50%, 0) rotateY(900deg) rotateZ(12deg); } 100% { left: 78%; bottom: 18%; transform: translate(-50%, -0.2rem) rotateY(1800deg) rotateZ(0deg); } }
-@keyframes barracuda-coin-b { 0% { left: 16%; bottom: 18%; transform: translate(-50%, -0.2rem) rotateY(0deg) rotateZ(4deg); } 48% { left: 52%; bottom: 62%; transform: translate(-50%, 0) rotateY(1080deg) rotateZ(-10deg); } 100% { left: 78%; bottom: 18%; transform: translate(-50%, -0.2rem) rotateY(1980deg) rotateZ(0deg); } }
-@keyframes barracuda-coin-shadow { 0% { left: 13.5%; opacity: 0.42; transform: scaleX(0.75); } 50% { left: 45.5%; opacity: 0.1; transform: scaleX(0.28); } 100% { left: 75.5%; opacity: 0.42; transform: scaleX(0.75); } }
-.barracuda-coin-result { display: flex; align-items: baseline; justify-content: space-between; gap: 1rem; padding: 0.75rem 0.1rem 0.55rem; border-bottom: 1px solid var(--barracuda-line-soft); }
-.barracuda-coin-result strong { color: var(--barracuda-navy); font-size: 1.25rem; }
 .barracuda-mini-label { color: var(--barracuda-ink-soft); font-family: var(--barracuda-sans); font-size: 0.68rem; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .barracuda-recent-outcomes { padding-top: 0.65rem; }
 .barracuda-outcome-strip { display: flex; flex-wrap: wrap; gap: 0.25rem; margin-top: 0.45rem; }
@@ -804,8 +784,6 @@ button { touch-action: manipulation; }
   .barracuda-update-ledger li:nth-child(odd) { border-right: 0; }
   .barracuda-sampler-tab { padding-inline: 0.45rem !important; font-size: 0.62rem !important; }
   .barracuda-toc-list a { min-height: 2.65rem; }
-  .barracuda-coin-demo { grid-template-rows: 210px auto auto; }
-  .barracuda-coin-stage { min-height: 0; height: 210px; }
   .barracuda-bayes-portrait { width: min(100%, 260px); margin: 0 auto; }
   .barracuda-bayes-actions { display: grid; }
 }
@@ -954,8 +932,6 @@ h3 { margin: 1.4rem 0 0.6rem; }
 .barracuda-bayes-page .barracuda-toc { position: sticky; z-index: 20; top: 72px; display: grid; grid-template-columns: 105px 1fr; gap: 10px; align-items: center; margin: 0 0 32px; padding: 8px 10px; border: 1px solid var(--barracuda-line-soft); border-radius: var(--barracuda-radius); }
 .barracuda-bayes-page .barracuda-toc .barracuda-section-label { margin: 0; }
 .barracuda-bayes-page .barracuda-toc-list a { min-height: 42px; border-radius: 7px; }
-.barracuda-bayes-page .barracuda-coin-demo { grid-template-rows: 170px auto auto; padding: 12px; border-color: var(--barracuda-line-soft); border-radius: var(--barracuda-radius); }
-.barracuda-bayes-page .barracuda-coin-stage { height: 170px; }
 .barracuda-bayes-triptych { min-width: 0; margin: 20px 0 8px; background: white; border: 1px solid var(--barracuda-line-soft); border-radius: var(--barracuda-radius); overflow: hidden; }
 .barracuda-bayes-page .barracuda-lesson-section { position: relative; margin-top: 4rem; padding-top: 1.5rem; border-top: 3px double var(--barracuda-line); }
 .barracuda-bayes-page .barracuda-lesson-section::after { content: "+"; position: absolute; top: -13px; right: 0; width: 24px; height: 24px; display: grid; place-items: center; color: var(--barracuda-primary); background: var(--barracuda-paper); border: 1px solid var(--barracuda-line); font-family: var(--barracuda-mono); font-size: 1rem; line-height: 1; }
@@ -1002,4 +978,51 @@ h3 { margin: 1.4rem 0 0.6rem; }
   .barracuda-stepper strong { font-size: .66rem; }
   .barracuda-stepper small { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; }
   .barracuda-resource-switcher { display: grid; }
+}
+
+/* Exact Bernoulli experiment: methods, observations and posterior uncertainty. */
+.barracuda-bernoulli-lab-grid { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.1fr); gap: 1rem; align-items: stretch; margin-top: 1.4rem; }
+.barracuda-bernoulli-controls, .barracuda-bernoulli-summary { min-width: 0; padding: 1.2rem; border: 1px solid var(--barracuda-line); }
+.barracuda-bernoulli-summary { background: var(--barracuda-sheet); }
+.barracuda-bernoulli-summary h3 { margin: .4rem 0 .65rem; font-size: 1.35rem; }
+.barracuda-bernoulli-copy { color: var(--barracuda-ink-soft); font-size: .92rem; line-height: 1.6; }
+.barracuda-bernoulli-prior { margin: 1rem 0; padding: .8rem 0; border-top: 1px solid var(--barracuda-line); border-bottom: 1px solid var(--barracuda-line); font-size: .85rem; }
+.barracuda-bernoulli-prior p { margin: .35rem 0 0; color: var(--barracuda-ink-soft); font-size: .8rem; }
+.barracuda-bernoulli-equation { margin: 1rem 0 .8rem; padding: .65rem .3rem; }
+.barracuda-bernoulli-predictive { padding: 1rem 0; border-top: 1px solid var(--barracuda-line-soft); }
+.barracuda-bernoulli-predictive strong { display: block; margin: .4rem 0; color: var(--barracuda-primary); font-size: 1.2rem; }
+.barracuda-bernoulli-predictive p, .barracuda-bernoulli-reproducibility p { margin: .4rem 0; color: var(--barracuda-ink-soft); font-size: .8rem; line-height: 1.6; }
+.barracuda-bernoulli-reproducibility { padding-top: .65rem; border-top: 1px solid var(--barracuda-line-soft); font-size: .8rem; }
+.barracuda-bernoulli-reproducibility summary { cursor: pointer; color: var(--barracuda-primary); font-weight: 700; }
+.barracuda-bernoulli-reproducibility pre { max-height: 12rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; padding: .75rem; background: var(--barracuda-paper-warm); font-size: .72rem; }
+.barracuda-bernoulli-figure { margin: 0; }
+.barracuda-bernoulli-figure figcaption { padding: .8rem .2rem 1rem; color: var(--barracuda-ink-soft); font-size: .8rem; line-height: 1.6; border-top: 1px solid var(--barracuda-line-soft); }
+.barracuda-bayes-page .barracuda-lesson-section { scroll-margin-top: 150px; }
+.barracuda-learning-intro { max-width: 85ch; }
+.barracuda-learning-comparison { margin: 1.5rem 0 2rem; }
+.barracuda-learning-comparison table { min-width: 650px; font-size: .85rem; }
+.barracuda-learning-stage { margin: 0; padding: 1.2rem 0; border-top: 1px solid var(--barracuda-line); scroll-margin-top: 150px; }
+.barracuda-learning-stage summary { color: var(--barracuda-ink); cursor: pointer; font-family: var(--barracuda-serif); font-size: 1.3rem; line-height: 1.5; }
+.barracuda-learning-stage summary h3 { display: inline; font-size: inherit; }
+.barracuda-learning-stage summary:focus-visible, .barracuda-bernoulli-reproducibility summary:focus-visible { outline: 2px solid var(--barracuda-primary); outline-offset: 5px; }
+.barracuda-learning-stage-number { margin-right: .7rem; color: var(--barracuda-rust); font-family: var(--barracuda-mono); font-size: .82rem; }
+.barracuda-learning-stage > p, .barracuda-learning-stage > .barracuda-copy { max-width: 90ch; }
+.barracuda-learning-stage > p { color: var(--barracuda-ink-soft); line-height: 1.7; }
+.barracuda-learning-references { margin: 1.25rem 0 0; padding-left: 2rem; max-width: 100ch; }
+.barracuda-learning-references li { margin-bottom: 1rem; padding-left: .35rem; scroll-margin-top: 150px; font-size: .86rem; line-height: 1.6; }
+.barracuda-learning-references li::marker { color: var(--barracuda-rust); font-family: var(--barracuda-mono); font-size: .75rem; }
+.barracuda-learning-references li > p { margin: .3rem 0; }
+.barracuda-learning-reference-title { font-weight: 650; }
+.barracuda-learning-annotation { margin: .3rem 0 0; color: var(--barracuda-ink-soft); font-size: .82rem; line-height: 1.6; }
+.barracuda-learning-equation { margin: 1.2rem 0; padding: .7rem; overflow-x: auto; background: var(--barracuda-paper-warm); font-size: .95rem; }
+.barracuda-learning-footer { margin-top: 1.2rem; padding-top: 1rem; border-top: 3px double var(--barracuda-line); color: var(--barracuda-ink-soft); font-size: .8rem; line-height: 1.6; }
+@media (min-width: 821px) and (max-width: 1100px) {
+  .barracuda-bayes-page .barracuda-lesson-section, .barracuda-learning-stage, .barracuda-learning-references li { scroll-margin-top: 210px; }
+}
+@media (max-width: 820px) {
+  .barracuda-bayes-page .barracuda-lesson-section, .barracuda-learning-stage, .barracuda-learning-references li { scroll-margin-top: 80px; }
+}
+@media (max-width: 760px) {
+  .barracuda-bernoulli-lab-grid { grid-template-columns: 1fr; }
+  .barracuda-bernoulli-controls, .barracuda-bernoulli-summary { padding: 1rem; }
 }
