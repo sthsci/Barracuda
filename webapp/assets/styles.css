@@ -528,6 +528,8 @@ button { touch-action: manipulation; }
 .barracuda-equation-caption { color: var(--barracuda-navy); font-family: var(--barracuda-mono); text-align: center; }
 .barracuda-equation-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
 .barracuda-concept-panel { padding: 1rem; border: 1px solid var(--barracuda-line); border-radius: 2px; background: var(--barracuda-sheet); }
+.barracuda-update-card { display: flex; min-width: 0; flex-direction: column; }
+.barracuda-update-card > .dash-graph { flex: 0 0 330px; margin-top: auto; }
 
 /* Bayesian inference lesson */
 .barracuda-lesson-section { scroll-margin-top: 1.25rem; margin-top: 3rem; }

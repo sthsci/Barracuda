@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import numpy as np
+from scipy.integrate import trapezoid
 
 from webapp.pages import bayes_101
 
@@ -14,6 +15,13 @@ def test_two_parameter_surfaces_share_a_grid_and_obey_bayes_rule() -> None:
     assert all(np.isfinite(surface).all() for surface in (likelihood, prior, unnormalised, posterior))
     np.testing.assert_allclose(unnormalised, likelihood * prior)
     np.testing.assert_allclose(posterior, unnormalised / evidence)
+    np.testing.assert_allclose(prior, 1.0 / (np.ptp(bayes_101.MEAN_BOUNDS) * np.ptp(bayes_101.SCALE_BOUNDS)))
+    np.testing.assert_allclose(trapezoid(trapezoid(prior, means, axis=1), scales), 1.0)
+    np.testing.assert_allclose(trapezoid(trapezoid(posterior, means, axis=1), scales), 1.0)
+    np.testing.assert_allclose(posterior / posterior.max(), likelihood / likelihood.max())
+    np.testing.assert_allclose(np.exp(bayes_101._parameter_log_prior(means[0], scales[-1])), prior[0, 0])
+    assert bayes_101._parameter_log_prior(means[0] - 0.1, scales[0]) == -np.inf
+    assert bayes_101._parameter_log_prior(means[0], scales[0] - 0.01) == -np.inf
 
 
 def test_likelihood_peak_tracks_the_sample_mean_and_spread() -> None:
@@ -35,6 +43,8 @@ def test_mcmc_animation_contains_accepted_and_rejected_updates_in_valid_space() 
     assert any("rejected" in status for status in statuses)
     assert len(figure.frames[-1].data[1].x) == bayes_101.MCMC_DRAWS
     assert "retained 1,000/1,000" in statuses[-1]
+    assert "sample complete" in statuses[-1]
+    assert len(figure.frames[-1].data[2].x) == 0
     assert sum(trace.type == "bar" for trace in figure.data) == 2
     assert all(trace.type != "histogram" for trace in figure.data)
     assert np.count_nonzero(figure.frames[-1].data[0].y) > 1
@@ -43,6 +53,36 @@ def test_mcmc_animation_contains_accepted_and_rejected_updates_in_valid_space() 
     assert all(np.array_equal(frame.data[5].y, figure.frames[0].data[5].y) for frame in figure.frames)
     assert all(bayes_101.MEAN_BOUNDS[0] <= mean <= bayes_101.MEAN_BOUNDS[1] for mean, _ in current_pairs)
     assert all(bayes_101.SCALE_BOUNDS[0] <= scale <= bayes_101.SCALE_BOUNDS[1] for _, scale in current_pairs)
+
+    teaching = [frame for frame in figure.frames if frame.group == "teaching"]
+    assert len(teaching) == 2 * bayes_101.MCMC_TEACHING_DRAWS
+    assert len(figure.frames[0].data[1].x) == 0
+    previous_pair = current_pairs[0]
+    for draw, (proposal, decision) in enumerate(zip(teaching[::2], teaching[1::2], strict=True), start=1):
+        assert "1/2 propose" in proposal.data[6].text[0]
+        assert "2/2" in decision.data[6].text[0]
+        assert len(proposal.data[1].x) == draw - 1
+        assert len(decision.data[1].x) == draw
+        np.testing.assert_allclose([proposal.data[3].x[0], proposal.data[3].y[0]], previous_pair)
+        next_pair = (decision.data[3].x[0], decision.data[3].y[0])
+        if "rejected" in decision.data[6].text[0]:
+            np.testing.assert_allclose(next_pair, previous_pair)
+        else:
+            np.testing.assert_allclose(next_pair, [proposal.data[4].x[-1], proposal.data[4].y[-1]])
+        previous_pair = next_pair
+    for frame in figure.frames:
+        np.testing.assert_allclose(frame.data[0].y, bayes_101._relative_histogram(frame.data[1].x, bayes_101.MEAN_MARGINAL_EDGES))
+        np.testing.assert_allclose(frame.data[5].x, bayes_101._relative_histogram(frame.data[1].y, bayes_101.SCALE_MARGINAL_EDGES))
+        assert frame.traces == (0, 3, 4, 5, 6, 7, 9)
+    controls = figure.layout.updatemenus[0]
+    assert controls.buttons[0].args[1]["frame"]["duration"] >= 1000
+    assert controls.y > figure.layout.sliders[0].y
+
+    grid_means, grid_scales, *_, posterior, _ = bayes_101._two_parameter_surfaces()
+    posterior_mass = posterior / posterior.sum()
+    final_sample = figure.frames[-1].data[1]
+    np.testing.assert_allclose(np.mean(final_sample.x), np.sum(posterior_mass * grid_means[None, :]), atol=0.05)
+    np.testing.assert_allclose(np.mean(final_sample.y), np.sum(posterior_mass * grid_scales[:, None]), atol=0.05)
 
 
 def test_smc_moves_a_constant_particle_population_from_prior_to_posterior() -> None:
@@ -84,7 +124,7 @@ def test_smc_moves_a_constant_particle_population_from_prior_to_posterior() -> N
 def test_sampler_figures_end_at_readable_joint_and_fixed_marginal_views() -> None:
     smc = bayes_101._smc_figure()
 
-    assert "posterior" in smc.frames[-1].data[-1].text[0]
+    assert "posterior" in smc.frames[-1].layout.annotations[0].text
     assert sum(trace.type == "bar" for trace in smc.data) == 2
     assert all(trace.type != "histogram" for trace in smc.data)
     assert sum(trace.name == "Grid stage target" for trace in smc.data) == 1
@@ -92,3 +132,34 @@ def test_sampler_figures_end_at_readable_joint_and_fixed_marginal_views() -> Non
     assert all(np.array_equal(frame.data[4].y, smc.frames[0].data[4].y) for frame in smc.frames)
     assert len(smc.layout.shapes) == 3
     assert len(bayes_101._mcmc_figure().layout.shapes) == 3
+    # Resampling must expose multiplicity rather than silently overplot copies.
+    _, states = bayes_101._smc_particle_states()
+    for index, (frame, state) in enumerate(zip(smc.frames, states, strict=True)):
+        buttons = {button.label: button for button in frame.layout.updatemenus[0].buttons}
+        assert buttons["Next"].args[0] == (f"smc-{min(index + 1, len(states) - 1)}",)
+        assert buttons["Back"].args[0] == (f"smc-{max(index - 1, 0)}",)
+        assert buttons["Play slowly"].args[1]["frame"]["duration"] >= 2000
+        if index == len(states) - 1:
+            assert len(buttons["Play slowly"].args[0]) == len(states)
+        if state[1] == "resample":
+            copies = np.asarray(frame.data[3].customdata).ravel()
+            assert copies.sum() == bayes_101.SMC_PARTICLES
+            assert copies.max() > 1
+            assert len(copies) < bayes_101.SMC_PARTICLES
+        elif state[1] == "reweight":
+            np.testing.assert_allclose(frame.data[3].x, states[index - 1][2])
+            np.testing.assert_allclose(frame.data[0].y, bayes_101._relative_histogram(state[2], bayes_101.MEAN_MARGINAL_EDGES, weights=state[4]))
+
+
+def test_bayesian_update_maps_use_uniform_prior_and_honest_shared_axes() -> None:
+    _, _, likelihood, prior, _, posterior, _ = bayes_101._two_parameter_surfaces()
+    figures = [bayes_101._bayesian_update_figure(stage) for stage in ("prior", "likelihood", "posterior")]
+
+    for figure, surface in zip(figures, (prior, likelihood, posterior), strict=True):
+        assert tuple(figure.layout.xaxis.range) == bayes_101.MEAN_BOUNDS
+        assert tuple(figure.layout.yaxis.range) == bayes_101.SCALE_BOUNDS
+        np.testing.assert_allclose(figure.data[0].customdata, surface)
+        np.testing.assert_allclose(figure.data[0].z, surface / surface.max())
+        assert "panel’s peak" in figure.data[0].hovertemplate
+    np.testing.assert_allclose(figures[0].data[0].z, 1.0)
+    np.testing.assert_allclose(figures[1].data[0].z, figures[2].data[0].z)

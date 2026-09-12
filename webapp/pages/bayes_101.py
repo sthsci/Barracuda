@@ -9,6 +9,7 @@ import numpy as np
 import plotly.graph_objects as go
 from dash import Input, Output, dcc, html
 from plotly.subplots import make_subplots
+from scipy.integrate import trapezoid
 from scipy.stats import beta as beta_distribution
 
 from webapp.core.coin import (
@@ -47,13 +48,12 @@ MCMC_DRAWS = 1_000
 MCMC_STATES = MCMC_WARMUP + MCMC_DRAWS
 MCMC_FRAME_STEP = 10
 MCMC_RECENT_PATH = 40
+MCMC_TEACHING_DRAWS = 12
+MCMC_STEP_DURATION_MS = 1_400
 
 TWO_PARAMETER_DATA = np.array([4.8, 4.9, 5.0, 5.1, 5.3])
 MEAN_BOUNDS = (4.35, 5.85)
 SCALE_BOUNDS = (0.08, 0.85)
-MEAN_PRIOR_LOCATION = 5.45
-MEAN_PRIOR_SCALE = 0.15
-SCALE_PRIOR_SCALE = 0.45
 MEAN_MARGINAL_EDGES = np.linspace(*MEAN_BOUNDS, 25)
 SCALE_MARGINAL_EDGES = np.linspace(*SCALE_BOUNDS, 21)
 SMC_PARTICLES = 180
@@ -338,14 +338,10 @@ def _two_parameter_surfaces() -> tuple[
         -len(TWO_PARAMETER_DATA) * np.log(scale_grid * np.sqrt(2.0 * np.pi))
         - squared_error / (2.0 * scale_grid**2)
     )
-    log_mean_prior = -np.log(MEAN_PRIOR_SCALE * np.sqrt(2.0 * np.pi)) - 0.5 * ((mean_grid - MEAN_PRIOR_LOCATION) / MEAN_PRIOR_SCALE) ** 2
-    log_scale_prior = np.log(np.sqrt(2.0 / np.pi) / SCALE_PRIOR_SCALE) - 0.5 * (scale_grid / SCALE_PRIOR_SCALE) ** 2
     likelihood = np.exp(log_likelihood)
-    prior = np.exp(log_mean_prior + log_scale_prior)
+    prior = np.full_like(likelihood, 1.0 / (np.ptp(MEAN_BOUNDS) * np.ptp(SCALE_BOUNDS)))
     unnormalised_posterior = likelihood * prior
-    mean_step = float(means[1] - means[0])
-    scale_step = float(scales[1] - scales[0])
-    evidence = float(unnormalised_posterior.sum() * mean_step * scale_step)
+    evidence = float(trapezoid(trapezoid(unnormalised_posterior, means, axis=1), scales))
     posterior = unnormalised_posterior / evidence
     return means, scales, likelihood, prior, unnormalised_posterior, posterior, evidence
 
@@ -360,7 +356,7 @@ def _parameter_log_likelihood(mean: float, scale: float) -> float:
 def _parameter_log_prior(mean: float, scale: float) -> float:
     if not MEAN_BOUNDS[0] <= mean <= MEAN_BOUNDS[1] or not SCALE_BOUNDS[0] <= scale <= SCALE_BOUNDS[1]:
         return -np.inf
-    return -0.5 * ((mean - MEAN_PRIOR_LOCATION) / MEAN_PRIOR_SCALE) ** 2 - 0.5 * (scale / SCALE_PRIOR_SCALE) ** 2
+    return -np.log(np.ptp(MEAN_BOUNDS) * np.ptp(SCALE_BOUNDS))
 
 
 @lru_cache(maxsize=32)
@@ -389,8 +385,9 @@ def _relative_histogram(
 @lru_cache(maxsize=32)
 def _target_marginals(temperature: float) -> tuple[np.ndarray, np.ndarray]:
     target = _tempered_surface(float(temperature))
-    mean_marginal = target.sum(axis=0)
-    scale_marginal = target.sum(axis=1)
+    means, scales, *_ = _two_parameter_surfaces()
+    mean_marginal = trapezoid(target, scales, axis=0)
+    scale_marginal = trapezoid(target, means, axis=1)
     return mean_marginal / mean_marginal.max(), scale_marginal / scale_marginal.max()
 
 
@@ -414,7 +411,7 @@ def _posterior_contour_trace(*, name: str = "Posterior surface") -> go.Contour:
 
 @lru_cache(maxsize=1)
 def _mcmc_figure() -> go.Figure:
-    """Animate warm-up and retained Metropolis draws with fixed marginals."""
+    """Show individual proposal/decision steps before building fixed-bin marginals."""
     rng = np.random.default_rng(401)
     current_mean, current_scale = 5.66, 0.68
     means = [current_mean]
@@ -422,27 +419,32 @@ def _mcmc_figure() -> go.Figure:
     proposed_means = [current_mean]
     proposed_scales = [current_scale]
     accepted_updates = [True]
-    decisions = ["Starting pair"]
+    acceptance_probabilities = [1.0]
+    uniforms = [0.0]
 
     for _ in range(MCMC_STATES - 1):
-        proposed_mean = current_mean + rng.normal(0.0, 0.075)
-        proposed_scale = current_scale + rng.normal(0.0, 0.045)
+        proposed_mean = current_mean + rng.normal(0.0, 0.12)
+        proposed_scale = current_scale + rng.normal(0.0, 0.10)
         current_log_target = _parameter_log_likelihood(current_mean, current_scale) + _parameter_log_prior(current_mean, current_scale)
         proposed_log_target = _parameter_log_likelihood(proposed_mean, proposed_scale) + _parameter_log_prior(proposed_mean, proposed_scale)
-        accepted = np.log(rng.random()) < min(0.0, proposed_log_target - current_log_target)
+        acceptance_probability = float(np.exp(min(0.0, proposed_log_target - current_log_target)))
+        uniform = float(rng.random())
+        accepted = uniform < acceptance_probability
         proposed_means.append(proposed_mean)
         proposed_scales.append(proposed_scale)
-        accepted_updates.append(bool(accepted))
+        accepted_updates.append(accepted)
+        acceptance_probabilities.append(acceptance_probability)
+        uniforms.append(uniform)
         if accepted:
             current_mean, current_scale = proposed_mean, proposed_scale
         means.append(current_mean)
         scales.append(current_scale)
-        decisions.append("Accepted proposal" if accepted else "Rejected proposal; stayed here")
 
     grid_means, grid_scales, *_ = _two_parameter_surfaces()
     target_mean, target_scale = _target_marginals(1.0)
     mean_centres = (MEAN_MARGINAL_EDGES[:-1] + MEAN_MARGINAL_EDGES[1:]) / 2.0
     scale_centres = (SCALE_MARGINAL_EDGES[:-1] + SCALE_MARGINAL_EDGES[1:]) / 2.0
+    initial_index = MCMC_WARMUP - 1
 
     figure = make_subplots(
         rows=2,
@@ -459,66 +461,54 @@ def _mcmc_figure() -> go.Figure:
     figure.add_trace(go.Scatter(x=grid_means, y=target_mean, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}), row=1, col=1)
     figure.add_trace(_posterior_contour_trace(), row=2, col=1)
     figure.add_trace(go.Scatter(x=[], y=[], mode="markers", name="Retained draws", marker={"color": IMPERIAL_BLUE, "size": 4, "opacity": 0.32}), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="lines+markers", name="Recent chain path", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[means[0]], y=[scales[0]], mode="markers", name="Current pair", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}), row=2, col=1)
-    figure.add_trace(go.Scatter(x=[proposed_means[0]], y=[proposed_scales[0]], mode="markers", name="Proposal", marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[means[initial_index]], y=[scales[initial_index]], mode="lines+markers", name="Recent chain path", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[means[initial_index]], y=[scales[initial_index]], mode="markers", name="Current pair", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="Proposal", line={"color": IMPERIAL_SKY, "width": 2, "dash": "dot"}, marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
     figure.add_trace(go.Bar(x=np.zeros_like(scale_centres), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h", name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Relative frequency: %{x:.3f}<extra>Retained marginal</extra>"), row=2, col=2)
     figure.add_trace(go.Scatter(x=target_scale, y=grid_scales, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}, showlegend=False), row=2, col=2)
-    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=[f"Warm-up 1/{MCMC_WARMUP:,} · starting pair"], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
-    frame_indices = [0, *range(MCMC_FRAME_STEP - 1, len(means), MCMC_FRAME_STEP)]
-    figure.frames = [
-        go.Frame(
-            name=f"mcmc-{index}",
-            traces=[0, 3, 4, 5, 6, 7, 9],
-            data=[
-                go.Bar(x=mean_centres, y=_relative_histogram(retained_means, MEAN_MARGINAL_EDGES), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9),
-                go.Scatter(x=retained_means, y=retained_scales, mode="markers", marker={"color": IMPERIAL_BLUE, "size": 4, "opacity": 0.32}),
-                go.Scatter(x=means[path_start : index + 1], y=scales[path_start : index + 1], mode="lines+markers", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}),
-                go.Scatter(x=[mean], y=[scale], mode="markers", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}),
-                go.Scatter(
-                    x=[proposed_means[index]],
-                    y=[proposed_scales[index]],
-                    mode="markers",
-                    marker={
-                        "color": BOOK_SHEET if accepted_updates[index] else OXIDE_RED,
-                        "size": 10,
-                        "symbol": "diamond" if accepted_updates[index] else "x-open",
-                        "line": {"color": IMPERIAL_SKY if accepted_updates[index] else OXIDE_RED, "width": 2},
-                    },
-                ),
-                go.Bar(x=_relative_histogram(retained_scales, SCALE_MARGINAL_EDGES), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h"),
-                go.Scatter(
-                    x=[MEAN_BOUNDS[0] + 0.04],
-                    y=[SCALE_BOUNDS[1] - 0.04],
-                    mode="text",
-                    text=[status],
-                    textposition="middle right",
-                    textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
-                    showlegend=False,
-                    hoverinfo="skip",
-                ),
-            ],
-        )
-        for index in frame_indices
-        for mean, scale in [(means[index], scales[index])]
-        for retained_means, retained_scales in [
-            (
-                means[MCMC_WARMUP : index + 1] if index >= MCMC_WARMUP else [],
-                scales[MCMC_WARMUP : index + 1] if index >= MCMC_WARMUP else [],
-            )
-        ]
-        for path_start in [max(0, index - MCMC_RECENT_PATH + 1)]
-        for retained_count in [len(retained_means)]
-        for status in [
-            (
-                f"Warm-up {index + 1:,}/{MCMC_WARMUP:,} · {decisions[index].lower()}"
-                if index < MCMC_WARMUP
-                else f"Retained {retained_count:,}/{MCMC_DRAWS:,} · {decisions[index].lower()}"
-            )
-        ]
-    ]
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[f"{MCMC_WARMUP} warm-up states discarded<br>Watch a proposal, then its decision."], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    frames = [go.Frame(name="mcmc-start", traces=[0, 3, 4, 5, 6, 7, 9], data=[figure.data[index] for index in [0, 3, 4, 5, 6, 7, 9]])]
+    teaching_indices = range(MCMC_WARMUP, MCMC_WARMUP + MCMC_TEACHING_DRAWS)
+    sample_indices = [*range(MCMC_WARMUP + MCMC_TEACHING_DRAWS + MCMC_FRAME_STEP - 1, MCMC_STATES - 1, MCMC_FRAME_STEP), MCMC_STATES - 1]
+    for index in [*teaching_indices, *sample_indices]:
+        teaching = index in teaching_indices
+        for phase in (["propose", "retain"] if teaching else ["retain"]):
+            shown_index = index - 1 if phase == "propose" else index
+            retained_means = means[MCMC_WARMUP : shown_index + 1]
+            retained_scales = scales[MCMC_WARMUP : shown_index + 1]
+            path_start = max(initial_index, shown_index - MCMC_RECENT_PATH + 1) if index < MCMC_STATES - 1 else shown_index + 1
+            accepted = accepted_updates[index]
+            if phase == "propose":
+                probability_text = "Outside the prior bounds: a = 0." if acceptance_probabilities[index] == 0 else f"Accept with probability a = {acceptance_probabilities[index]:.0%}."
+                status = f"Draw {len(retained_means) + 1:,}/{MCMC_DRAWS:,} · 1/2 propose<br>{probability_text}"
+                proposal_x = [means[index - 1], proposed_means[index]]
+                proposal_y = [scales[index - 1], proposed_scales[index]]
+            elif teaching:
+                outcome = "accepted: move" if accepted else "rejected: stay and count again"
+                status = f"Retained {len(retained_means):,}/{MCMC_DRAWS:,} · 2/2 decide<br>{outcome}<br>Random u = {uniforms[index]:.2f} {'<' if accepted else '≥'} a = {acceptance_probabilities[index]:.2f}."
+                proposal_x, proposal_y = [proposed_means[index]], [proposed_scales[index]]
+            else:
+                progress = "Sample complete" if index == MCMC_STATES - 1 else "Building the sample"
+                status = f"Retained {len(retained_means):,}/{MCMC_DRAWS:,}<br>{progress}; repeats count."
+                proposal_x, proposal_y = [], []
+            frames.append(go.Frame(
+                name=f"mcmc-{index}-{phase}",
+                group="teaching" if teaching else "sample",
+                traces=[0, 3, 4, 5, 6, 7, 9],
+                data=[
+                    go.Bar(x=mean_centres, y=_relative_histogram(retained_means, MEAN_MARGINAL_EDGES), width=np.diff(MEAN_MARGINAL_EDGES) * 0.9),
+                    go.Scatter(x=retained_means, y=retained_scales, mode="markers", marker={"color": IMPERIAL_BLUE, "size": 4, "opacity": 0.32}),
+                    go.Scatter(x=means[path_start : shown_index + 1], y=scales[path_start : shown_index + 1], mode="lines+markers", line={"color": IMPERIAL_BLUE, "width": 2.1}, marker={"color": IMPERIAL_BLUE, "size": 4}),
+                    go.Scatter(x=[means[shown_index]], y=[scales[shown_index]], mode="markers", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}),
+                    go.Scatter(x=proposal_x, y=proposal_y, mode="lines+markers", line={"color": IMPERIAL_SKY, "width": 2, "dash": "dot"}, marker={"color": BOOK_SHEET if phase == "propose" or accepted else OXIDE_RED, "size": [0, 11] if phase == "propose" else 11, "symbol": "diamond" if phase == "propose" or accepted else "x-open", "line": {"color": IMPERIAL_SKY if phase == "propose" or accepted else OXIDE_RED, "width": 2}}),
+                    go.Bar(x=_relative_histogram(retained_scales, SCALE_MARGINAL_EDGES), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h"),
+                    go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[status], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"),
+                ],
+            ))
+    figure.frames = frames
+    instant = {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}
     figure.update_layout(
-        **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
+        **_plot_layout(height=650, bottom_margin=145, top_margin=48, left_margin=64, right_margin=24),
         barmode="overlay",
         legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
         updatemenus=[
@@ -526,33 +516,36 @@ def _mcmc_figure() -> go.Figure:
                 "type": "buttons",
                 "direction": "left",
                 "x": 0,
-                "y": -0.11,
+                "y": -0.17,
                 "xanchor": "left",
                 "yanchor": "top",
                 "showactive": False,
                 "bgcolor": BOOK_INK,
                 "bordercolor": BOOK_INK,
-                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
+                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 11},
                 "buttons": [
-                    {"label": f"Run {MCMC_STATES:,} chain states", "method": "animate", "args": [None, {"frame": {"duration": 85, "redraw": True}, "transition": {"duration": 0}, "fromcurrent": True}]},
-                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
+                    {"label": f"Watch {MCMC_TEACHING_DRAWS}", "method": "animate", "args": [["mcmc-start", *[frame.name for frame in frames if frame.group == "teaching"]], {"frame": {"duration": MCMC_STEP_DURATION_MS, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
+                    {"label": f"Build {MCMC_DRAWS:,}", "method": "animate", "args": [[frame.name for frame in frames if frame.name.endswith("-retain")], {"frame": {"duration": 240, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}, "fromcurrent": True}]},
+                    {"label": "Pause", "method": "animate", "args": [[None], instant]},
+                    {"label": "Reset", "method": "animate", "args": [["mcmc-start"], instant]},
                 ],
             }
         ],
         sliders=[
             {
                 "active": 0,
-                "x": 0.26,
-                "y": -0.08,
-                "len": 0.74,
+                "x": 0,
+                "y": -0.29,
+                "len": 1,
                 "pad": {"t": 4},
+                "currentvalue": {"visible": False},
                 "steps": [
                     {
-                        "label": f"{index + 1:,}" if index == 0 or (index + 1) % 200 == 0 else "",
+                        "label": "Start" if frame.name == "mcmc-start" else (f"{len(frame.data[1].x):,}" if frame.name.endswith("-retain") and (len(frame.data[1].x) == MCMC_TEACHING_DRAWS or len(frame.data[1].x) >= MCMC_DRAWS or (len(frame.data[1].x) - MCMC_TEACHING_DRAWS) % 200 == 0) else ""),
                         "method": "animate",
-                        "args": [[f"mcmc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}],
+                        "args": [[frame.name], instant],
                     }
-                    for index in frame_indices
+                    for frame in frames
                 ],
             }
         ],
@@ -562,7 +555,7 @@ def _mcmc_figure() -> go.Figure:
     figure.update_yaxes(title="Relative marginal of μ", range=[0, 1.05], showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
     figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
-    figure.update_xaxes(title="Relative marginal of σ", range=[0, 1.05], showgrid=False, showticklabels=False, row=2, col=2)
+    figure.update_xaxes(title={"text": "σ marginal", "font": {"size": 13}}, range=[0, 1.05], showgrid=False, showticklabels=False, row=2, col=2)
     figure.update_yaxes(range=list(SCALE_BOUNDS), showgrid=False, showticklabels=False, row=2, col=2)
     return figure
 
@@ -604,15 +597,8 @@ def _smc_particle_states() -> tuple[np.ndarray, list[tuple[float, str, np.ndarra
     """Generate deterministic adaptive-tempering SMC states."""
     rng = np.random.default_rng(902)
 
-    def draw_within_bounds(draw, bounds: tuple[float, float]) -> np.ndarray:
-        accepted: list[float] = []
-        while len(accepted) < SMC_PARTICLES:
-            candidates = np.asarray(draw(SMC_PARTICLES * 2))
-            accepted.extend(candidates[(candidates >= bounds[0]) & (candidates <= bounds[1])].tolist())
-        return np.asarray(accepted[:SMC_PARTICLES])
-
-    means = draw_within_bounds(lambda size: rng.normal(MEAN_PRIOR_LOCATION, MEAN_PRIOR_SCALE, size), MEAN_BOUNDS)
-    scales = draw_within_bounds(lambda size: np.abs(rng.normal(0.0, SCALE_PRIOR_SCALE, size)), SCALE_BOUNDS)
+    means = rng.uniform(*MEAN_BOUNDS, SMC_PARTICLES)
+    scales = rng.uniform(*SCALE_BOUNDS, SMC_PARTICLES)
     uniform_weights = np.full(SMC_PARTICLES, 1.0 / SMC_PARTICLES)
     states = [(0.0, "prior", means.copy(), scales.copy(), uniform_weights.copy())]
     temperatures = [0.0]
@@ -654,15 +640,15 @@ def _smc_figure() -> go.Figure:
     mean_centres = (MEAN_MARGINAL_EDGES[:-1] + MEAN_MARGINAL_EDGES[1:]) / 2.0
     scale_centres = (SCALE_MARGINAL_EDGES[:-1] + SCALE_MARGINAL_EDGES[1:]) / 2.0
 
-    def contour(temperature: float) -> go.Contour:
-        return go.Contour(
+    def contour(temperature: float) -> go.Heatmap:
+        return go.Heatmap(
             x=grid_means,
             y=grid_scales,
             z=_tempered_surface(temperature),
             zmin=0,
             zmax=1,
             colorscale=SURFACE_COLORS,
-            contours={"coloring": "heatmap", "showlines": False},
+            zsmooth="best",
             showscale=False,
             hoverinfo="skip",
             name="Tempered grid target",
@@ -686,15 +672,49 @@ def _smc_figure() -> go.Figure:
 
     def status_text(temperature: float, phase: str, weights: np.ndarray) -> str:
         if phase == "prior":
-            return f"β = 0.00 · {SMC_PARTICLES} particles drawn from the prior"
+            return f"<b>Start · uniform prior · β = 0</b><br>{SMC_PARTICLES} candidate pairs, all equally weighted.<br>Press Next to add data support."
         if phase == "reweight":
             effective_particles = 1.0 / float(np.sum(weights**2))
-            return f"β = {temperature:.3f} · 1/3 reweight · ESS {effective_particles:.0f}/{SMC_PARTICLES}"
+            return f"<b>1 · Reweight · β = {temperature:.3f}</b><br>Same positions; larger, redder = more weight.<br>Effective sample size: {effective_particles:.0f}/{SMC_PARTICLES}."
         if phase == "resample":
-            return f"β = {temperature:.3f} · 2/3 resample · equal weights restored"
+            return f"<b>2 · Resample · β = {temperature:.3f}</b><br>Copy high-weight pairs; drop others.<br>Larger dots now mean more copies here."
         if temperature == 1.0:
-            return "β = 1.000 · finite particle approximation to the posterior"
-        return f"β = {temperature:.3f} · 3/3 mutate · mutation step complete"
+            return "<b>3 · Move · β = 1 · posterior reached</b><br>Random-walk updates spread copies apart.<br>Particles now approximate the posterior."
+        return f"<b>3 · Move · β = {temperature:.3f}</b><br>Random-walk updates spread copies apart.<br>Lines: 24 example moves. Then repeat."
+
+    def particles(phase: str, means: np.ndarray, scales: np.ndarray, weights: np.ndarray) -> go.Scatter:
+        marker = particle_marker(phase, weights)
+        customdata = weights[:, None]
+        hover = "Weight: %{customdata[0]:.3f}"
+        if phase == "resample":
+            pairs, counts = np.unique(np.column_stack((means, scales)), axis=0, return_counts=True)
+            means, scales = pairs.T
+            marker.update(size=6 * np.sqrt(counts), color=IMPERIAL_SKY)
+            customdata = counts[:, None]
+            hover = "Copies here: %{customdata[0]}<br>Each copy has equal weight"
+        return go.Scatter(x=means, y=scales, mode="markers", name="Particles", marker=marker,
+                          customdata=customdata, hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<br>" + hover + "<extra></extra>")
+
+    def controls(index: int) -> list[dict]:
+        instant = {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}
+        return [{
+            "type": "buttons", "direction": "left", "x": 0, "y": -0.20,
+            "xanchor": "left", "yanchor": "top", "showactive": False,
+            "bgcolor": BOOK_INK, "bordercolor": BOOK_INK,
+            "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 11},
+            "buttons": [
+                {"label": "Back", "method": "animate", "args": [[f"smc-{max(0, index - 1)}"], instant]},
+                {"label": "Next", "method": "animate", "args": [[f"smc-{min(len(states) - 1, index + 1)}"], instant]},
+                {"label": "Play slowly", "method": "animate", "args": [[f"smc-{i}" for i in range(index + 1, len(states))] or [f"smc-{i}" for i in range(len(states))], {"frame": {"duration": 2500, "redraw": True}, "transition": {"duration": 0}, "mode": "immediate"}]},
+                {"label": "Pause", "method": "animate", "args": [[None], instant]},
+                {"label": "Reset", "method": "animate", "args": [["smc-0"], instant]},
+            ],
+        }]
+
+    def stage_annotation(temperature: float, phase: str, weights: np.ndarray) -> list[dict]:
+        return [{"xref": "paper", "yref": "paper", "x": 0, "y": 1.16,
+                 "xanchor": "left", "yanchor": "bottom", "align": "left", "showarrow": False,
+                 "text": status_text(temperature, phase, weights), "font": {"size": 13, "color": BOOK_INK}}]
 
     def marginal_traces(temperature: float, means: np.ndarray, scales: np.ndarray, weights: np.ndarray) -> tuple[go.Bar, go.Scatter, go.Bar, go.Scatter]:
         target_mean, target_scale = _target_marginals(temperature)
@@ -724,27 +744,27 @@ def _smc_figure() -> go.Figure:
     figure.add_trace(initial_mean_bar, row=1, col=1)
     figure.add_trace(initial_mean_target, row=1, col=1)
     figure.add_trace(contour(initial_temperature), row=2, col=1)
-    figure.add_trace(go.Scatter(x=initial_means, y=initial_scales, mode="markers", name="Particles", marker=particle_marker(initial_phase, initial_weights), hovertemplate="Mean μ: %{x:.3f}<br>SD σ: %{y:.3f}<extra>Particle</extra>"), row=2, col=1)
+    figure.add_trace(particles(initial_phase, initial_means, initial_scales, initial_weights), row=2, col=1)
     figure.add_trace(initial_scale_bar, row=2, col=2)
     figure.add_trace(initial_scale_target, row=2, col=2)
-    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.04], mode="text", text=[status_text(initial_temperature, initial_phase, initial_weights)], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[], y=[], mode="lines", line={"color": BOOK_RULE, "width": 1}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     figure.frames = [
         go.Frame(
             name=f"smc-{index}",
+            traces=list(range(7)),
+            layout={"annotations": stage_annotation(temperature, phase, weights), "updatemenus": controls(index)},
             data=[
                 mean_bar,
                 mean_target,
                 contour(temperature),
-                go.Scatter(x=means, y=scales, mode="markers", marker=particle_marker(phase, weights)),
+                particles(phase, means, scales, weights),
                 scale_bar,
                 scale_target,
                 go.Scatter(
-                    x=[MEAN_BOUNDS[0] + 0.04],
-                    y=[SCALE_BOUNDS[1] - 0.04],
-                    mode="text",
-                    text=[status_text(temperature, phase, weights)],
-                    textposition="middle right",
-                    textfont={"family": BOOK_SERIF, "size": 14, "color": BOOK_INK},
+                    x=[value for particle in range(24) for value in (states[index - 1][2][particle], means[particle], None)] if phase == "move" else [],
+                    y=[value for particle in range(24) for value in (states[index - 1][3][particle], scales[particle], None)] if phase == "move" else [],
+                    mode="lines",
+                    line={"color": BOOK_RULE, "width": 1},
                     showlegend=False,
                     hoverinfo="skip",
                 ),
@@ -754,39 +774,24 @@ def _smc_figure() -> go.Figure:
         for mean_bar, mean_target, scale_bar, scale_target in [marginal_traces(temperature, means, scales, weights)]
     ]
     figure.update_layout(
-        **_plot_layout(height=590, bottom_margin=96, top_margin=34, left_margin=64, right_margin=24),
+        **_plot_layout(height=650, bottom_margin=140, top_margin=116, left_margin=64, right_margin=24),
         barmode="overlay",
         legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
-        updatemenus=[
-            {
-                "type": "buttons",
-                "direction": "left",
-                "x": 0,
-                "y": -0.11,
-                "xanchor": "left",
-                "yanchor": "top",
-                "showactive": False,
-                "bgcolor": BOOK_INK,
-                "bordercolor": BOOK_INK,
-                "font": {"family": BOOK_MONO, "color": BOOK_PAPER, "size": 12},
-                "buttons": [
-                    {"label": "Run SMC stages", "method": "animate", "args": [None, {"frame": {"duration": 340, "redraw": True}, "transition": {"duration": 140}, "fromcurrent": True}]},
-                    {"label": "Pause", "method": "animate", "args": [[None], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}]},
-                ],
-            }
-        ],
+        annotations=stage_annotation(initial_temperature, initial_phase, initial_weights),
+        updatemenus=controls(0),
         sliders=[
             {
                 "active": 0,
-                "x": 0.26,
-                "y": -0.08,
-                "len": 0.74,
+                "x": 0,
+                "y": -0.34,
+                "len": 1,
+                "currentvalue": {"visible": False},
                 "pad": {"t": 4},
                 "steps": [
                     {
                         "label": f"β {temperature:.2f}" if phase in {"prior", "move"} else "",
                         "method": "animate",
-                        "args": [[f"smc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 80}}],
+                        "args": [[f"smc-{index}"], {"frame": {"duration": 0, "redraw": True}, "mode": "immediate", "transition": {"duration": 0}}],
                     }
                     for index, (temperature, phase, _, _, _) in enumerate(states)
                 ],
@@ -798,8 +803,39 @@ def _smc_figure() -> go.Figure:
     figure.update_yaxes(title="Relative marginal of μ", range=[0, 1.05], showgrid=False, showticklabels=False, row=1, col=1)
     figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
     figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), gridcolor=BOOK_GRID, linecolor=BOOK_RULE, row=2, col=1)
-    figure.update_xaxes(title="Relative marginal of σ", range=[0, 1.05], showgrid=False, showticklabels=False, row=2, col=2)
+    figure.update_xaxes(title={"text": "σ marginal", "font": {"size": 13}}, range=[0, 1.05], showgrid=False, showticklabels=False, row=2, col=2)
     figure.update_yaxes(range=list(SCALE_BOUNDS), showgrid=False, showticklabels=False, row=2, col=2)
+    return figure
+
+
+@lru_cache(maxsize=3)
+def _bayesian_update_figure(stage: str) -> go.Figure:
+    """Show each update on the same grid, with explicitly peak-relative colour."""
+    means, scales, likelihood, prior, _, posterior, _ = _two_parameter_surfaces()
+    surface = {"prior": prior, "likelihood": likelihood, "posterior": posterior}[stage]
+    value_label = {"prior": "Prior density", "likelihood": "Likelihood", "posterior": "Posterior density"}[stage]
+    figure = go.Figure(
+        go.Heatmap(
+            x=means,
+            y=scales,
+            z=surface / surface.max(),
+            customdata=surface,
+            zmin=0,
+            zmax=1,
+            colorscale=SURFACE_COLORS,
+            showscale=False,
+            hovertemplate=f"Mean μ: %{{x:.2f}}<br>SD σ: %{{y:.2f}}<br>{value_label}: %{{customdata:.3g}}<br>Fraction of this panel’s peak: %{{z:.2f}}<extra></extra>",
+        )
+    )
+    if stage == "prior":
+        figure.add_annotation(
+            x=0.5, y=0.5, xref="paper", yref="paper", showarrow=False,
+            text="Equal-area patches<br>have equal probability",
+            font={"color": BOOK_SHEET, "size": 13},
+        )
+    figure.update_layout(**_plot_layout(height=330, top_margin=14, bottom_margin=56, left_margin=48, right_margin=12))
+    figure.update_xaxes(title="Mean μ", range=list(MEAN_BOUNDS), tickvals=[4.5, 5.0, 5.5], showgrid=False, linecolor=BOOK_RULE, fixedrange=True)
+    figure.update_yaxes(title="SD σ", range=list(SCALE_BOUNDS), tickvals=[0.2, 0.4, 0.6, 0.8], showgrid=False, linecolor=BOOK_RULE, fixedrange=True)
     return figure
 
 
@@ -1113,47 +1149,40 @@ def layout() -> html.Div:
                         className="barracuda-parameter-grid",
                     ),
                     html.Span("Bayesian updating", className="barracuda-section-label"),
-                    html.H3("From likelihood and prior to posterior"),
+                    html.H3("From an even starting point to a focused posterior"),
                     html.P(
-                        "Bayesian updating combines what the data support with what was plausible before these data were observed.",
+                        "Imagine each small patch of this map as a possible combination of mean and spread. Start with equal probability in equal-area patches, then let the five measurements favour the combinations that explain them.",
                         className="barracuda-copy",
                     ),
                     html.Div(
                         [
                             html.Div(
                                 [
-                                    html.Span("01"),
-                                    html.Strong("Likelihood"),
-                                    html.P("The likelihood asks which pairs of μ and σ are compatible with the five measurements. It uses the data but not the prior."),
-                                ]
-                            ),
-                            html.Div(
-                                [
-                                    html.Span("02"),
-                                    html.Strong("Prior"),
-                                    html.P("The prior assigns greater density to values considered plausible before these measurements were observed."),
-                                ]
-                            ),
-                            html.Div(
-                                [
-                                    html.Span("03"),
-                                    html.Strong("Combine"),
-                                    html.P("Multiplication retains parameter pairs supported by both the likelihood and the prior."),
-                                ]
-                            ),
-                            html.Div(
-                                [
-                                    html.Span("04"),
-                                    html.Strong("Normalise"),
-                                    html.P("Dividing by the integral Z gives a posterior density with total probability one. It changes the scale, not the relative support."),
-                                ]
-                            ),
+                                    html.Span(number, className="barracuda-section-label"),
+                                    html.H4(title),
+                                    html.P(description, className="barracuda-help"),
+                                    dcc.Graph(
+                                        id=f"bayesian-update-{stage}",
+                                        figure=_bayesian_update_figure(stage),
+                                        config={"displayModeBar": False, "responsive": True},
+                                        style={"height": "330px"},
+                                    ),
+                                ],
+                                className="barracuda-concept-panel barracuda-update-card",
+                            )
+                            for number, stage, title, description in [
+                                ("01 · Before the data", "prior", "Start with a uniform prior", f"Every equal-area patch is equally plausible within μ = {MEAN_BOUNDS[0]}–{MEAN_BOUNDS[1]} and σ = {SCALE_BOUNDS[0]}–{SCALE_BOUNDS[1]}. The prior is zero outside this teaching range."),
+                                ("02 · Read the data", "likelihood", "Score how well each pair fits", "The measurements cluster near 5 with a small spread. Pairs near the dark region make these data more likely; pale regions explain them poorly."),
+                                ("03 · After the data", "posterior", "Reweight, then make the total 1", "Multiply each prior density by its likelihood, then divide by their total integral. The resulting posterior concentrates probability in the region supported by the data."),
+                            ]
                         ],
-                        className="barracuda-bf-flow",
+                        className="barracuda-card-grid three",
                     ),
+                    html.P("All maps use the same axes. Darker blue means a larger value relative to that panel’s own peak, not equal absolute density across panels. Hover to read the actual values.", className="barracuda-help"),
+                    markdown(r"$$\text{posterior}=\frac{\text{uniform prior}\times\text{likelihood}}{\text{total integral}}$$", class_name="barracuda-equation small", mathjax=True),
                     note(
-                        "Likelihood is not posterior probability",
-                        "With fixed observations, the likelihood ranks candidate parameter pairs; it need not integrate to one over μ and σ. The prior and posterior are densities over these parameters.",
+                        "Why do the last two maps have the same shape?",
+                        "The uniform prior gives every pair the same multiplier, so the likelihood determines the posterior’s shape inside the bounds. Normalising changes only the vertical scale: posterior probability must total 1, whereas likelihood scores have no such requirement. An informative prior could change the shape.",
                         tone="teal",
                     ),
                     html.H3("Why a numerical method becomes necessary"),
@@ -1195,7 +1224,7 @@ def layout() -> html.Div:
                                             [
                                                 html.Span("MCMC", className="barracuda-sampler-tag"),
                                                 html.H3("Follow one chain through the posterior"),
-                                                html.P("The first 200 chain states are discarded as warm-up. The next 1,000 retained states form the displayed sample."),
+                                                html.P("Warm-up has already run: 200 states were discarded. Watch 12 individual steps, then build the 1,000-draw sample."),
                                                 html.Ol(
                                                     [
                                                         html.Li("Use a symmetric random walk to propose (μ′, σ′)."),
@@ -1213,9 +1242,9 @@ def layout() -> html.Div:
                                             dcc.Graph(
                                                 id="mcmc-animation",
                                                 figure=_mcmc_figure(),
-                                                config={"displaylogo": False, "responsive": True},
+                                                config={"displayModeBar": False, "responsive": True},
                                                 className="barracuda-sampler-plot",
-                                                style={"height": "590px"},
+                                                style={"height": "650px"},
                                             ),
                                             role="group",
                                             **{"aria-label": "Interactive MCMC animation with a joint posterior sample and aligned marginal distributions for mean and standard deviation"},
@@ -1235,28 +1264,28 @@ def layout() -> html.Div:
                                             [
                                                 html.Span("SMC", className="barracuda-sampler-tag"),
                                                 html.H3("Move a population from prior to posterior"),
-                                                html.P("The temperature β controls the contribution of the fixed likelihood. The blue contour and lines show a grid-based target at each stage."),
+                                                html.P("Start with equally plausible pairs. Press Next to inspect one operation at a time, or Play slowly for a guided sequence."),
                                                 html.Ol(
                                                     [
                                                         html.Li(f"At β = 0, draw {SMC_PARTICLES} particles from the prior."),
-                                                        html.Li(f"Choose the largest next β that keeps effective sample size near {SMC_ESS_FRACTION:.0%}; finish at β = 1 when it remains above that threshold."),
-                                                        html.Li("Resample supported particles and reset their weights."),
-                                                        html.Li(f"Attempt {SMC_MOVE_STEPS} Metropolis mutation steps per particle at the current tempered target."),
+                                                        html.Li("Reweight: increase β to give the data more influence. Positions stay fixed; better-supported pairs get larger weights."),
+                                                        html.Li("Resample: copy pairs according to their weights. Each copy has equal weight; dot size shows the number of copies."),
+                                                        html.Li(f"Move: try {SMC_MOVE_STEPS} Metropolis updates per particle to spread the copies out. Repeat until β = 1."),
                                                         html.Li("At β = 1, compare the finite particle approximation with the posterior target."),
                                                     ],
                                                     className="barracuda-sampler-steps",
                                                 ),
                                                 markdown(r"$$\pi_\beta(\theta)\propto p(y\mid\theta)^\beta p(\theta),\qquad 0\leq\beta\leq1$$", class_name="barracuda-equation small", mathjax=True),
-                                                html.P(["The bars are weighted during reweighting and use fixed bins throughout. This sequence follows the stages documented for ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
+                                                html.P([f"β = 0 uses only the prior; β = 1 uses the full likelihood. Each increase keeps effective sample size (ESS) near {SMC_ESS_FRACTION:.0%} unless the posterior is already reachable. Bars show weighted marginals; blue lines show the current target. See ", _external_link("PyMC Sequential Monte Carlo", PYMC_SMC_URL), "."], className="barracuda-help"),
                                             ]
                                         ),
                                         html.Div(
                                             dcc.Graph(
                                                 id="smc-animation",
                                                 figure=_smc_figure(),
-                                                config={"displaylogo": False, "responsive": True},
+                                                config={"displayModeBar": False, "responsive": True},
                                                 className="barracuda-sampler-plot",
-                                                style={"height": "590px"},
+                                                style={"height": "650px"},
                                             ),
                                             role="group",
                                             **{"aria-label": "Interactive SMC animation with tempered particles, a joint posterior sample and aligned marginal distributions"},

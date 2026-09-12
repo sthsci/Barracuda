@@ -369,8 +369,8 @@ def test_foundations_page_has_linkable_sections_portrait_and_animated_samplers()
     assert {"bayes-theorem", "coin-experiment", "computation", "bayes-factors", "thomas-bayes"} <= by_id.keys()
     assert by_id["mcmc-animation"].figure.frames
     assert by_id["smc-animation"].figure.frames
-    assert "bayes-update-animation" not in by_id
-    assert all(label in _text(content) for label in ("Likelihood", "Prior", "Combine", "Normalise"))
+    assert {"bayesian-update-prior", "bayesian-update-likelihood", "bayesian-update-posterior"} <= by_id.keys()
+    assert all(label in _text(content) for label in ("Start with a uniform prior", "Score how well each pair fits", "Reweight, then make the total 1"))
     images = [component for component in _walk(content) if component.__class__.__name__ == "Img"]
     assert any(image.src == "/assets/thomas_bayes.png" for image in images)
 
