@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import inspect
 import math
+import xml.etree.ElementTree as ET
 
 from dash.development.base_component import Component
 import numpy as np
@@ -272,8 +273,18 @@ def test_empirical_arrow_map_facets_and_uses_log_cell_count_length() -> None:
         for item in legend_images
     ]
     assert 'width="460" height="90"' in support_svg
-    assert "p = 0.5" in probability_svg
+    assert "0.5" in probability_svg
     assert "p = 0" in probability_svg and "p = 1" in probability_svg
+    fan = ET.fromstring(probability_svg)
+    arrows = fan.findall("{http://www.w3.org/2000/svg}polygon")
+    assert len(arrows) == 5
+    assert probability_svg.count('class="fan-sector"') == 64
+    for arrow in arrows:
+        points = np.array([[float(value) for value in point.split(",")] for point in arrow.attrib["points"].split()])
+        np.testing.assert_allclose((points[0] + points[-1]) / 2, [65, 145], atol=0.01)
+        probability = float(arrow.attrib["data-probability"])
+        direction = points[3] - [65, 145]
+        np.testing.assert_allclose(math.atan2(-direction[1], direction[0]), math.atan2(probability, 1 - probability), atol=0.0001)
     assert "log₂ n" in str(legend.children[-1].children)
     assert "shared across conditions" in legend_images[0].alt
     assert "Observed lethal fraction = 3/4 = 0.750" in str(control_origin.customdata[0])

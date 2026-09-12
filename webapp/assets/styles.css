@@ -674,9 +674,10 @@ button { touch-action: manipulation; }
 .barracuda-trajectory-empirical-plot .plot-container,
 .barracuda-trajectory-empirical-plot .svg-container { width: 100% !important; max-width: 100%; }
 .barracuda-trajectory-encoding-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 1rem 0 0; padding: 1rem; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); }
-.barracuda-trajectory-encoding-legend > div { min-width: 0; }
+.barracuda-trajectory-encoding-legend > div { display: flex; flex-direction: column; min-width: 0; }
 .barracuda-trajectory-encoding-legend h4 { margin: 0 0 8px; font: 600 14px/1.4 var(--barracuda-sans); }
-.barracuda-trajectory-encoding-legend img { display: block; width: 100%; max-width: 460px; height: auto; }
+.barracuda-trajectory-encoding-legend img { display: block; width: 100%; max-width: 460px; height: auto; margin-block: auto; }
+.barracuda-trajectory-encoding-legend .barracuda-probability-fan { max-width: 300px; margin-inline: auto; }
 .barracuda-trajectory-encoding-legend figcaption { grid-column: 1 / -1; color: var(--barracuda-ink-soft); font-size: 0.78rem; line-height: 1.45; }
 @media (max-width: 700px) {
   .barracuda-trajectory-encoding-legend { grid-template-columns: 1fr; }

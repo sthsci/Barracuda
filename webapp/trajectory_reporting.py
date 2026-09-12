@@ -109,9 +109,12 @@ MODEL_PARAMETERS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 PROBABILITY_SCALE: Final[list[list[object]]] = [
-    [0.0, "#176B96"],
-    [0.5, "#6B7680"],
-    [1.0, "#B44735"],
+    # Samples of Figure 5's coolwarm scale, shared by the fan and state arrows.
+    [0.0, "#3b4cc0"], [0.1, "#5977e3"], [0.2, "#7b9ff9"],
+    [0.25, "#8db0fe"], [0.3, "#9ebeff"], [0.4, "#c0d4f5"],
+    [0.5, "#dddcdc"], [0.6, "#f2cbb7"], [0.7, "#f7ac8e"],
+    [0.75, "#f4987a"], [0.8, "#ee8468"], [0.9, "#d65244"],
+    [1.0, "#b40426"],
 ]
 BF_BANDS: Final[tuple[tuple[str, float | None, float, str], ...]] = (
     ("Extreme", None, -2.0, "#E76F51"),
@@ -360,32 +363,55 @@ def _encoding_legend_svg(
 ) -> str:
     """Draw one compact legend with the same arrow geometry as the state map."""
 
+    if probability:
+        origin_x, origin_y, radius = 65.0, 145.0, 110.0
+        fan: list[str] = []
+        probabilities = np.linspace(0.0, 1.0, 65)
+        for lower, upper in zip(probabilities[:-1], probabilities[1:], strict=True):
+            angle0, angle1 = math.atan2(lower, 1 - lower), math.atan2(upper, 1 - upper)
+            x0, y0 = origin_x + radius * math.cos(angle0), origin_y - radius * math.sin(angle0)
+            x1, y1 = origin_x + radius * math.cos(angle1), origin_y - radius * math.sin(angle1)
+            colour = escape(_probability_colour(float((lower + upper) / 2)))
+            fan.append(
+                f'<path class="fan-sector" d="M {origin_x},{origin_y} L {x0:.3f},{y0:.3f} '
+                f'A {radius},{radius} 0 0,0 {x1:.3f},{y1:.3f} Z" fill="{colour}" stroke="{colour}" stroke-width="0.4"/>'
+            )
+        fan.append(f'<path d="M {origin_x},{origin_y} h {radius} A {radius},{radius} 0 0,0 {origin_x},{origin_y-radius} Z" fill="none" stroke="{INK}" stroke-width="1"/>')
+        for value in (0.0, 0.25, 0.5, 0.75, 1.0):
+            angle = math.atan2(value, 1.0 - value)
+            dx, dy = math.cos(angle), -math.sin(angle)
+            # Filled arrows share a common origin, as in Figure 5.
+            profile = ((0, -2.6), (radius-20, -2.6), (radius-20, -8),
+                       (radius-2, 0), (radius-20, 8), (radius-20, 2.6), (0, 2.6))
+            points = " ".join(f"{origin_x + along*dx - across*dy:.2f},{origin_y + along*dy + across*dx:.2f}" for along, across in profile)
+            fan.append(f'<polygon class="fan-arrow" data-probability="{value:g}" points="{points}" fill="{escape(_probability_colour(value))}" stroke="{INK}" stroke-width="1.3" stroke-linejoin="round"/>')
+        svg = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="300" height="180" viewBox="0 0 300 180">'
+            '<style>text {font: 17px Arial, sans-serif; fill: #25231F;}</style>'
+            + "".join(fan)
+            + '<text x="192" y="151">p = 0</text>'
+            + '<text x="166" y="62">0.5</text>'
+            + '<text x="65" y="22" text-anchor="middle">p = 1</text>'
+            + '</svg>'
+        )
+        return "data:image/svg+xml;base64," + base64.b64encode(svg.encode("utf-8")).decode("ascii")
+
     max_cells = max(int(summary["n_cells"].max()), 1)
     max_log2_cells = max(math.log2(max_cells), 1.0)
-    if probability:
-        examples = [0.0, 0.25, 0.5, 0.75, 1.0]
-    else:
-        powers = [2**power for power in range(int(math.floor(math.log2(max_cells))) + 1)]
-        examples = list(dict.fromkeys([*powers, max_cells]))
-        if len(examples) > 6:
-            indices = np.linspace(0, len(examples) - 1, 6).round().astype(int)
-            examples = [examples[index] for index in indices]
+    powers = [2**power for power in range(int(math.floor(math.log2(max_cells))) + 1)]
+    examples = list(dict.fromkeys([*powers, max_cells]))
+    if len(examples) > 6:
+        indices = np.linspace(0, len(examples) - 1, 6).round().astype(int)
+        examples = [examples[index] for index in indices]
 
     arrows: list[str] = []
     spacing = 440.0 / len(examples)
     for index, value in enumerate(examples):
         centre = 10 + (index + 0.5) * spacing
-        if probability:
-            angle = math.atan2(value, 1.0 - value)
-            length = 39.0
-            dx, dy = length * math.cos(angle), length * math.sin(angle)
-            colour = _probability_colour(value)
-            label = f"p = {value:g}"
-        else:
-            length = 64.0 * _state_arrow_length(int(value), max_log2_cells, arrow_scale) / 0.95
-            dx, dy = length, 0.0
-            colour = INK
-            label = str(value)
+        length = 64.0 * _state_arrow_length(int(value), max_log2_cells, arrow_scale) / 0.95
+        dx, dy = length, 0.0
+        colour = INK
+        label = str(value)
         start_x, start_y = centre - dx / 2, 30 + dy / 2
         end_x, end_y = centre + dx / 2, 30 - dy / 2
         arrows.append(
@@ -429,10 +455,11 @@ def empirical_state_encoding_legend(
             ),
             html.Div(
                 [
-                    html.H4("Direction and colour · lethal probability"),
+                    html.H4("Empirical killing probability"),
                     html.Img(
                         src=_encoding_legend_svg(summary, arrow_scale=arrow_scale, probability=True),
-                        alt="Empirical lethal probability: horizontal arrow, p = 0; diagonal arrow, p = 0.5; vertical arrow, p = 1. Intermediate arrows show p = 0.25 and p = 0.75.",
+                        alt="Figure 5 fan-shaped legend: arrows share one origin. Horizontal is p = 0, diagonal is p = 0.5, and vertical is p = 1; colour runs from blue through light grey to red.",
+                        className="barracuda-probability-fan",
                     ),
                 ],
             ),
