@@ -362,7 +362,7 @@ def test_foundations_coin_uses_fixed_uniform_prior_and_known_extreme_truth() -> 
 
 def test_coin_callback_preserves_data_for_interval_changes_and_reports_prediction() -> None:
     import pytest
-    from dash import Dash
+    from dash import Dash, no_update
     from dash.exceptions import PreventUpdate
 
     app = Dash(__name__)
@@ -379,6 +379,20 @@ def test_coin_callback_preserves_data_for_interval_changes_and_reports_predictio
     assert narrower[1].data[1].name == "80% equal-tailed interval"
     assert "P(next head | y) = 0.929" in _text(callback(1, 12, 95, 0)[4])
     assert "P(next head | y) = 0.071" in _text(callback(0, 12, 95, 0)[4])
+
+    scenes = [next(c for c in _walk(result[4]) if getattr(c, "id", None) == "coin-toss-scene") for result in (first, narrower, resimulated)]
+    assert scenes[0].key == scenes[1].key  # Interval edits must not replay the toss.
+    assert scenes[0].key != scenes[2].key  # A new dataset remounts the CSS animation.
+    assert callback(0.7, 40, 80, 0, scenes[0].key)[4] is no_update
+    for probability in (0, 0.7, 1):
+        result = callback(probability, 12, 95, 0)
+        scene = next(c for c in _walk(result[4]) if getattr(c, "id", None) == "coin-toss-scene")
+        recorded = next(c.children for c in _walk(result[4]) if getattr(c, "id", None) == "coin-observed-sequence")
+        last = int(recorded.split(", ")[-1])
+        assert scene.children[0].to_plotly_json()["props"]["data-outcome"] == last
+        assert f"lands-{'heads' if last else 'tails'}" in scene.children[0].className
+        images = [c.src for c in _walk(scene) if c.__class__.__name__ == "Img"]
+        assert images == ["/assets/coin-head-portrait.jpeg", "/assets/barracuda-abstract-consistent-posterior-mark.png"]
 
     code = next(component.children for component in _walk(first[4]) if component.__class__.__name__ == "Pre")
     namespace = {}

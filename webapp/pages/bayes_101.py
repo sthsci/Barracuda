@@ -7,7 +7,7 @@ from functools import lru_cache
 
 import numpy as np
 import plotly.graph_objects as go
-from dash import Input, Output, dcc, html
+from dash import Input, Output, State, dcc, html, no_update
 from dash.exceptions import PreventUpdate
 from plotly.subplots import make_subplots
 from scipy.integrate import trapezoid
@@ -303,6 +303,7 @@ def _coin_experiment_summary(outcomes: np.ndarray, probability_heads: float, see
     alpha, beta = uniform_prior_posterior(heads, n)
     predictive = alpha / (alpha + beta)
     return [
+        _coin_toss_scene(int(outcomes[-1]), n, f"{seed}:{probability_heads}:{n}"),
         html.Span("Observed sample → inference → prediction", className="barracuda-section-label"),
         html.H3("One dataset, an exact update"),
         html.P(
@@ -335,6 +336,37 @@ def _coin_experiment_summary(outcomes: np.ndarray, probability_heads: float, see
             html.Pre(", ".join(str(int(outcome)) for outcome in outcomes), id="coin-observed-sequence"),
         ], className="barracuda-bernoulli-reproducibility"),
     ]
+
+
+def _coin_toss_scene(outcome: int, n: int, dataset_key: str) -> html.Figure:
+    """A keyed scene replays for a new dataset, while interval edits preserve it."""
+    side = "heads" if outcome else "tails"
+    return html.Figure([
+        html.Div([
+            html.Span("Toss", className="barracuda-coin-station start"),
+            html.Span("Observe", className="barracuda-coin-station finish"),
+            html.Div(className="barracuda-coin-ground"),
+            html.Div(className="barracuda-coin-shadow"),
+            html.Div([
+                html.Div([
+                    html.Img(src="/assets/coin-head-portrait.jpeg", alt="Heads: the supplied portrait", className="barracuda-coin-portrait"),
+                    html.Span("H", className="barracuda-coin-letter"),
+                ], className="barracuda-coin-face front"),
+                html.Div([
+                    html.Img(src="/assets/barracuda-abstract-consistent-posterior-mark.png", alt="Tails: the barracuda", className="barracuda-coin-fish"),
+                    html.Span("T", className="barracuda-coin-letter"),
+                ], className="barracuda-coin-face back"),
+            ], className="barracuda-toss-coin"),
+        ], className=f"barracuda-coin-stage lands-{side}", role="img",
+            **{"aria-label": f"Coin toss {n} lands on {side}: {'portrait' if outcome else 'barracuda'}.", "data-outcome": outcome}),
+        html.Figcaption([
+            html.Div([
+                html.Span(f"Final observed toss · {n}", className="barracuda-mini-label"),
+                html.Strong(f"{side.capitalize()} · {outcome}"),
+            ], className="barracuda-coin-result"),
+            html.P("Heads = portrait · tails = barracuda. This animation shows the last of the n observations used below."),
+        ]),
+    ], id="coin-toss-scene", key=dataset_key, className="barracuda-coin-demo")
 
 
 def _relative_density(log_density: np.ndarray) -> np.ndarray:
@@ -1053,15 +1085,20 @@ def layout() -> html.Div:
                                     ),
                                     html.P("Changing interval probability leaves the observed data unchanged.", className="barracuda-help"),
                                     html.Div([html.Strong("Fixed prior: θ ∼ Beta(1, 1)"), html.P("Equal-length intervals in θ have equal prior probability. Uniformity is specific to this parameterization.")], className="barracuda-bernoulli-prior"),
-                                    html.Button("Simulate a new dataset", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
-                                    html.P("Replaces all n observations using the next seed. At fixed θ₀ and seed, changing n reveals a longer or shorter prefix of the same sequence. Changing θ₀ generates a different experiment.", className="barracuda-help"),
+                                    html.P("At fixed θ₀ and seed, changing n reveals a longer or shorter prefix of the same sequence. Changing θ₀ generates a different experiment.", className="barracuda-help"),
                                 ],
                                 className="barracuda-control-panel barracuda-bernoulli-controls",
                             ),
                             html.Div(
-                                _coin_experiment_summary(initial_outcomes, probability, 2026 + toss_round),
-                                id="coin-summary", className="barracuda-bernoulli-summary",
-                                **{"aria-live": "polite"},
+                                [
+                                    html.Button("Toss the coin · new dataset", id="coin-toss-again", n_clicks=0, className="barracuda-button primary full"),
+                                    html.P("Generates all n observations using the next seed; the coin shows the final toss.", className="barracuda-help"),
+                                    html.Div(
+                                        _coin_experiment_summary(initial_outcomes, probability, 2026 + toss_round),
+                                        id="coin-summary", **{"aria-live": "polite"},
+                                    ),
+                                ],
+                                className="barracuda-bernoulli-summary",
                             ),
                         ],
                         className="barracuda-bernoulli-lab-grid",
@@ -1485,8 +1522,9 @@ def register_callbacks(app) -> None:
         Input("coin-tosses", "value"),
         Input("coin-hdi-percent", "value"),
         Input("coin-toss-again", "n_clicks"),
+        State("coin-toss-scene", "key"),
     )
-    def update_coin(probability: float, tosses: int, hdi_percent: int, clicks: int):
+    def update_coin(probability: float, tosses: int, hdi_percent: int, clicks: int, displayed_dataset_key: str | None = None):
         try:
             probability = float(probability)
             tosses = int(tosses)
@@ -1506,10 +1544,11 @@ def register_callbacks(app) -> None:
         )
         frequency_figure = _coin_frequency_figure(probability, outcomes, hdi_percent)
         ground_truth = f"θ₀ = {probability:.2f} is known only because this is a simulation; it is not supplied to the posterior calculation."
+        dataset_key = f"{2026 + toss_round}:{probability}:{tosses}"
         return (
             figure,
             frequency_figure,
             metrics(values),
             ground_truth,
-            _coin_experiment_summary(outcomes, probability, 2026 + toss_round),
+            no_update if displayed_dataset_key == dataset_key else _coin_experiment_summary(outcomes, probability, 2026 + toss_round),
         )

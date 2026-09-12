@@ -981,6 +981,39 @@ h3 { margin: 1.4rem 0 0.6rem; }
 }
 
 /* Exact Bernoulli experiment: methods, observations and posterior uncertainty. */
+.barracuda-coin-demo { margin: 0 0 1.4rem; }
+.barracuda-coin-stage { --coin-size: 112px; --coin-landing: 1800deg; position: relative; height: 255px; overflow: hidden; perspective: 850px; background: var(--barracuda-paper); border: 1px solid var(--barracuda-line-soft); }
+.barracuda-coin-stage.lands-tails { --coin-landing: 1980deg; }
+.barracuda-coin-station { position: absolute; top: .8rem; color: var(--barracuda-ink-soft); font-family: var(--barracuda-mono); font-size: .65rem; text-transform: uppercase; letter-spacing: .1em; }
+.barracuda-coin-station.start { left: 1rem; }
+.barracuda-coin-station.finish { right: 1rem; }
+.barracuda-coin-ground { position: absolute; left: 8%; right: 8%; bottom: 25px; border-top: 1px solid var(--barracuda-line); }
+.barracuda-toss-coin { position: absolute; width: var(--coin-size); height: var(--coin-size); left: 72%; bottom: 28px; transform-style: preserve-3d; transform: translateX(-50%) rotateY(var(--coin-landing)); animation: barracuda-portrait-toss 2200ms ease-in-out both; }
+.barracuda-coin-face { position: absolute; inset: 0; overflow: hidden; border: 5px solid #B28A39; border-radius: 50%; background: #F3ECDF; backface-visibility: hidden; -webkit-backface-visibility: hidden; box-shadow: 0 0 0 1px #6F592C, inset 0 0 0 2px #F3D488; }
+.barracuda-coin-face.front { transform: translateZ(2px); }
+.barracuda-coin-face.back { transform: rotateY(180deg) translateZ(2px); }
+.barracuda-coin-portrait { position: absolute; width: 563%; max-width: none; height: auto; left: -221%; top: -150%; }
+.barracuda-coin-fish { width: 100%; height: 100%; object-fit: contain; }
+.barracuda-coin-letter { position: absolute; right: 8px; bottom: 5px; display: grid; place-items: center; width: 22px; height: 22px; border: 1px solid #6F592C; border-radius: 50%; color: var(--barracuda-ink); background: #F3D488; font: 700 12px var(--barracuda-mono); }
+.barracuda-coin-shadow { position: absolute; left: 72%; bottom: 21px; width: 88px; height: 9px; border-radius: 50%; background: rgba(23,39,44,.2); transform: translateX(-50%); animation: barracuda-portrait-shadow 2200ms ease-in-out both; }
+.barracuda-coin-result { display: flex; align-items: baseline; justify-content: space-between; gap: .8rem; padding: .8rem 0 .3rem; }
+.barracuda-coin-result strong { color: var(--barracuda-primary); font-size: 1.15rem; }
+.barracuda-coin-demo figcaption p { margin: .3rem 0 0; color: var(--barracuda-ink-soft); font-size: .8rem; line-height: 1.5; }
+@keyframes barracuda-portrait-toss {
+  0% { left: 25%; bottom: 28px; transform: translateX(-50%) rotateY(0deg) rotateZ(-8deg); }
+  45% { left: 48%; bottom: 116px; transform: translateX(-50%) rotateY(900deg) rotateZ(10deg); }
+  85% { left: 72%; bottom: 28px; transform: translateX(-50%) rotateY(var(--coin-landing)); }
+  93% { bottom: 40px; }
+  100% { left: 72%; bottom: 28px; transform: translateX(-50%) rotateY(var(--coin-landing)); }
+}
+@keyframes barracuda-portrait-shadow {
+  0% { left: 25%; opacity: 1; transform: translateX(-50%) scaleX(1); }
+  45% { left: 48%; opacity: .35; transform: translateX(-50%) scaleX(.45); }
+  85%, 100% { left: 72%; opacity: 1; transform: translateX(-50%) scaleX(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .barracuda-toss-coin, .barracuda-coin-shadow { animation: none; }
+}
 .barracuda-bernoulli-lab-grid { display: grid; grid-template-columns: minmax(280px, .9fr) minmax(0, 1.1fr); gap: 1rem; align-items: stretch; margin-top: 1.4rem; }
 .barracuda-bernoulli-controls, .barracuda-bernoulli-summary { min-width: 0; padding: 1.2rem; border: 1px solid var(--barracuda-line); }
 .barracuda-bernoulli-summary { background: var(--barracuda-sheet); }
