@@ -1025,6 +1025,10 @@ def posterior_marginal_figure(
             opacity=0.09,
             line={"color": colour, "width": 1, "dash": "dot"},
             layer="below",
+            name="95% HDI (shading)",
+            showlegend=not figure.data,
+            legendrank=1001,
+            legendgroup="hdi",
         )
         figure.add_trace(
             go.Histogram(
@@ -1050,7 +1054,7 @@ def posterior_marginal_figure(
         for condition in truth_keys
     ]
     truth_entries = [entry for entry in truth_entries if entry[1] is not None]
-    for truth_number, (condition, truth_value) in enumerate(truth_entries):
+    for condition, truth_value in truth_entries:
         single = len(truth_entries) == 1
         label = "Ground truth" if single else f"{condition} ground truth"
         colour = (
@@ -1061,35 +1065,23 @@ def posterior_marginal_figure(
         figure.add_vline(
             x=truth_value,
             line={"color": colour, "width": 2, "dash": "dash"},
-            annotation_text=label,
-            annotation_position=(
-                "top right" if truth_number % 2 == 0 else "top left"
-            ),
+            name=f"{label}: {truth_value:g}",
+            showlegend=True,
         )
     figure.update_layout(
         template="none",
         barmode="overlay",
-        height=420,
+        height=460,
         paper_bgcolor=SHEET,
         plot_bgcolor=PAPER,
         font={"family": SERIF, "color": INK, "size": 13},
-        margin={"l": 65, "r": 24, "t": 100, "b": 72},
+        margin={"l": 65, "r": 24, "t": 144, "b": 72},
         xaxis_title=PARAMETER_AXIS_LABELS.get(parameter, parameter),
         yaxis_title="Posterior density",
         legend={"orientation": "h", "x": 0, "y": 1.08, "yanchor": "bottom"},
     )
     figure.update_xaxes(gridcolor=GRID, zeroline=False, automargin=True)
     figure.update_yaxes(gridcolor=GRID, zeroline=False, automargin=True)
-    figure.add_annotation(
-        text="Translucent bands show 95% HDIs",
-        x=1,
-        y=1.25,
-        xref="paper",
-        yref="paper",
-        xanchor="right",
-        showarrow=False,
-        font={"family": SERIF, "size": 11, "color": RULE},
-    )
     return figure
 
 

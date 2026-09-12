@@ -398,6 +398,10 @@ def test_joint_and_marginal_posteriors_keep_colours_pairing_and_truth() -> None:
     assert any(np.isclose(float(shape.x0), 0.0) for shape in marginal.layout.shapes)
     assert histograms[0].xbins.to_plotly_json() == histograms[1].xbins.to_plotly_json()
     assert len(marginal.layout.shapes) == 4  # two HDIs and two truth lines
+    truth_lines = [shape for shape in marginal.layout.shapes if shape.type == "line"]
+    assert all(shape.showlegend and "ground truth" in shape.name for shape in truth_lines)
+    assert any(shape.showlegend and "HDI" in shape.name for shape in marginal.layout.shapes)
+    assert not any("ground truth" in str(annotation.text) for annotation in marginal.layout.annotations)
     contours = [
         trace for trace in joint.data if trace.type == "histogram2dcontour"
     ]
