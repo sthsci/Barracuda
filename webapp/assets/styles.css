@@ -610,6 +610,12 @@ button { touch-action: manipulation; }
 .barracuda-sampler-steps li { margin: 0.3rem 0; padding-left: 0.18rem; }
 .barracuda-sampler-steps li::marker { color: var(--barracuda-rust); font-family: var(--barracuda-mono); font-weight: 800; }
 .barracuda-sampler-plot { min-width: 0; height: 590px; min-height: 0; }
+.barracuda-sampler-scroll { min-width: 0; overflow-x: auto; overscroll-behavior-inline: contain; }
+.barracuda-sampler-scroll .barracuda-sampler-plot { min-width: 620px; }
+.barracuda-sampler-scroll-hint { display: none; }
+@media (max-width: 700px) {
+  .barracuda-sampler-scroll-hint { display: block; padding: 8px 12px; color: var(--barracuda-ink-soft); font: 12px/1.5 var(--barracuda-sans); }
+}
 
 .barracuda-bf-flow { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 0.65rem; margin: 1.15rem 0 1.5rem; }
 .barracuda-bf-flow > div { position: relative; min-width: 0; padding: 0.9rem; background: var(--barracuda-paper-warm); border: 1px solid var(--barracuda-line-soft); }
@@ -662,13 +668,20 @@ button { touch-action: manipulation; }
 .barracuda-donor-posterior-panel { min-width: 0; padding: 1rem; background: var(--barracuda-paper-warm); border: 1px solid var(--barracuda-line-soft); }
 .barracuda-donor-posterior-panel .barracuda-joint-plot-scroll { margin-top: 0.75rem; }
 .barracuda-bayes-factor-plot { width: 100%; min-width: 0; }
-.barracuda-trajectory-empirical-plot { position: relative; width: 100%; min-width: 0; max-width: 100%; margin-top: 1rem; overflow: hidden; contain: layout paint; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); }
+.barracuda-trajectory-map-scroll { min-width: 0; max-width: 980px; margin-inline: auto; overflow-x: auto; overscroll-behavior-inline: contain; }
+.barracuda-trajectory-empirical-plot { position: relative; width: 100%; min-width: 0; max-width: 980px; margin: 1rem auto 0; overflow: hidden; contain: layout paint; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); }
 .barracuda-trajectory-empirical-plot .js-plotly-plot,
 .barracuda-trajectory-empirical-plot .plot-container,
 .barracuda-trajectory-empirical-plot .svg-container { width: 100% !important; max-width: 100%; }
-.barracuda-trajectory-encoding-legend { margin: 1rem 0 0; padding: 0.75rem 0.9rem 0.55rem; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); }
-.barracuda-trajectory-encoding-legend img { display: block; width: 100%; height: auto; }
-.barracuda-trajectory-encoding-legend figcaption { margin-top: 0.35rem; color: var(--barracuda-ink-soft); font-size: 0.78rem; line-height: 1.45; }
+.barracuda-trajectory-encoding-legend { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin: 1rem 0 0; padding: 1rem; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); }
+.barracuda-trajectory-encoding-legend > div { min-width: 0; }
+.barracuda-trajectory-encoding-legend h4 { margin: 0 0 8px; font: 600 14px/1.4 var(--barracuda-sans); }
+.barracuda-trajectory-encoding-legend img { display: block; width: 100%; max-width: 460px; height: auto; }
+.barracuda-trajectory-encoding-legend figcaption { grid-column: 1 / -1; color: var(--barracuda-ink-soft); font-size: 0.78rem; line-height: 1.45; }
+@media (max-width: 700px) {
+  .barracuda-trajectory-encoding-legend { grid-template-columns: 1fr; }
+  .barracuda-trajectory-empirical-plot { height: var(--trajectory-mobile-height, 460px) !important; }
+}
 .barracuda-trajectory-results .barracuda-model-result-panel { padding: 1rem; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); }
 .barracuda-trajectory-results .barracuda-model-result-panel > h4 { margin: 0 0 0.6rem; }
 .barracuda-analysis-downloads { display: grid; width: 100%; gap: 0.75rem; padding: 1rem; border: 1px solid var(--barracuda-line); background: var(--barracuda-sheet); }
@@ -836,6 +849,7 @@ h3 { margin: 1.4rem 0 0.6rem; }
 .barracuda-mobile-menu nav { position: absolute; top: 56px; right: 12px; width: min(280px, calc(100vw - 24px)); display: grid; gap: 4px; padding: 8px; background: var(--barracuda-sheet); border: 1px solid var(--barracuda-line-soft); border-radius: 2px; box-shadow: 4px 5px 0 rgba(23,39,44,.1); }
 
 .barracuda-main { flex: 1; min-width: 0; }
+#barracuda-main { scroll-margin-top: 80px; }
 .barracuda-page-inner { width: min(100% - 48px, 1260px); margin: 0 auto; padding: 40px 0 72px; }
 .page-analysis .barracuda-page-inner { max-width: 1440px; }
 .page-learning .barracuda-page-inner { max-width: 1160px; }
@@ -956,7 +970,11 @@ h3 { margin: 1.4rem 0 0.6rem; }
   .barracuda-mobile-menu { display: block; }
   .barracuda-page-inner { width: min(100% - 24px, 760px); padding-top: 28px; }
   .barracuda-stepper { grid-template-columns: repeat(5, minmax(108px,1fr)); overflow-x: auto; }
-  .barracuda-bayes-page .barracuda-toc { position: static; display: block; }
+  .barracuda-bayes-page .barracuda-toc { top: 64px; display: block; margin-inline: -4px; padding: 6px; }
+  .barracuda-bayes-page .barracuda-toc > .barracuda-section-label { display: none; }
+  .barracuda-bayes-page .barracuda-toc-list { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: thin; }
+  .barracuda-bayes-page .barracuda-toc-list li { flex: 0 0 auto; }
+  .barracuda-bayes-page .barracuda-toc-list a { min-height: 42px; white-space: nowrap; }
 }
 
 @media (max-width: 560px) {
@@ -1053,7 +1071,7 @@ h3 { margin: 1.4rem 0 0.6rem; }
   .barracuda-bayes-page .barracuda-lesson-section, .barracuda-learning-stage, .barracuda-learning-references li { scroll-margin-top: 210px; }
 }
 @media (max-width: 820px) {
-  .barracuda-bayes-page .barracuda-lesson-section, .barracuda-learning-stage, .barracuda-learning-references li { scroll-margin-top: 80px; }
+  .barracuda-bayes-page .barracuda-lesson-section, .barracuda-learning-stage, .barracuda-learning-references li { scroll-margin-top: 138px; }
 }
 @media (max-width: 760px) {
   .barracuda-bernoulli-lab-grid { grid-template-columns: 1fr; }

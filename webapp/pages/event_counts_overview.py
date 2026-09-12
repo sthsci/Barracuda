@@ -49,7 +49,7 @@ def layout() -> html.Div:
                             _route(
                                 "Counts without donor labels",
                                 "Donor-ignorant",
-                                "Use one total count per cell when donor identity is unavailable or outside the question.",
+                                "Use one total count per cell when donor identity is unavailable or is not included in the analysis.",
                                 "cell_id · condition · count",
                                 "/event-counts/donor-ignorant",
                             ),
@@ -102,7 +102,7 @@ def layout() -> html.Div:
                     schematic_figure(
                         "/assets/event_count_models_panel_a.png",
                         "Four event-rate models compare a shared positive rate, continuous positive-rate variation, a nonengaging fraction, and both continuous variation and a nonengaging fraction.",
-                        "The same four event-count models are compared throughout BARRACUDA.",
+                        "These four models are compared in the event-count workflows.",
                         variant="models",
                     ),
                     html.Details(

@@ -24,13 +24,13 @@ from dash import dcc, html
 
 
 INK: Final[str] = "#25231F"
-PAPER: Final[str] = "#F3EDDF"
-SHEET: Final[str] = "#FBF7ED"
+PAPER: Final[str] = "#F7F8F9"
+SHEET: Final[str] = "#FFFFFF"
 RULE: Final[str] = "#887B66"
-GRID: Final[str] = "#D6CCBA"
+GRID: Final[str] = "#E1E6E9"
 TRUTH: Final[str] = "#9A4938"
 SERIF: Final[str] = (
-    "Iowan Old Style, Baskerville, Palatino Linotype, Palatino, Georgia, serif"
+    "Avenir Next, Segoe UI, Helvetica, Arial, sans-serif"
 )
 BF3_LOG10: Final[float] = float(np.log10(3.0))
 
@@ -109,9 +109,9 @@ MODEL_PARAMETERS: Final[dict[str, tuple[str, ...]]] = {
 }
 
 PROBABILITY_SCALE: Final[list[list[object]]] = [
-    [0.0, "#2C7BB6"],
-    [0.5, "#F7F7F7"],
-    [1.0, "#D7191C"],
+    [0.0, "#176B96"],
+    [0.5, "#6B7680"],
+    [1.0, "#B44735"],
 ]
 BF_BANDS: Final[tuple[tuple[str, float | None, float, str], ...]] = (
     ("Extreme", None, -2.0, "#E76F51"),
@@ -356,98 +356,52 @@ def _encoding_legend_svg(
     summary: pd.DataFrame,
     *,
     arrow_scale: float,
+    probability: bool = False,
 ) -> str:
-    """Return the paper-style arrow length and quarter-fan legend as SVG."""
+    """Draw one compact legend with the same arrow geometry as the state map."""
 
     max_cells = max(int(summary["n_cells"].max()), 1)
-    powers = [2**power for power in range(int(math.floor(math.log2(max_cells))) + 1)]
-    examples = list(dict.fromkeys([*powers, max_cells]))
-    if len(examples) > 6:
-        indices = np.linspace(0, len(examples) - 1, 6).round().astype(int)
-        examples = [examples[index] for index in indices]
     max_log2_cells = max(math.log2(max_cells), 1.0)
+    if probability:
+        examples = [0.0, 0.25, 0.5, 0.75, 1.0]
+    else:
+        powers = [2**power for power in range(int(math.floor(math.log2(max_cells))) + 1)]
+        examples = list(dict.fromkeys([*powers, max_cells]))
+        if len(examples) > 6:
+            indices = np.linspace(0, len(examples) - 1, 6).round().astype(int)
+            examples = [examples[index] for index in indices]
 
-    size_items: list[str] = []
-    start_x = 18.0
-    available_width = 535.0
-    spacing = available_width / max(len(examples), 1)
-    for index, count in enumerate(examples):
-        x = start_x + index * spacing
-        length = 18.0 + 58.0 * (
-            (_state_arrow_length(count, max_log2_cells, arrow_scale) - 0.15)
-            / 0.80
+    arrows: list[str] = []
+    spacing = 440.0 / len(examples)
+    for index, value in enumerate(examples):
+        centre = 10 + (index + 0.5) * spacing
+        if probability:
+            angle = math.atan2(value, 1.0 - value)
+            length = 39.0
+            dx, dy = length * math.cos(angle), length * math.sin(angle)
+            colour = _probability_colour(value)
+            label = f"p = {value:g}"
+        else:
+            length = 64.0 * _state_arrow_length(int(value), max_log2_cells, arrow_scale) / 0.95
+            dx, dy = length, 0.0
+            colour = INK
+            label = str(value)
+        start_x, start_y = centre - dx / 2, 30 + dy / 2
+        end_x, end_y = centre + dx / 2, 30 - dy / 2
+        arrows.append(
+            f'<g><defs><marker id="arrow-{index}" markerWidth="5" markerHeight="5" '
+            f'refX="4.5" refY="2.5" orient="auto"><path d="M0,0 L5,2.5 L0,5 Z" '
+            f'fill="{escape(colour)}"/></marker></defs>'
+            f'<line x1="{start_x:.2f}" y1="{start_y:.2f}" x2="{end_x:.2f}" y2="{end_y:.2f}" '
+            f'stroke="{escape(colour)}" stroke-width="2.6" marker-end="url(#arrow-{index})"/>'
+            f'<text x="{centre:.2f}" y="78" text-anchor="middle">{label}</text></g>'
         )
-        size_items.extend(
-            [
-                (
-                    f'<line x1="{x:.1f}" y1="69" x2="{x + length:.1f}" y2="69" '
-                    'stroke="#77736B" stroke-width="2.4" marker-end="url(#grey-arrow)"/>'
-                ),
-                (
-                    f'<text x="{x + length / 2:.1f}" y="94" text-anchor="middle" '
-                    f'class="value">{count}</text>'
-                ),
-            ]
-        )
-
-    origin_x, origin_y, radius = 690.0, 112.0, 68.0
-    probabilities = np.linspace(0.0, 1.0, 6)
-    angles = [math.atan2(probability, 1.0 - probability) for probability in probabilities]
-    fan_items: list[str] = []
-    for band_index, (lower, upper) in enumerate(
-        zip(angles[:-1], angles[1:], strict=True)
-    ):
-        lower_x = origin_x + radius * math.cos(lower)
-        lower_y = origin_y - radius * math.sin(lower)
-        upper_x = origin_x + radius * math.cos(upper)
-        upper_y = origin_y - radius * math.sin(upper)
-        midpoint_probability = float(probabilities[band_index] + 0.1)
-        colour = _probability_colour(midpoint_probability)
-        fan_items.append(
-            (
-                f'<path d="M {origin_x:.1f},{origin_y:.1f} '
-                f'L {lower_x:.1f},{lower_y:.1f} '
-                f'A {radius:.1f},{radius:.1f} 0 0,0 {upper_x:.1f},{upper_y:.1f} Z" '
-                f'fill="{escape(colour)}" fill-opacity="0.9" stroke="#25231F" stroke-width="0.7"/>'
-            )
-        )
-    for probability in (0.0, 0.25, 0.5, 0.75, 1.0):
-        angle = math.atan2(probability, 1.0 - probability)
-        end_x = origin_x + (radius - 3) * math.cos(angle)
-        end_y = origin_y - (radius - 3) * math.sin(angle)
-        fan_items.append(
-            (
-                f'<line x1="{origin_x:.1f}" y1="{origin_y:.1f}" '
-                f'x2="{end_x:.1f}" y2="{end_y:.1f}" stroke="#25231F" '
-                'stroke-width="1.7" marker-end="url(#black-arrow)"/>'
-            )
-        )
-
-    svg = f"""
-    <svg xmlns="http://www.w3.org/2000/svg" width="900" height="132" viewBox="0 0 900 132">
-      <defs>
-        <marker id="grey-arrow" markerWidth="7" markerHeight="7" refX="5.8" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#77736B"/>
-        </marker>
-        <marker id="black-arrow" markerWidth="7" markerHeight="7" refX="5.8" refY="3.5" orient="auto">
-          <path d="M0,0 L7,3.5 L0,7 Z" fill="#25231F"/>
-        </marker>
-        <style>
-          .title {{ font: 18px 'Iowan Old Style', Baskerville, Georgia, serif; fill: #25231F; }}
-          .value {{ font: 15px 'Iowan Old Style', Baskerville, Georgia, serif; fill: #25231F; }}
-          .small {{ font: 13px 'Iowan Old Style', Baskerville, Georgia, serif; fill: #25231F; }}
-        </style>
-      </defs>
-      <text x="18" y="25" class="title">Cells reaching the state (arrow length increases with log₂ n)</text>
-      {''.join(size_items)}
-      <text x="610" y="25" class="title">Empirical killing probability</text>
-      {''.join(fan_items)}
-      <text x="766" y="119" class="value">p = 0</text>
-      <text x="741" y="62" class="value">0.5</text>
-      <text x="666" y="34" class="value">p = 1</text>
-      <text x="602" y="128" class="small">horizontal = non-lethal · vertical = lethal</text>
-    </svg>
-    """
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" width="460" height="90" viewBox="0 0 460 90">'
+        '<style>text {font: 16px Arial, sans-serif; fill: #25231F;}</style>'
+        + "".join(arrows)
+        + '</svg>'
+    )
     encoded = base64.b64encode(svg.encode("utf-8")).decode("ascii")
     return f"data:image/svg+xml;base64,{encoded}"
 
@@ -457,24 +411,35 @@ def empirical_state_encoding_legend(
     *,
     arrow_scale: float = 1.0,
 ) -> html.Figure:
-    """Render the Figure 5 direction and log2 cell-support legend."""
+    """Explain the shared probability and cell-support encodings."""
 
     summary = empirical_state_summary(frame)
     if summary.empty:
         raise ValueError("at least one observed contact is required")
     return html.Figure(
         [
-            html.Img(
-                src=_encoding_legend_svg(summary, arrow_scale=arrow_scale),
-                alt=(
-                    "Trajectory arrow legend. Arrow length increases with the log base 2 "
-                    "number of cells reaching a state. Horizontal arrows represent zero "
-                    "empirical killing probability, vertical arrows represent probability "
-                    "one, and intermediate directions represent intermediate probabilities."
-                ),
+            html.Div(
+                [
+                    html.H4("Arrow length · cells reaching a state"),
+                    html.Img(
+                        src=_encoding_legend_svg(summary, arrow_scale=arrow_scale),
+                        alt="Arrow length increases with log base 2 of the number of cells. The displayed scale is shared across conditions.",
+                    ),
+                ],
+            ),
+            html.Div(
+                [
+                    html.H4("Direction and colour · lethal probability"),
+                    html.Img(
+                        src=_encoding_legend_svg(summary, arrow_scale=arrow_scale, probability=True),
+                        alt="Empirical lethal probability: horizontal arrow, p = 0; diagonal arrow, p = 0.5; vertical arrow, p = 1. Intermediate arrows show p = 0.25 and p = 0.75.",
+                    ),
+                ],
             ),
             html.Figcaption(
-                "Direction encodes the empirical probability that the next contact is lethal; length encodes how many cells reached the state on a log₂ scale."
+                "At each state, p is the observed lethal fraction among subsequent contacts. "
+                "Arrow length increases with log₂ n, with a visible minimum for n = 1. "
+                "All conditions use the same probability and cell-count scales."
             ),
         ],
         className="barracuda-trajectory-encoding-legend",
@@ -491,8 +456,8 @@ def empirical_state_arrow_figure(
     """Plot empirical state arrows, faceted by experimental condition.
 
     Arrow direction encodes the lethal/nonlethal probability balance, colour
-    encodes the numerical lethal probability, and arrow length is proportional
-    to ``log2(n_cells + 1)`` within a condition.
+    encodes the numerical lethal probability. Arrow length is an affine function
+    of ``log2(n_cells)``, with a visible minimum and one scale across conditions.
     """
 
     summary = empirical_state_summary(frame)
@@ -541,11 +506,12 @@ def empirical_state_arrow_figure(
             angle = 90.0 - math.degrees(math.atan2(delta[1], delta[0]))
             colour = _probability_colour(probability)
             hover = (
-                f"{condition}<br>Before contact: "
+                f"{escape(condition)}<br>Before contact: "
                 f"{int(state.x_before)} non-lethal, {int(state.y_before)} lethal"
-                f"<br>Empirical next-contact killing probability = {probability:.3f}"
+                f"<br>Observed lethal fraction = {int(state.n_lethal)}/{int(state.n_contacts)} = {probability:.3f}"
                 f"<br>Cells at state = {int(state.n_cells)}"
-                f"<br>Observed contacts = {int(state.n_contacts)}"
+                f"<br>Lethal contacts = {int(state.n_lethal)}"
+                f"<br>Non-lethal contacts = {int(state.n_nonlethal)}"
             )
             figure.add_trace(
                 go.Scatter(
@@ -555,10 +521,10 @@ def empirical_state_arrow_figure(
                     line={"color": colour, "width": 3.5 * arrow_scale},
                     marker={
                         "color": [colour, colour],
-                        "size": [max(3.5, 5 * arrow_scale), max(8, 11 * arrow_scale)],
+                        "size": [max(4, 5 * arrow_scale), max(10, 12 * arrow_scale)],
                         "symbol": ["circle", "arrow"],
                         "angle": [0, angle],
-                        "line": {"color": INK, "width": 0.55},
+                        "line": {"color": INK, "width": 0.65},
                     },
                     customdata=[hover, hover],
                     hovertemplate="%{customdata}<extra></extra>",
@@ -569,10 +535,10 @@ def empirical_state_arrow_figure(
             )
     axis_max = int(
         max(summary["x_before"].max(), summary["y_before"].max())
-    ) + 1
+    )
     figure.update_xaxes(
         title_text="Previous non-lethal contacts, f",
-        range=[-0.35, axis_max + 0.45],
+        range=[-0.30, axis_max + 0.95],
         dtick=1,
         gridcolor=GRID,
         zeroline=False,
@@ -580,7 +546,7 @@ def empirical_state_arrow_figure(
     )
     figure.update_yaxes(
         title_text="Previous lethal contacts, s",
-        range=[-0.35, axis_max + 0.45],
+        range=[-0.30, axis_max + 0.95],
         dtick=1,
         gridcolor=GRID,
         zeroline=False,
@@ -599,7 +565,8 @@ def empirical_state_arrow_figure(
         paper_bgcolor=SHEET,
         plot_bgcolor=PAPER,
         font={"family": SERIF, "color": INK, "size": 13},
-        margin={"l": 82, "r": 42, "t": 70, "b": 76},
+        margin={"l": 62, "r": 24, "t": 48, "b": 62},
+        hoverlabel={"font": {"size": 13}},
         showlegend=False,
     )
     return figure
@@ -702,7 +669,8 @@ def trajectory_bayes_factor_figure(
             suffixes.append("Best model")
         if model_key == _truth_model_for_condition(truth_model, condition):
             suffixes.append("Ground truth")
-        label = f"{condition} · {row.model}"
+        short_model = TRAJECTORY_MODEL_LABELS.get(model_key, str(row.model)).split(" · ", 1)[0].replace("𝓜_", "")
+        label = f"{escape(condition)}<br>{escape(short_model)}"
         if suffixes:
             label += " · " + " · ".join(suffixes)
         labels.append(label)
@@ -718,7 +686,7 @@ def trajectory_bayes_factor_figure(
             x0=x0,
             x1=end,
             fillcolor=colour,
-            opacity=0.5,
+            opacity=0.18,
             line_width=0,
             layer="below",
         )
@@ -756,7 +724,7 @@ def trajectory_bayes_factor_figure(
             customdata=[
                 [
                     str(row.condition),
-                    str(row.model_key),
+                    escape(str(row.model)),
                     (
                         float(log_evidence)
                         if np.isfinite(log_evidence)
@@ -769,7 +737,7 @@ def trajectory_bayes_factor_figure(
                 )
             ],
             hovertemplate=(
-                "%{y}<br>log10 BF(model/best) = %{x:.4g}"
+                "%{customdata[0]}<br>%{customdata[1]}<br>log10 BF(model/best) = %{x:.4g}"
                 "<br>log evidence = %{customdata[2]:.4g}<extra></extra>"
             ),
             showlegend=False,
@@ -781,15 +749,12 @@ def trajectory_bayes_factor_figure(
         go.Scatter(
             x=np.zeros(len(best_rows)),
             y=best_labels,
-            mode="markers+text",
+            mode="markers",
             marker={
                 "symbol": "diamond",
                 "size": 11,
                 "color": INK,
             },
-            text=["Best model"] * len(best_rows),
-            textposition="middle right",
-            textfont={"family": SERIF, "size": 12, "color": INK},
             name="Best model",
             hovertemplate="%{y}<br>Best model · log10 BF = 0<extra></extra>",
             showlegend=False,
@@ -810,9 +775,9 @@ def trajectory_bayes_factor_figure(
         paper_bgcolor=SHEET,
         plot_bgcolor=PAPER,
         font={"family": SERIF, "color": INK, "size": 13},
-        margin={"l": 235, "r": 120, "t": 92, "b": 82},
+        margin={"l": 135, "r": 32, "t": 76, "b": 74},
         xaxis_title="log₁₀ BF(𝓜 / 𝓜<sub>best</sub>)",
-        yaxis_title="Condition and candidate model",
+        yaxis_title=None,
         legend={
             "orientation": "h",
             "x": 0,
@@ -1108,17 +1073,17 @@ def posterior_marginal_figure(
         paper_bgcolor=SHEET,
         plot_bgcolor=PAPER,
         font={"family": SERIF, "color": INK, "size": 13},
-        margin={"l": 78, "r": 30, "t": 72, "b": 70},
-        xaxis_title=PARAMETER_LABELS.get(parameter, parameter),
+        margin={"l": 65, "r": 24, "t": 100, "b": 72},
+        xaxis_title=PARAMETER_AXIS_LABELS.get(parameter, parameter),
         yaxis_title="Posterior density",
-        legend={"orientation": "h", "x": 0, "y": 1.12},
+        legend={"orientation": "h", "x": 0, "y": 1.08, "yanchor": "bottom"},
     )
     figure.update_xaxes(gridcolor=GRID, zeroline=False, automargin=True)
     figure.update_yaxes(gridcolor=GRID, zeroline=False, automargin=True)
     figure.add_annotation(
         text="Translucent bands show 95% HDIs",
         x=1,
-        y=1.13,
+        y=1.25,
         xref="paper",
         yref="paper",
         xanchor="right",
@@ -1539,16 +1504,15 @@ def render_trajectory_results(
                             "displaylogo": False,
                             "responsive": True,
                             "toImageButtonOptions": {
-                                "format": "png",
+                                "format": "svg",
                                 "filename": f"barracuda_trajectory_{model_key}_marginal",
-                                "scale": 2,
                             },
                         },
                         responsive=True,
                     ),
                     html.H5("Full joint posterior"),
                     html.P(
-                        "Diagonal panels use shared bins and show 95% HDIs. Lower panels retain paired particle dependence between parameters.",
+                        "Diagonal panels show marginal densities with shared bins and 95% highest-density intervals. Lower panels show binned contours of paired posterior samples; contour lines do not denote fixed credible probabilities. Scroll horizontally on small screens to inspect the full parameter matrix.",
                         className="barracuda-help",
                     ),
                     html.Div(
@@ -1562,9 +1526,8 @@ def render_trajectory_results(
                                 "displaylogo": False,
                                 "responsive": True,
                                 "toImageButtonOptions": {
-                                    "format": "png",
+                                    "format": "svg",
                                     "filename": f"barracuda_trajectory_{model_key}_joint",
-                                    "scale": 2,
                                 },
                             },
                             responsive=True,
@@ -1588,7 +1551,7 @@ def render_trajectory_results(
             [
                 html.Strong("Model comparison requires at least two models."),
                 html.P(
-                    "The posterior below is valid for the selected model. Run inference with two or more candidate models to calculate Bayes factors.",
+                    "The posterior below is conditional on the selected model and priors. Run inference with two or more candidate models to calculate Bayes factors.",
                 ),
             ],
             id=f"{prefix}-bayes-factor-unavailable",
@@ -1602,9 +1565,8 @@ def render_trajectory_results(
                 "displaylogo": False,
                 "responsive": True,
                 "toImageButtonOptions": {
-                    "format": "png",
+                    "format": "svg",
                     "filename": "barracuda_trajectory_bayes_factors",
-                    "scale": 2,
                 },
             },
             responsive=True,
@@ -1618,7 +1580,7 @@ def render_trajectory_results(
                     html.Span("Model evidence", className="barracuda-section-label"),
                     html.H3("Bayes factors by experimental condition"),
                     html.P(
-                        "The axis shows log₁₀ BF(candidate model / best model) on a linear scale. The best model is at zero; evidence against alternatives extends left across the exact BF boundaries 3, 10, and 100.",
+                        "Each value is log₁₀ BF(candidate / best) within an experimental condition. Zero marks the highest estimated evidence; negative values favour that model over the candidate. Hom/Het denote homogeneous/heterogeneous baseline propensity; HI/HD denote history-independent/history-dependent models. Bands mark conventional evidence ratios of 3, 10, and 100, not decision thresholds or posterior model probabilities.",
                         className="barracuda-help",
                     ),
                     bayes_result,
@@ -1657,7 +1619,7 @@ def render_trajectory_results(
                         labelClassName="barracuda-posterior-model-option",
                     ),
                     html.P(
-                        "Condition colours are retained across posterior plots. Parameters fixed by a candidate model are omitted rather than plotted as zero-width distributions.",
+                        "Colours identify the same conditions throughout. Each posterior is conditional on its model and priors. Parameters fixed by that model are omitted from the plots.",
                         className="barracuda-help",
                     ),
                     html.Div(panels, className="barracuda-condition-model-panels"),

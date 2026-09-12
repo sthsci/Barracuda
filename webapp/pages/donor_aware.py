@@ -18,15 +18,15 @@ def layout() -> html.Div:
         donor_aware=True,
         kicker="Event counts · Donor-aware",
         title="Donor-aware condition analysis",
-        lead="Fit one to four experimental conditions while allowing mean event rate μλ,d, cell-to-cell heterogeneity σλ,d, and nonengaging fraction φ₀,d to vary by donor.",
+        lead="Fit one to four experimental conditions. Within each condition, allow mean event rate μλ,d, cell-to-cell heterogeneity σλ,d, and nonengaging fraction φ₀,d to vary by donor.",
         badge="2 to 12 donors per condition · Section 2 hierarchy",
     )
     children = list(page.children)
     children.append(
         html.Section(
             [
-                html.Span("How the hierarchy is read", className="barracuda-section-label"),
-                html.H2("Cells within donors, then donors within each condition"),
+                html.Span("Interpreting the donor model", className="barracuda-section-label"),
+                html.H2("Cells are grouped by donor within each condition"),
                 html.P(
                     "Each experimental condition is fitted independently. Within a condition, donor parameters are estimated jointly around shared reference priors. Reported population parameters are cell-weighted moments of the donor mixture.",
                     className="barracuda-section-lead",
@@ -36,13 +36,13 @@ def layout() -> html.Div:
                         html.Div(
                             [
                                 html.Strong("1 · Model evidence"),
-                                html.P("Compare the four candidate count models with sequential Monte Carlo (SMC) marginal likelihoods and Bayes factors."),
+                                html.P("Compare the four candidate count models using sequential Monte Carlo (SMC) estimates of marginal likelihoods and Bayes factors."),
                             ]
                         ),
                         html.Div(
                             [
                                 html.Strong("2 · Sources of heterogeneity"),
-                                html.P("Split population variance into continuous variation within donors and differences between donor means."),
+                                html.P("Partition population variance into continuous variation within donors and differences between donor means."),
                             ]
                         ),
                         html.Div(
@@ -54,7 +54,7 @@ def layout() -> html.Div:
                         html.Div(
                             [
                                 html.Strong("4 · Condition contrasts"),
-                                html.P("Compare independent posterior particle distributions for any two conditions."),
+                                html.P("Compare parameter values between any two conditions using independently fitted posterior particle distributions."),
                             ]
                         ),
                     ],
@@ -73,7 +73,7 @@ $$V_{\mathrm{between}}=\sum_d\widetilde w_d(\mu_{\lambda,d}-\bar\mu_\lambda)^2,$
 
 $$\bar\sigma_\lambda=\sqrt{V_{\mathrm{within}}+V_{\mathrm{between}}}.$$
 
-Inference runs for two experimental conditions are independent. A contrast therefore uses every possible particle pair when practical; for larger posteriors it uses a reproducible uniform sample of independent pairs. It does **not** subtract only the two posterior means.
+Inference runs for two experimental conditions are independent. A contrast therefore uses every possible particle pair when practical; for larger posteriors it uses a reproducible uniform sample of independent pairs. This retains uncertainty from both posteriors; subtracting only their means would discard it.
 """,
                             mathjax=True,
                             className="barracuda-model-equations",

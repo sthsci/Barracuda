@@ -6,6 +6,7 @@ import numpy as np
 from webapp.donor_interactive import (
     contrast_from_payload,
     contrast_summary,
+    contrast_figure,
     donor_contrast_payload,
     donor_contrast_section,
 )
@@ -95,6 +96,20 @@ def test_donor_contrast_uses_every_independent_pair_and_includes_phi() -> None:
     summary = contrast_summary(frame)
     assert len(summary) == 6
     assert any("nonengaging fraction" in value for value in summary["Parameter"])
+    interval_summary = contrast_summary(frame, hdi_prob=0.8)
+    assert "80% HDI lower" in interval_summary
+    assert "95% HDI lower" not in interval_summary
+
+    figure = contrast_figure(frame, title="Treatment minus Control")
+    assert len(figure.layout.shapes) == 9  # One zero reference per axis, not per donor.
+    assert figure.layout.xaxis4.matches == figure.layout.xaxis7.matches == "x"
+    assert figure.layout.yaxis7.matches == figure.layout.yaxis8.matches == "x9"
+    for trace in figure.data:
+        if trace.type == "histogram2dcontour":
+            assert trace.showscale is False
+        elif trace.type == "histogram":
+            assert "Posterior density" in trace.hovertemplate
+            assert len(trace.x) == 4
 
 
 def test_donor_contrast_section_explains_particle_rule_and_has_controls() -> None:

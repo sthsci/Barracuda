@@ -34,7 +34,7 @@ NOTEBOOKS = (
         "category": "Teaching",
         "title": "Trajectory model tutorial",
         "path": "notebooks/03_trajectory_model_tutorial.ipynb",
-        "description": "Explore how cell heterogeneity and contact history alter killing decisions.",
+        "description": "Compare models of cell heterogeneity and changes in killing probability after previous contacts.",
     },
     {
         "category": "Analysis",
@@ -60,9 +60,9 @@ NOTEBOOKS = (
 def layout() -> html.Div:
     sections = []
     introductions = {
-        "Start here": "Open the web app before choosing a focused notebook.",
+        "Start here": "Launch the web app to use BARRACUDA in your browser.",
         "Teaching": "Build intuition with guided examples and synthetic data.",
-        "Analysis": "Use the reusable workflows as a starting point for your own data.",
+        "Analysis": "Adapt the analysis workflows to your own data.",
     }
     for category in introductions:
         items = [item for item in NOTEBOOKS if item["category"] == category]

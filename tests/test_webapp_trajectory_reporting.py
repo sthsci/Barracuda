@@ -265,13 +265,20 @@ def test_empirical_arrow_map_facets_and_uses_log_cell_count_length() -> None:
     assert figure.layout.yaxis2.scaleanchor == "x2"
     assert not figure.layout.images
     legend = empirical_state_encoding_legend(frame)
-    legend_source = str(legend.children[0].src)
-    assert legend_source.startswith("data:image/svg+xml;base64,")
-    legend_svg = base64.b64decode(legend_source.split(",", 1)[1]).decode()
-    assert "Empirical killing probability" in legend_svg
-    assert "arrow length increases with log₂ n" in legend_svg
-    assert "horizontal = non-lethal" in legend_svg
-    assert "vertical = lethal" in legend_svg
+    legend_images = [item for item in _walk(legend) if getattr(item, "src", None)]
+    assert len(legend_images) == 2
+    support_svg, probability_svg = [
+        base64.b64decode(str(item.src).split(",", 1)[1]).decode()
+        for item in legend_images
+    ]
+    assert 'width="460" height="90"' in support_svg
+    assert "p = 0.5" in probability_svg
+    assert "p = 0" in probability_svg and "p = 1" in probability_svg
+    assert "log₂ n" in str(legend.children[-1].children)
+    assert "shared across conditions" in legend_images[0].alt
+    assert "Observed lethal fraction = 3/4 = 0.750" in str(control_origin.customdata[0])
+    assert "Non-lethal contacts = 1" in str(control_origin.customdata[0])
+    assert control_origin.marker.size[1] >= 10
 
     larger = empirical_state_arrow_figure(frame, arrow_scale=1.4)
     larger_arrow = next(

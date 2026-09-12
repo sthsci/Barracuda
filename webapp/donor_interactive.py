@@ -8,14 +8,12 @@ import arviz as az
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from dash import Input, Output, State, dcc, html
 
 from webapp.analysis_ui import data_table
 from webapp.core.condition_inference import ConditionResults
 from webapp.core.inference import MODEL_SPECS
-from webapp.palette import DONOR_GOLD, DONOR_RUST, DONOR_SAGE, DONOR_TEAL
-from webapp.reporting import GRID, INK, PAPER, RULE, SERIF, SHEET
+from webapp.reporting import PAPER, SHEET
 from webapp.ui import note
 
 
@@ -42,15 +40,6 @@ CONTRAST_LABELS = {
     "percent_delta_sigma_lambda": "Relative difference in continuous cell-to-cell heterogeneity, %",
     "percent_delta_phi_0": "Relative difference in nonengaging fraction, %",
 }
-CONTRAST_AXIS_LABELS = {
-    "delta_mu_lambda": "Δμλ,d",
-    "delta_sigma_lambda": "Δσλ,d",
-    "delta_phi_0": "Δφ₀,d",
-    "percent_delta_mu_lambda": "Δμλ,d (%)",
-    "percent_delta_sigma_lambda": "Δσλ,d (%)",
-    "percent_delta_phi_0": "Δφ₀,d (%)",
-}
-DONOR_COLOURS = (DONOR_TEAL, DONOR_SAGE, DONOR_GOLD, DONOR_RUST)
 
 
 def _donor_dimension(values) -> str:
@@ -249,8 +238,8 @@ def contrast_summary(frame: pd.DataFrame, *, hdi_prob: float = 0.95) -> pd.DataF
                     "Donor": donor,
                     "Parameter": CONTRAST_LABELS.get(parameter, parameter),
                     "Posterior median": float(np.median(values)),
-                    "95% HDI lower": float(interval[0]),
-                    "95% HDI upper": float(interval[1]),
+                    f"{hdi_prob:.0%} HDI lower": float(interval[0]),
+                    f"{hdi_prob:.0%} HDI upper": float(interval[1]),
                     "P(difference > 0)": float(np.mean(values > 0)),
                     "Particle pairs": len(values),
                 }
@@ -259,104 +248,16 @@ def contrast_summary(frame: pd.DataFrame, *, hdi_prob: float = 0.95) -> pd.DataF
 
 
 def contrast_figure(frame: pd.DataFrame, *, title: str) -> go.Figure:
-    parameters = [column for column in frame.columns if column != "donor_id"]
-    donors = list(dict.fromkeys(frame["donor_id"].astype(str)))
-    size = len(parameters)
-    figure = make_subplots(
-        rows=size,
-        cols=size,
-        horizontal_spacing=0.07,
-        vertical_spacing=0.08,
-    )
-    for row_index, row_parameter in enumerate(parameters, start=1):
-        for column_index, column_parameter in enumerate(parameters, start=1):
-            if column_index > row_index:
-                figure.update_xaxes(visible=False, row=row_index, col=column_index)
-                figure.update_yaxes(visible=False, row=row_index, col=column_index)
-                continue
-            for donor_index, donor in enumerate(donors):
-                subset = frame.loc[frame["donor_id"].astype(str) == donor]
-                colour = DONOR_COLOURS[donor_index % len(DONOR_COLOURS)]
-                if row_index == column_index:
-                    figure.add_trace(
-                        go.Histogram(
-                            x=subset[row_parameter],
-                            histnorm="probability density",
-                            nbinsx=32,
-                            opacity=0.23,
-                            marker={"color": colour},
-                            name=donor,
-                            legendgroup=donor,
-                            showlegend=row_index == 1,
-                        ),
-                        row=row_index,
-                        col=column_index,
-                    )
-                    figure.add_vline(
-                        x=0,
-                        line={"color": RULE, "width": 1.2, "dash": "dash"},
-                        row=row_index,
-                        col=column_index,
-                    )
-                else:
-                    joint = subset[[column_parameter, row_parameter]].dropna()
-                    figure.add_trace(
-                        go.Histogram2dContour(
-                            x=joint[column_parameter],
-                            y=joint[row_parameter],
-                            ncontours=5,
-                            contours={"coloring": "none", "showlabels": False},
-                            line={"color": colour, "width": 2},
-                            name=donor,
-                            legendgroup=donor,
-                            showlegend=False,
-                            hoverinfo="skip",
-                        ),
-                        row=row_index,
-                        col=column_index,
-                    )
-                    figure.add_vline(
-                        x=0,
-                        line={"color": RULE, "width": 1, "dash": "dash"},
-                        row=row_index,
-                        col=column_index,
-                    )
-                    figure.add_hline(
-                        y=0,
-                        line={"color": RULE, "width": 1, "dash": "dash"},
-                        row=row_index,
-                        col=column_index,
-                    )
-            if row_index == size:
-                figure.update_xaxes(
-                    title_text=CONTRAST_AXIS_LABELS.get(column_parameter, column_parameter),
-                    row=row_index,
-                    col=column_index,
-                )
-            if column_index == 1:
-                figure.update_yaxes(
-                    title_text=(
-                        "Posterior density"
-                        if row_index == column_index
-                        else CONTRAST_AXIS_LABELS.get(row_parameter, row_parameter)
-                    ),
-                    row=row_index,
-                    col=column_index,
-                )
-    figure.update_layout(
-        template="none",
-        barmode="overlay",
-        height=max(430, 320 * size),
+    """Use the same parameter scales and donor styling as other joint plots."""
+    from webapp.donor_reporting import joint_posterior_figure
+
+    return joint_posterior_figure(
+        frame,
+        group_column="donor_id",
+        parameters=[column for column in frame.columns if column != "donor_id"],
         title=title,
-        paper_bgcolor=SHEET,
-        plot_bgcolor=PAPER,
-        font={"family": SERIF, "color": INK, "size": 13},
-        margin={"l": 100, "r": 32, "t": 105, "b": 96},
-        legend={"orientation": "h", "x": 0, "y": 1.05},
+        zero_reference=True,
     )
-    figure.update_xaxes(gridcolor=GRID, automargin=True, zeroline=False)
-    figure.update_yaxes(gridcolor=GRID, automargin=True, zeroline=False)
-    return figure
 
 
 def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Section:
@@ -456,7 +357,7 @@ def donor_contrast_section(results: ConditionResults, *, prefix: str) -> html.Se
                 dcc.Graph(
                     id=f"{prefix}-contrast-figure",
                     figure=go.Figure(),
-                    config={"displaylogo": False, "responsive": True},
+                    config={"displaylogo": False, "responsive": True, "toImageButtonOptions": {"format": "png", "filename": "barracuda_donor_condition_contrasts", "scale": 2}},
                     responsive=True,
                     className="barracuda-joint-posterior-plot",
                     style={"height": "430px"},

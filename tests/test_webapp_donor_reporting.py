@@ -135,8 +135,9 @@ def test_bayes_factor_plot_uses_true_log10_scale_and_labels_best_model() -> None
     )["log10_BF_best_vs_model"].to_numpy(dtype=float)
     np.testing.assert_allclose(plotted, expected)
     assert plotted.max() > 40.0
-    assert any("Best model" in str(label) for label in figure.data[0].y)
+    assert all("Best model" not in str(label) for label in figure.data[0].y)
     assert "Best model · 0.00" in list(figure.data[0].text)
+    assert all(shape.opacity == 0.18 for shape in figure.layout.shapes if shape.type == "rect")
 
     band_spans = [
         (float(shape.x0), float(shape.x1))
@@ -149,6 +150,10 @@ def test_bayes_factor_plot_uses_true_log10_scale_and_labels_best_model() -> None
     )
     assert band_spans[3][0] == 2.0
     assert band_spans[3][1] > plotted.max()
+    assert len(figure.layout.annotations) == 0
+    assert {trace.name for trace in figure.data[1:]} == {
+        "Anecdotal · BF 1–3", "Moderate · BF 3–10", "Strong · BF 10–100", "Extreme · BF ≥100",
+    }
 
 
 def test_population_and_donor_frames_preserve_chain_draw_pairing() -> None:
@@ -375,6 +380,9 @@ def test_joint_figures_use_paired_joint_contours_for_requested_grouping() -> Non
     )
     donor_figure = donor_joint_posterior_figure(donors, group_by="donor_id")
     assert any(trace.type == "histogram2dcontour" for trace in donor_figure.data)
+    assert all(trace.showscale is False for trace in donor_figure.data if trace.type == "histogram2dcontour")
+    assert donor_figure.layout.xaxis3.matches == "x"
+    assert donor_figure.layout.yaxis3.matches == "x4"
     assert {
         trace.legendgroup
         for trace in donor_figure.data
@@ -389,3 +397,23 @@ def test_joint_figures_use_paired_joint_contours_for_requested_grouping() -> Non
     assert "μλ,d" in axis_titles
     assert "σλ,d" in axis_titles
     assert all("Within-donor" not in title for title in axis_titles)
+
+
+def test_many_donors_remain_distinguishable_when_supplied_colours_repeat() -> None:
+    donors = pd.concat([
+        pd.DataFrame({"donor_id": f"D{index + 1}", "mu_lambda_donor": [1.0, 2.0], "sigma_lambda_donor": [0.5, 1.0]})
+        for index in range(12)
+    ], ignore_index=True)
+    colours = {f"D{index + 1}": ("#008585", "#74A892", "#E5C185", "#C7522A")[index % 4] for index in range(12)}
+    figure = donor_joint_posterior_figure(donors, colours=colours)
+    legends = [trace for trace in figure.data if trace.showlegend]
+    assert len({trace.marker.color for trace in legends}) == 12
+    for trace in figure.data:
+        if trace.type == "histogram2dcontour":
+            np.testing.assert_array_equal(trace.x, [1.0, 2.0])
+            np.testing.assert_array_equal(trace.y, [0.5, 1.0])
+            assert trace.name in trace.hovertemplate
+            assert "μλ,d" in trace.hovertemplate and "σλ,d" in trace.hovertemplate
+
+    small = donor_joint_posterior_figure(donors.loc[donors["donor_id"].isin(["D1", "D2", "D3", "D4"])], colours=colours)
+    assert {trace.name: trace.marker.color for trace in small.data if trace.showlegend} == {key: colours[key] for key in ("D1", "D2", "D3", "D4")}

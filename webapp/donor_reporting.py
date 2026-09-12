@@ -26,6 +26,7 @@ import arviz as az
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.colors import qualitative
 from plotly.subplots import make_subplots
 import xarray as xr
 
@@ -42,11 +43,10 @@ from webapp.palette import (
     MODEL_ZERO_INFLATED,
     MODEL_ZERO_INFLATED_GAMMA,
     PAPER_INK,
-    PAPER_LINE,
     PAPER_MIST,
     PAPER_SPINE,
-    PAPER_WARM,
 )
+from webapp.reporting import GRID, INK, PAPER, RULE, SERIF, SHEET, _align_joint_axes
 
 
 MODEL_ORDER = ("homo", "z2p", "dis2p", "hetero3")
@@ -91,18 +91,20 @@ DONOR_PARAMETERS = (
     "phi_0_donor",
 )
 PARAMETER_LABELS = {
-    "mu_lambda_population": "Population mean event rate, μλ",
-    "sigma_lambda_population": "Population cell-to-cell heterogeneity, σλ",
+    "mu_lambda_population": "Population mean event rate among engaging cells, μλ",
+    "sigma_lambda_population": "Population SD of event rates among engaging cells, σλ",
     "phi_0_population": "Population nonengaging fraction, φ₀",
-    "mu_lambda_donor": "Donor mean event rate, μλ,d",
-    "sigma_lambda_donor": "Within-donor cell-to-cell heterogeneity, σλ,d",
+    "mu_lambda_donor": "Donor mean event rate among engaging cells, μλ,d",
+    "sigma_lambda_donor": "Within-donor SD of event rates among engaging cells, σλ,d",
     "phi_0_donor": "Donor nonengaging fraction, φ₀,d",
     "delta_mu_lambda": "Change in mean event rate, Δμλ",
     "delta_sigma_lambda": "Change in cell-to-cell heterogeneity, Δσλ",
-    "percent_delta_mu_lambda": "Change in mean event rate (% of control mean)",
+    "delta_phi_0": "Change in nonengaging fraction, Δφ₀",
+    "percent_delta_mu_lambda": "Change in mean event rate (% of reference posterior mean)",
     "percent_delta_sigma_lambda": (
-        "Change in cell-to-cell heterogeneity (% of control mean)"
+        "Change in cell-to-cell heterogeneity (% of reference posterior mean)"
     ),
+    "percent_delta_phi_0": "Change in nonengaging fraction (% of reference posterior mean)",
 }
 
 # Compact mathematical labels are used inside dense joint matrices. The full
@@ -114,6 +116,12 @@ JOINT_AXIS_LABELS = {
     "mu_lambda_donor": "μλ,d",
     "sigma_lambda_donor": "σλ,d",
     "phi_0_donor": "φ₀,d",
+    "delta_mu_lambda": "Δμλ,d",
+    "delta_sigma_lambda": "Δσλ,d",
+    "delta_phi_0": "Δφ₀,d",
+    "percent_delta_mu_lambda": "Δμλ,d (%)",
+    "percent_delta_sigma_lambda": "Δσλ,d (%)",
+    "percent_delta_phi_0": "Δφ₀,d (%)",
 }
 
 CONDITION_COLOURS = {
@@ -372,10 +380,7 @@ def bayes_factor_figure(
         is_best = table["is_best"].astype(bool).to_numpy()
     else:
         is_best = np.isclose(table["_bf"].to_numpy(dtype=float), 0.0)
-    labels = [
-        MODEL_SHORT_LABELS[model] + (" · Best model" if best else "")
-        for model, best in zip(table["model"], is_best)
-    ]
+    labels = [MODEL_SHORT_LABELS[model] for model in table["model"]]
     texts = [
         "Best model · 0.00" if best else f"{value:.2f}"
         for value, best in zip(table["_bf"], is_best)
@@ -391,18 +396,9 @@ def bayes_factor_figure(
             x0=lower,
             x1=band_upper,
             fillcolor=colour,
-            opacity=0.52,
+            opacity=0.18,
             line_width=0,
             layer="below",
-        )
-        figure.add_annotation(
-            x=(lower + band_upper) / 2.0,
-            y=1.02,
-            xref="x",
-            yref="paper",
-            text=name,
-            showarrow=False,
-            font={"size": 11, "color": PAPER_SPINE},
         )
     for boundary in (BF3_LOG10, 1.0, 2.0):
         if boundary < upper:
@@ -440,13 +436,25 @@ def bayes_factor_figure(
             showlegend=False,
         )
     )
+    for (name, _, _, colour), interval in zip(
+        BF_BANDS, ("BF 1–3", "BF 3–10", "BF 10–100", "BF ≥100")
+    ):
+        figure.add_trace(go.Scatter(
+            x=[None], y=[None], mode="markers", name=f"{name} · {interval}",
+            marker={"symbol": "square", "size": 10, "color": colour,
+                    "line": {"color": RULE, "width": 0.8}},
+            hoverinfo="skip", showlegend=True,
+        ))
     figure.update_layout(
+        template="none",
         title=title,
         height=max(330, 76 * len(table) + 150),
-        margin={"l": 120, "r": 55, "t": 75, "b": 65},
-        paper_bgcolor=PAPER_WARM,
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": PAPER_INK},
+        margin={"l": 120, "r": 70, "t": 110, "b": 65},
+        paper_bgcolor=SHEET,
+        plot_bgcolor=PAPER,
+        font={"family": SERIF, "color": INK, "size": 13},
+        legend={"orientation": "h", "x": 0, "y": 1.05, "yanchor": "bottom", "font": {"size": 11}},
+        hoverlabel={"bgcolor": SHEET, "bordercolor": RULE, "font_family": SERIF},
         bargap=0.20,
     )
     tick_values, tick_labels = _evidence_axis_ticks(upper)
@@ -456,10 +464,11 @@ def bayes_factor_figure(
         tickmode="array",
         tickvals=tick_values,
         ticktext=tick_labels,
-        gridcolor=PAPER_LINE,
+        gridcolor=GRID,
         zeroline=False,
+        automargin=True,
     )
-    figure.update_yaxes(autorange="reversed", gridcolor="rgba(0,0,0,0)")
+    figure.update_yaxes(autorange="reversed", gridcolor="rgba(0,0,0,0)", automargin=True)
     return figure
 
 
@@ -1188,7 +1197,7 @@ def _colour_map(groups: Sequence[object], group_column: str) -> dict[object, str
     if group_column == "model":
         return {group: MODEL_COLOURS[canonical_model_name(group)] for group in unique}
     if group_column == "condition":
-        fallback = (CONDITION_CONTROL, CONDITION_RITUXIMAB, CONDITION_BISPECIFIC)
+        fallback = (CONDITION_CONTROL, CONDITION_RITUXIMAB, CONDITION_BISPECIFIC, DONOR_TEAL)
         return {
             group: CONDITION_COLOURS.get(str(group), fallback[index % len(fallback)])
             for index, group in enumerate(unique)
@@ -1219,6 +1228,9 @@ def joint_posterior_figure(
         group: str((colours or {}).get(group, default_colours[group]))
         for group in groups
     }
+    if group_column == "donor_id" and len(groups) > 4 and len({colour.lower() for colour in colour_map.values()}) < len(groups):
+        # ponytail: colours repeat above 24 donors; split donor views for larger cohorts.
+        colour_map = {group: qualitative.Dark24[index % len(qualitative.Dark24)] for index, group in enumerate(groups)}
     size = len(parameter_list)
     figure = make_subplots(
         rows=size,
@@ -1245,12 +1257,13 @@ def joint_posterior_figure(
                             x=values,
                             histnorm="probability density",
                             nbinsx=32,
-                            opacity=0.24,
-                            marker={"color": colour_map[group]},
+                            bingroup=row_parameter,
+                            opacity=0.42,
+                            marker={"color": colour_map[group], "line": {"color": colour_map[group], "width": 1}},
                             name=str(group),
                             legendgroup=str(group),
                             showlegend=row_index == 1,
-                            hovertemplate=f"{group}<br>{row_parameter}=%{{x:.3g}}<extra></extra>",
+                            hovertemplate=f"{group}<br>{PARAMETER_LABELS.get(row_parameter, row_parameter)}: %{{x:.4g}}<br>Posterior density: %{{y:.4g}}<extra></extra>",
                         ),
                         row=row_index,
                         col=column_index,
@@ -1271,7 +1284,12 @@ def joint_posterior_figure(
                             name=str(group),
                             legendgroup=str(group),
                             showlegend=False,
-                            hoverinfo="skip",
+                            showscale=False,
+                            hovertemplate=(
+                                f"{group}<br>{PARAMETER_LABELS.get(column_parameter, column_parameter)}: %{{x:.4g}}"
+                                f"<br>{PARAMETER_LABELS.get(row_parameter, row_parameter)}: %{{y:.4g}}"
+                                "<extra>Joint posterior contours</extra>"
+                            ),
                         ),
                         row=row_index,
                         col=column_index,
@@ -1307,17 +1325,20 @@ def joint_posterior_figure(
                 figure.update_yaxes(title=ylabel, row=row_index, col=column_index)
 
     figure.update_layout(
+        template="none",
         title=title,
         barmode="overlay",
         height=max(430, 345 * size),
-        paper_bgcolor=PAPER_WARM,
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": PAPER_INK},
-        legend={"orientation": "h", "y": 1.04, "x": 0.0},
-        margin={"l": 80, "r": 35, "t": 95, "b": 65},
+        paper_bgcolor=SHEET,
+        plot_bgcolor=PAPER,
+        font={"family": SERIF, "color": INK, "size": 13},
+        legend={"orientation": "h", "y": 1.04, "x": 0.0, "groupclick": "togglegroup"},
+        margin={"l": 80, "r": 35, "t": 95, "b": 75},
+        hoverlabel={"bgcolor": SHEET, "bordercolor": RULE, "font_family": SERIF},
     )
-    figure.update_xaxes(gridcolor=PAPER_LINE, zeroline=False)
-    figure.update_yaxes(gridcolor=PAPER_LINE, zeroline=False)
+    figure.update_xaxes(gridcolor=GRID, linecolor=RULE, showline=True, ticks="outside", zeroline=False, automargin=True)
+    figure.update_yaxes(gridcolor=GRID, linecolor=RULE, showline=True, ticks="outside", zeroline=False, automargin=True)
+    _align_joint_axes(figure, size)
     return figure
 
 
@@ -1498,8 +1519,8 @@ def donor_frame_condition_contrast_figure(
                     legendgroup=donor_id,
                     showlegend=row == 1,
                     hovertemplate=(
-                        f"{donor_id}<br>{parameter}=%{{x:.3g}}"
-                        "<br>Density=%{y:.3g}<extra></extra>"
+                        f"{donor_id}<br>{PARAMETER_LABELS[parameter]}: %{{x:.4g}}"
+                        "<br>Posterior density: %{y:.4g}<extra></extra>"
                     ),
                 ),
                 row=row,
@@ -1544,32 +1565,36 @@ def donor_frame_condition_contrast_figure(
         col=1,
     )
     figure.update_xaxes(
-        title=PARAMETER_LABELS[parameters[0]],
+        title=JOINT_AXIS_LABELS[parameters[0]],
         row=2,
         col=1,
     )
     figure.update_yaxes(
-        title=PARAMETER_LABELS[parameters[1]],
+        title=JOINT_AXIS_LABELS[parameters[1]],
         row=2,
         col=1,
     )
     figure.update_xaxes(
-        title=PARAMETER_LABELS[parameters[1]],
+        title=JOINT_AXIS_LABELS[parameters[1]],
         row=2,
         col=2,
     )
-    method = "All particle pairs" if all(exact_flags) else "100,000 Monte Carlo pairs per donor"
+    method = "All particle pairs" if all(exact_flags) else f"Up to {approximate_pairs:,} Monte Carlo pairs per donor"
     figure.update_layout(
+        template="none",
         title=title or f"{treatment} minus {control} · {method}",
         height=700,
-        paper_bgcolor=PAPER_WARM,
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": PAPER_INK},
-        legend={"orientation": "h", "y": 1.04, "x": 0.0},
+        paper_bgcolor=SHEET,
+        plot_bgcolor=PAPER,
+        font={"family": SERIF, "color": INK, "size": 13},
+        legend={"orientation": "h", "y": 1.04, "x": 0.0, "groupclick": "togglegroup"},
         margin={"l": 90, "r": 35, "t": 100, "b": 75},
+        hoverlabel={"bgcolor": SHEET, "bordercolor": RULE, "font_family": SERIF},
     )
-    figure.update_xaxes(gridcolor=PAPER_LINE, zeroline=False)
-    figure.update_yaxes(gridcolor=PAPER_LINE, zeroline=False)
+    figure.update_xaxes(gridcolor=GRID, linecolor=RULE, showline=True, ticks="outside", zeroline=False, automargin=True)
+    figure.update_yaxes(gridcolor=GRID, linecolor=RULE, showline=True, ticks="outside", zeroline=False, automargin=True)
+    figure.update_yaxes(title="Posterior density", row=1, col=1)
+    _align_joint_axes(figure, 2)
     return figure
 
 
@@ -1635,21 +1660,24 @@ def variance_decomposition_figure(
                 y=[lookup.get(category, np.nan) for category in categories],
                 name=label,
                 marker={"color": colour, "line": {"color": PAPER_INK, "width": 0.6}},
-                hovertemplate=f"{label}<br>variance=%{{y:.3g}}<extra></extra>",
+                hovertemplate=f"%{{x}}<br>{label}<br>Posterior mean variance: %{{y:.4g}}<extra></extra>",
             )
         )
     figure.update_layout(
+        template="none",
         title=title,
         barmode="stack",
         height=390,
-        paper_bgcolor=PAPER_WARM,
-        plot_bgcolor="rgba(0,0,0,0)",
-        font={"color": PAPER_INK},
-        yaxis_title="Posterior mean population variance",
+        paper_bgcolor=SHEET,
+        plot_bgcolor=PAPER,
+        font={"family": SERIF, "color": INK, "size": 13},
+        yaxis_title="Posterior mean population<br>variance (event rate²)",
         legend={"orientation": "h", "y": 1.06},
         margin={"l": 75, "r": 30, "t": 80, "b": 55},
+        hoverlabel={"bgcolor": SHEET, "bordercolor": RULE, "font_family": SERIF},
     )
-    figure.update_yaxes(gridcolor=PAPER_LINE, rangemode="tozero")
+    figure.update_xaxes(automargin=True)
+    figure.update_yaxes(gridcolor=GRID, rangemode="tozero", automargin=True)
     return figure
 
 

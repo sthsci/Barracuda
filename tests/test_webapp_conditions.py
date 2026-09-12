@@ -159,5 +159,11 @@ def test_multi_condition_bayes_factor_uses_true_threshold_positions() -> None:
         [0.0, BF3_LOG10, 1.0, 2.0]
     )
     bar = next(trace for trace in figure.data if trace.type == "bar")
-    assert sum("Best model" in label for label in bar.y) == 2
+    assert bar.showlegend is False
+    assert {trace.name for trace in figure.data if trace.showlegend} == {
+        "Anecdotal · BF 1–3", "Moderate · BF 3–10", "Strong · BF 10–100", "Extreme · BF ≥100",
+    }
+    assert sum("Best model" in label for label in bar.text) == 2
+    assert all("Best model" not in label for label in bar.y)
+    assert all(shape.opacity == 0.18 for shape in rectangles)
     assert max(map(float, bar.x)) == pytest.approx(2.5)

@@ -8,8 +8,9 @@ import arviz as az
 from dash.development.base_component import Component
 from multiprocess import Process, Queue
 import numpy as np
+import pandas as pd
 
-from webapp.analysis_ui import rate_distribution_figure, render_validation_results
+from webapp.analysis_ui import count_figure, rate_distribution_figure, render_validation_results
 from webapp.core.data import sample_count_frame
 from webapp.core.inference import InferenceResult, InferenceSettings, MODEL_SPECS
 from webapp.reporting import (
@@ -135,6 +136,11 @@ def test_joint_posterior_and_bayes_factor_figures_match_reference_convention() -
         for trace in joint.data
     )
     assert len(joint.layout.shapes) >= 9
+    assert joint.layout.xaxis4.matches == joint.layout.xaxis7.matches == "x"
+    assert joint.layout.yaxis4.matches == joint.layout.xaxis8.matches == "x5"
+    assert joint.layout.yaxis7.matches == joint.layout.yaxis8.matches == "x9"
+    assert joint.layout.yaxis5.matches is None  # A diagonal density is not a parameter.
+    assert all(trace.bingroup for trace in joint.data if trace.type == "histogram")
 
     values = np.asarray(bayes.data[0].x, dtype=float)
     raw_values = np.asarray(bayes.data[0].customdata, dtype=float)[:, 0]
@@ -153,15 +159,19 @@ def test_joint_posterior_and_bayes_factor_figures_match_reference_convention() -
         "Strong · BF 10–100",
         "Extreme · BF ≥100",
     }
+    assert bayes.data[0].showlegend is False
+    assert all(trace.showlegend is True for trace in bayes.data[1:])
     best_rows = [
         index
-        for index, label in enumerate(bayes.data[0].y)
+        for index, label in enumerate(bayes.data[0].text)
         if "Best model" in str(label)
     ]
     assert len(best_rows) == 1
     assert "𝓜_ZIΓ" in str(bayes.data[0].y[best_rows[0]])
     assert str(bayes.data[0].text[best_rows[0]]) == "Best model · 0.00"
+    assert all("Best model" not in label for label in bayes.data[0].y)
     assert len(bayes.layout.shapes) == 4
+    assert all(shape.opacity == 0.18 for shape in bayes.layout.shapes)
     spans = [(float(shape.x0), float(shape.x1)) for shape in bayes.layout.shapes]
     np.testing.assert_allclose(
         spans,
@@ -172,6 +182,13 @@ def test_joint_posterior_and_bayes_factor_figures_match_reference_convention() -
             (2.0, 3.0),
         ],
     )
+
+
+def test_small_count_figure_uses_integer_ticks_without_changing_frequencies() -> None:
+    figure = count_figure(pd.DataFrame({"count": [0, 1, 2]}))
+    assert figure.layout.xaxis.dtick == figure.layout.yaxis.dtick == 1
+    np.testing.assert_array_equal(figure.data[0].x, [0, 1, 2])
+    np.testing.assert_array_equal(figure.data[0].y, [1, 1, 1])
 
 
 def test_large_bayes_factors_are_not_rescaled_or_clipped() -> None:

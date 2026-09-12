@@ -284,6 +284,20 @@ def test_synthetic_truth_reaches_active_data_and_uploads_clear_it(app) -> None:
     assert uploaded[8] == {"height": "820px"}
     assert uploaded[-1] is False
 
+    for condition_count, mobile_height in ((2, "470px"), (4, "830px")):
+        grouped_records = [
+            dict(record, condition=f"Condition {condition_number}")
+            for condition_number in range(condition_count)
+            for record in records
+        ]
+        grouped = activate("upload", None, grouped_records, 2.0, 1200, 1.0, None)
+        assert grouped[8] == {
+            "height": "1200px",
+            "minWidth": "700px",
+            "--trajectory-mobile-height": mobile_height,
+        }
+        assert grouped[-1] is False
+
 
 def test_marginal_selector_uses_selected_parameter_colours_and_truth(app) -> None:
     model_key = "homogeneous_history_independent"

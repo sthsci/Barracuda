@@ -187,6 +187,7 @@ def create_app() -> Dash:
                     html.Strong("Research use only."),
                     html.Span(" Use synthetic or approved anonymous data; inputs are not intentionally retained."),
                     dcc.Link("Privacy and workspace", href="/workspace"),
+                    html.A("Back to top ↑", href="#barracuda-main"),
                 ],
                 className="barracuda-footer",
             ),

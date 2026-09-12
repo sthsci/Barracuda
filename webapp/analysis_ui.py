@@ -64,12 +64,12 @@ PROFILE_VALUES = {
     "custom": (128, 2, 1),
 }
 
-BOOK_INK = "#25231F"
-BOOK_PAPER = "#F3EDDF"
-BOOK_SHEET = "#FBF7ED"
-BOOK_RULE = "#887B66"
-BOOK_GRID = "#D6CCBA"
-BOOK_SERIF = "Iowan Old Style, Baskerville, Palatino Linotype, Palatino, Georgia, serif"
+BOOK_INK = "#17272C"
+BOOK_PAPER = "#F7F8F9"
+BOOK_SHEET = "#FFFFFF"
+BOOK_RULE = "#7E9299"
+BOOK_GRID = "#E1E6E9"
+PLOT_FONT = "Avenir Next, Segoe UI, Helvetica, Arial, sans-serif"
 
 PARAMETER_LABELS = {
     "lambda": "Shared event rate among engaging cells, λ",
@@ -347,16 +347,16 @@ def _plot_layout(figure: go.Figure, *, x_title: str, y_title: str) -> go.Figure:
     figure.update_layout(
         template="none",
         paper_bgcolor="#FFFFFF",
-        plot_bgcolor="#F5F7F6",
-        font={"family": "Inter, Avenir Next, Segoe UI, Helvetica, Arial, sans-serif", "color": "#17272C", "size": 13},
+        plot_bgcolor=BOOK_PAPER,
+        font={"family": PLOT_FONT, "color": "#17272C", "size": 13},
         margin={"l": 54, "r": 24, "t": 30, "b": 52},
         xaxis_title=x_title,
         yaxis_title=y_title,
         legend={"orientation": "h", "y": 1.12, "x": 0, "bgcolor": "rgba(0,0,0,0)"},
-        hoverlabel={"bgcolor": "#FFFFFF", "bordercolor": "#9DADA6", "font_family": "Inter, Avenir Next, Segoe UI, Helvetica, Arial, sans-serif", "font_color": "#17272C"},
+        hoverlabel={"bgcolor": "#FFFFFF", "bordercolor": "#9DADA6", "font_family": PLOT_FONT, "font_color": "#17272C"},
     )
-    figure.update_xaxes(showline=True, linewidth=1, linecolor="#9DADA6", gridcolor="#D3DDD8", ticks="outside", tickcolor="#9DADA6", zeroline=False)
-    figure.update_yaxes(showline=True, linewidth=1, linecolor="#9DADA6", gridcolor="#D3DDD8", ticks="outside", tickcolor="#9DADA6", zeroline=False)
+    figure.update_xaxes(showline=True, linewidth=1, linecolor="#9DADA6", gridcolor=BOOK_GRID, ticks="outside", tickcolor="#9DADA6", zeroline=False, automargin=True)
+    figure.update_yaxes(showline=True, linewidth=1, linecolor="#9DADA6", gridcolor=BOOK_GRID, ticks="outside", tickcolor="#9DADA6", zeroline=False, automargin=True)
     return figure
 
 
@@ -370,7 +370,10 @@ def count_figure(frame: pd.DataFrame) -> go.Figure:
             hovertemplate="Event count %{x}<br>Cells %{y}<extra></extra>",
         )
     )
-    return _plot_layout(figure, x_title="Event count", y_title="Number of cells")
+    _plot_layout(figure, x_title="Event count", y_title="Number of cells")
+    figure.update_xaxes(dtick=1 if frequency.index.max() <= 20 else None, rangemode="tozero")
+    figure.update_yaxes(dtick=1 if frequency.max() <= 10 else None, rangemode="tozero", tickformat=",d")
+    return figure
 
 
 def rate_distribution_figure(
@@ -481,14 +484,14 @@ def rate_distribution_figure(
         template="none",
         paper_bgcolor=BOOK_SHEET,
         plot_bgcolor=BOOK_PAPER,
-        font={"family": BOOK_SERIF, "color": BOOK_INK, "size": 13},
+        font={"family": PLOT_FONT, "color": BOOK_INK, "size": 13},
         margin={"l": 72, "r": 24, "t": 28, "b": 58},
         height=390 if zero_fraction > 0 else 340,
         showlegend=False,
         hoverlabel={
             "bgcolor": BOOK_SHEET,
             "bordercolor": BOOK_RULE,
-            "font_family": BOOK_SERIF,
+            "font_family": PLOT_FONT,
             "font_color": BOOK_INK,
         },
     )

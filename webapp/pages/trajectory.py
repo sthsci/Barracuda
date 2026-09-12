@@ -345,7 +345,7 @@ def _legacy_layout() -> html.Div:
             hero(
                 "Contact trajectories · Donor-ignorant",
                 "Trajectory inference",
-                "Use ordered lethal and nonlethal contacts to distinguish stable cell-to-cell differences from effects of previous encounters.",
+                "Compare models of ordered contact histories with cell-to-cell variation and effects of previous encounters.",
                 badge="Synthetic validation • Up to four experimental conditions",
             ),
             html.Section(
@@ -562,7 +562,7 @@ def _legacy_layout() -> html.Div:
                                 [
                                     html.Span("Figure display", className="barracuda-section-label"),
                                     html.P(
-                                        "Increase the figure height for dense state maps or reduce arrow size when neighbouring states overlap. These settings affect only the display.",
+                                        "Adjust the height and arrow size to inspect dense maps. Hover over an arrow to read its observed counts and lethal fraction.",
                                         className="barracuda-help",
                                     ),
                                 ],
@@ -596,16 +596,22 @@ def _legacy_layout() -> html.Div:
                         className="barracuda-figure-display-controls",
                     ),
                     html.Div(id="trajectory-empirical-legend"),
-                    dcc.Graph(
-                        id="trajectory-empirical-figure",
-                        figure=_empty_figure("Choose data to draw the empirical state map."),
-                        responsive=True,
-                        config={"displaylogo": False, "toImageButtonOptions": {"format": "png", "filename": "barracuda_empirical_trajectory_map", "scale": 2}},
-                        className="barracuda-trajectory-empirical-plot",
-                        style={"height": "700px"},
+                    html.Div(
+                        dcc.Graph(
+                            id="trajectory-empirical-figure",
+                            figure=_empty_figure("Choose data to draw the empirical state map."),
+                            responsive=True,
+                            config={"displaylogo": False, "scrollZoom": False, "modeBarButtonsToRemove": ["lasso2d", "select2d"], "toImageButtonOptions": {"format": "svg", "filename": "barracuda_empirical_trajectory_map"}},
+                            className="barracuda-trajectory-empirical-plot",
+                            style={"height": "700px"},
+                        ),
+                        className="barracuda-trajectory-map-scroll",
+                        tabIndex=0,
+                        role="region",
+                        **{"aria-label": "Contact-history state maps. Scroll horizontally to inspect multiple conditions."},
                     ),
                     html.P(
-                        "Arrow direction and colour encode the empirical probability that the next contact is lethal. Arrow-tail length encodes the number of cells reaching the state on a log₂ scale.",
+                        "Each arrow starts at a pre-contact state (f, s). Horizontal arrows indicate only non-lethal next contacts; vertical arrows indicate only lethal next contacts. Estimates based on few cells are less precise. These are observed fractions, without posterior smoothing.",
                         className="barracuda-help",
                     ),
                     html.Details(
@@ -680,7 +686,7 @@ def layout() -> html.Div:
             page_header(
                 "Analyse",
                 "Ordered contact histories",
-                "Use ordered lethal and nonlethal contacts to test whether cell-to-cell differences or previous encounters explain later killing decisions.",
+                "Compare models of ordered contact histories to assess cell-to-cell variation and associations between previous encounters and later killing decisions.",
                 crumb="Ordered contact histories",
                 badge="cell_id · condition · history",
             ),
@@ -857,6 +863,12 @@ def register_callbacks(app) -> None:
             )
         except Exception as exc:
             return None, None, 1.0, "barracuda-workflow-panel is-hidden", "barracuda-workflow-panel is-hidden", note("Data are not ready", str(exc), tone="amber"), html.Div(), _empty_figure(str(exc)), {"height": f"{int(figure_height or 700)}px"}, html.Div(), html.Div(), True
+        plot_style = {"height": f"{int(figure.layout.height or 430)}px"}
+        if len(labels) > 1:
+            plot_style.update({
+                "minWidth": "700px",
+                "--trajectory-mobile-height": f"{360 * ((len(labels) + 1) // 2) + 110}px",
+            })
         return (
             _serialise_frame(frame),
             truth,
@@ -866,7 +878,7 @@ def register_callbacks(app) -> None:
             _data_summary(frame),
             encoding_legend,
             figure,
-            {"height": f"{int(figure.layout.height or 430)}px"},
+            plot_style,
             _preview_table(frame),
             _condition_colour_controls(labels),
             False,

@@ -19,7 +19,7 @@ def layout() -> html.Div:
                     html.Div(
                         [
                             html.Span("Bayesian analysis of single cell cytotoxicity", className="barracuda-eyebrow"),
-                            html.H1("Identify where variation in killer cell behaviour comes from"),
+                            html.H1("Compare explanations for variation in killer cell behaviour"),
                             html.P(
                                 "BARRACUDA tests whether variation in contact and killing data is consistent with chance, stable cell-to-cell differences, donor effects, or contact history.",
                                 className="barracuda-home-lead",
@@ -31,7 +31,7 @@ def layout() -> html.Div:
                                 ],
                                 className="barracuda-home-actions",
                             ),
-                            dcc.Link("Learn the Bayesian framework →", href="/bayesian-101", className="barracuda-text-link"),
+                            dcc.Link("Learn Bayesian inference →", href="/bayesian-101", className="barracuda-text-link"),
                         ],
                         className="barracuda-home-hero-copy",
                     ),
@@ -43,7 +43,7 @@ def layout() -> html.Div:
                                 width=1820,
                                 height=867,
                             ),
-                            html.Figcaption("From single-cell observations to biological explanations with quantified uncertainty."),
+                            html.Figcaption("Compare biological models using single-cell observations and quantify uncertainty."),
                         ]
                     ),
                 ],
@@ -67,7 +67,7 @@ def layout() -> html.Div:
                                 "Counts grouped by donor",
                                 "Each cell also has a donor identifier.",
                                 "cell_id, donor_id, condition, count",
-                                "Separate within donor cellular variation from differences between donors.",
+                                "Estimate cell-to-cell variation within donors and differences between donors.",
                                 "/event-counts/donor-aware",
                                 "Analyse donor grouped counts",
                             ),
@@ -75,7 +75,7 @@ def layout() -> html.Div:
                                 "Ordered contact histories",
                                 "You know the order of lethal and nonlethal contacts for each cell.",
                                 "cell_id, condition, history",
-                                "Test whether previous contacts alter later killing decisions.",
+                                "Compare models in which previous contacts change later killing probabilities.",
                                 "/trajectory",
                                 "Analyse contact histories",
                             ),
@@ -92,7 +92,7 @@ def layout() -> html.Div:
                     html.H2("From cell-level data to model evidence"),
                     html.Ol(
                         [
-                            html.Li([html.Span("1"), html.Strong("Prepare cell-level data"), html.P("Validate a compact CSV or generate a synthetic example.")]),
+                            html.Li([html.Span("1"), html.Strong("Prepare cell-level data"), html.P("Validate a CSV or generate a synthetic example.")]),
                             html.Li([html.Span("2"), html.Strong("Compare mechanistic models"), html.P("Fit candidate population models with sequential Monte Carlo (SMC).")]),
                             html.Li([html.Span("3"), html.Strong("Interpret uncertainty and evidence"), html.P("Assess parameter uncertainty with posterior distributions and compare models with Bayes factors.")]),
                         ],

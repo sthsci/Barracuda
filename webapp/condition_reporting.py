@@ -27,6 +27,7 @@ from webapp.reporting import (
     BF3_LOG10,
     BF_BAND_COLOURS,
     BF_BAND_DEFINITIONS,
+    COMMON_PARAMETER_LABELS,
     GRID,
     INK,
     MODEL_COLOURS,
@@ -35,6 +36,7 @@ from webapp.reporting import (
     RULE,
     SERIF,
     SHEET,
+    _align_joint_axes,
     _evidence_axis_ticks,
     _evidence_axis_upper,
     posterior_parameters_for_models,
@@ -74,8 +76,7 @@ def condition_bayes_factor_figure(
     best_flags = evidence["is_best"].astype(bool).tolist()
     y_labels = [
         f"{condition} · {MODEL_SPECS[key].short_label}"
-        + (" · Best model" if best else "")
-        for condition, key, best in zip(conditions, model_keys, best_flags)
+        for condition, key in zip(conditions, model_keys)
     ]
     colours = [
         INK if best else MODEL_COLOURS[key]
@@ -87,9 +88,10 @@ def condition_bayes_factor_figure(
             y=y_labels,
             orientation="h",
             marker={"color": colours, "line": {"color": INK, "width": 1}},
-            text=["Best model" if best else f"{value:.2f}" for value, best in zip(raw, best_flags)],
+            text=[f"Best model · {value:.2f}" if best else f"{value:.2f}" for value, best in zip(raw, best_flags)],
             textposition="outside",
             cliponaxis=False,
+            showlegend=False,
             customdata=np.column_stack(
                 [
                     evidence["log_evidence"].to_numpy(dtype=float),
@@ -108,7 +110,7 @@ def condition_bayes_factor_figure(
             x0=lower,
             x1=band_upper,
             fillcolor=BF_BAND_COLOURS[label],
-            opacity=0.48,
+            opacity=0.18,
             line_width=0,
             layer="below",
         )
@@ -215,18 +217,19 @@ def condition_model_posterior_figure(
                         go.Histogram(
                             x=values,
                             nbinsx=30,
+                            bingroup=row_parameter,
                             histnorm="probability density",
                             name=condition,
                             legendgroup=condition,
                             showlegend=condition not in legend_drawn,
-                            opacity=0.22,
+                            opacity=0.42,
                             marker={
                                 "color": colour,
-                                "line": {"color": colour, "width": 2},
+                                "line": {"color": colour, "width": 1},
                             },
                             hovertemplate=(
-                                f"{condition}<br>%{{x:.4g}}"
-                                "<br>Density %{y:.4g}<extra></extra>"
+                                f"{condition}<br>{COMMON_PARAMETER_LABELS[row_parameter]}: %{{x:.4g}}"
+                                "<br>Posterior density: %{y:.4g}<extra></extra>"
                             ),
                         ),
                         row=row_index,
@@ -288,7 +291,9 @@ def condition_model_posterior_figure(
             "x": 0,
             "y": 1.06,
             "font": {"size": 12},
+            "groupclick": "togglegroup",
         },
+        hoverlabel={"bgcolor": SHEET, "bordercolor": RULE, "font_family": SERIF},
     )
     figure.update_xaxes(
         showline=True,
@@ -306,6 +311,7 @@ def condition_model_posterior_figure(
         zeroline=False,
         automargin=True,
     )
+    _align_joint_axes(figure, size)
     return figure
 
 

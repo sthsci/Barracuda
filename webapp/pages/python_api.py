@@ -81,7 +81,7 @@ API_GROUPS = (
             ("run_donor_models", "Fit donor-aware hierarchical candidate models."),
             ("run_donor_aware_models", "Descriptive alias for run_donor_models."),
             ("run_condition_models", "Fit each condition independently with shared settings."),
-            ("evidence_table", "Rank fitted models using their SMC marginal likelihoods."),
+            ("evidence_table", "Rank fitted models using SMC estimates of their marginal likelihoods."),
             ("summary_table", "Combine posterior means and credible intervals."),
             ("build_results_zip", "Bundle tables and posterior files for one analysis."),
             ("build_condition_results_zip", "Bundle results for a condition-wise analysis."),
@@ -172,7 +172,7 @@ def layout() -> html.Div:
                     _code("python -m pip install cyto-barracuda\n\npython -c \"import barracuda; print(barracuda.__version__)\""),
                     note(
                         "Start small",
-                        "SMC inference is computationally expensive. Use low particle and chain counts to check a workflow, then select settings appropriate for the scientific analysis.",
+                        "SMC inference can be computationally expensive. Use low particle and chain counts to check that the workflow runs. For scientific analysis, choose settings that give stable posterior and model-evidence estimates.",
                         tone="amber",
                     ),
                 ],

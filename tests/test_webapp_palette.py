@@ -54,4 +54,5 @@ def test_dense_plot_layouts_have_explicit_containment_rules() -> None:
 
     assert ".barracuda-donor-posterior-stack" in css
     assert "contain: layout paint" in css
-    assert "grid-template-rows: 280px auto auto" in css
+    assert ".barracuda-sampler-scroll" in css
+    assert ".barracuda-sampler-plot { min-width: 620px; }" in css

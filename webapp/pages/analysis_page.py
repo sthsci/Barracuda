@@ -275,7 +275,7 @@ def _legacy_layout(
             html.Div(
                 [
                     html.Span("Step B", className="barracuda-section-label"),
-                    html.H2("Configure and run donor-aware inference" if donor_aware else "Configure and run donor-ignorant inference"),
+                    html.H2("Configure inference with donor labels" if donor_aware else "Configure inference without donor labels"),
                     html.Fieldset(
                         [
                             model_selector(prefix, default_models),
@@ -353,7 +353,7 @@ def layout(
     results = html.Section(
         [
             html.Span("Preview and results", className="barracuda-section-label"),
-            html.H2("Evidence workspace"),
+            html.H2("Data preview and inference results"),
             empty_state(
                 "Start with a dataset",
                 "Upload a CSV, enter rows, or load the built-in synthetic example. A validated data preview will appear here before inference begins.",
@@ -438,7 +438,7 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
             status = html.P(f"Removed {len(selected)} selected row(s).", className="barracuda-help") if selected else html.P("Select one or more rows using the checkboxes first.", className="barracuda-help")
             return rows, _columns(donor_aware, True), grid_options, upload_class, action_class, status
         if source == "edit":
-            return _blank_rows(donor_aware=donor_aware), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("A blank minimum-size template is ready. Replace the placeholder identifiers and counts, then add or remove rows as needed.", className="barracuda-help")
+            return _blank_rows(donor_aware=donor_aware), _columns(donor_aware, True), grid_options, upload_class, action_class, html.P("A template with the minimum required rows is ready. Replace the example identifiers and counts, then add or remove rows as needed.", className="barracuda-help")
         if source == "example":
             frame = sample_condition_frame(donor_aware=donor_aware)
             return table_records(frame), _columns(donor_aware, False), grid_options, upload_class, action_class, note("Synthetic example loaded", "Two fictional conditions are ready for validation and interface testing.", tone="teal")
@@ -483,7 +483,7 @@ def register_callbacks(app, *, prefix: str, donor_aware: bool) -> None:
                 [
                     note(
                         "Dataset ready",
-                        f"The data passed the Barracuda checks for {len(labels)} experimental condition{'s' if len(labels) != 1 else ''}.",
+                        f"The data meet the input requirements for {len(labels)} experimental condition{'s' if len(labels) != 1 else ''}.",
                         tone="teal",
                     ),
                     html.A(

@@ -35,11 +35,11 @@ THOMAS_BAYES_PAPER_URL = "https://doi.org/10.1098/rstl.1763.0053"
 THOMAS_BAYES_PORTRAIT_URL = "https://commons.wikimedia.org/wiki/File:Thomas_Bayes.gif"
 
 BOOK_INK = "#17272C"
-BOOK_PAPER = "#F3ECDF"
-BOOK_SHEET = "#FFFDF8"
+BOOK_PAPER = "#F7F8F9"
+BOOK_SHEET = "#FFFFFF"
 BOOK_RULE = "#7E9299"
-BOOK_GRID = "#D2CEC4"
-BOOK_SERIF = "Iowan Old Style, Baskerville, Palatino Linotype, Palatino, Georgia, serif"
+BOOK_GRID = "#E1E6E9"
+PLOT_FONT = "Avenir Next, Segoe UI, Helvetica, Arial, sans-serif"
 BOOK_MONO = "SFMono-Regular, Menlo, Monaco, Consolas, Liberation Mono, monospace"
 IMPERIAL_BLUE = "#00548F"
 IMPERIAL_SKY = "#549DC5"
@@ -85,12 +85,13 @@ def _plot_layout(
         "height": height,
         "paper_bgcolor": BOOK_SHEET,
         "plot_bgcolor": BOOK_PAPER,
-        "font": {"family": BOOK_SERIF, "color": BOOK_INK, "size": 13},
+        "font": {"family": PLOT_FONT, "color": BOOK_INK, "size": 13},
         "margin": {"l": left_margin, "r": right_margin, "t": top_margin, "b": bottom_margin},
+        "dragmode": False,
         "hoverlabel": {
             "bgcolor": BOOK_SHEET,
             "bordercolor": BOOK_RULE,
-            "font_family": BOOK_SERIF,
+            "font_family": PLOT_FONT,
             "font_color": BOOK_INK,
         },
     }
@@ -173,7 +174,7 @@ def _coin_figure(
         )
     )
     figure.update_layout(
-        **_plot_layout(height=430, bottom_margin=66),
+        **_plot_layout(height=460, bottom_margin=66, top_margin=112),
         xaxis={
             "title": "Success probability θ",
             "range": [0, 1],
@@ -201,7 +202,7 @@ def _coin_figure(
             "x": 0,
             "xanchor": "left",
             "bgcolor": "rgba(255,254,250,0.88)",
-            "font": {"size": 11},
+            "font": {"size": 12},
         },
         hovermode="closest",
     )
@@ -262,9 +263,9 @@ def _coin_frequency_figure(
         hoverinfo="skip",
     ))
     figure.update_layout(
-        **_plot_layout(height=430, bottom_margin=66),
+        **_plot_layout(height=460, bottom_margin=66, top_margin=112),
         xaxis={
-            "title": "Observations included, n (0 = prior)",
+            "title": "Observations included, n",
             "range": [0, max(2, len(outcomes))],
             "gridcolor": BOOK_GRID, "linecolor": BOOK_RULE,
             "ticks": "outside", "tickcolor": BOOK_RULE,
@@ -278,7 +279,7 @@ def _coin_frequency_figure(
         },
         legend={
             "orientation": "h", "y": 1.02, "yanchor": "bottom",
-            "x": 0, "xanchor": "left", "font": {"size": 11},
+            "x": 0, "xanchor": "left", "font": {"size": 12},
         },
         hovermode="x unified",
     )
@@ -521,7 +522,7 @@ def _mcmc_figure() -> go.Figure:
     figure.add_trace(go.Scatter(x=[], y=[], mode="lines+markers", name="Proposal", line={"color": IMPERIAL_SKY, "width": 2, "dash": "dot"}, marker={"color": BOOK_SHEET, "size": 10, "symbol": "diamond", "line": {"color": IMPERIAL_SKY, "width": 2}}), row=2, col=1)
     figure.add_trace(go.Bar(x=np.zeros_like(scale_centres), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h", name="Retained marginal", marker={"color": IMPERIAL_SKY, "line": {"color": BOOK_SHEET, "width": 0.7}}, opacity=0.72, showlegend=False, hovertemplate="SD σ: %{y:.3f}<br>Fraction of largest bin: %{x:.3f}<extra>Retained marginal</extra>"), row=2, col=2)
     figure.add_trace(go.Scatter(x=target_scale, y=grid_scales, mode="lines", name="Grid target marginal", line={"color": IMPERIAL_BLUE, "width": 2}, showlegend=False), row=2, col=2)
-    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[f"{MCMC_WARMUP} warm-up states discarded<br>Watch a proposal, then its decision."], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
+    figure.add_trace(go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[f"{MCMC_WARMUP} warm-up states discarded<br>Watch a proposal, then its decision."], textposition="middle right", textfont={"family": PLOT_FONT, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"), row=2, col=1)
     frames = [go.Frame(name="mcmc-start", traces=[0, 3, 4, 5, 6, 7, 9], data=[figure.data[index] for index in [0, 3, 4, 5, 6, 7, 9]])]
     teaching_indices = range(MCMC_WARMUP, MCMC_WARMUP + MCMC_TEACHING_DRAWS)
     sample_indices = [*range(MCMC_WARMUP + MCMC_TEACHING_DRAWS + MCMC_FRAME_STEP - 1, MCMC_STATES - 1, MCMC_FRAME_STEP), MCMC_STATES - 1]
@@ -557,7 +558,7 @@ def _mcmc_figure() -> go.Figure:
                     go.Scatter(x=[means[shown_index]], y=[scales[shown_index]], mode="markers", marker={"color": OXIDE_RED, "size": 12, "line": {"color": BOOK_SHEET, "width": 2}}),
                     go.Scatter(x=proposal_x, y=proposal_y, mode="lines+markers", line={"color": IMPERIAL_SKY, "width": 2, "dash": "dot"}, marker={"color": BOOK_SHEET if phase == "propose" or accepted else OXIDE_RED, "size": [0, 11] if phase == "propose" else 11, "symbol": "diamond" if phase == "propose" or accepted else "x-open", "line": {"color": IMPERIAL_SKY if phase == "propose" or accepted else OXIDE_RED, "width": 2}}),
                     go.Bar(x=_relative_histogram(retained_scales, SCALE_MARGINAL_EDGES), y=scale_centres, width=np.diff(SCALE_MARGINAL_EDGES) * 0.9, orientation="h"),
-                    go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[status], textposition="middle right", textfont={"family": BOOK_SERIF, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"),
+                    go.Scatter(x=[MEAN_BOUNDS[0] + 0.04], y=[SCALE_BOUNDS[1] - 0.075], mode="text", text=[status], textposition="middle right", textfont={"family": PLOT_FONT, "size": 13, "color": BOOK_INK}, showlegend=False, hoverinfo="skip"),
                 ],
             ))
     figure.frames = frames
@@ -565,7 +566,7 @@ def _mcmc_figure() -> go.Figure:
     figure.update_layout(
         **_plot_layout(height=650, bottom_margin=145, top_margin=48, left_margin=64, right_margin=24),
         barmode="overlay",
-        legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
+        legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 12}},
         updatemenus=[
             {
                 "type": "buttons",
@@ -831,7 +832,7 @@ def _smc_figure() -> go.Figure:
     figure.update_layout(
         **_plot_layout(height=650, bottom_margin=140, top_margin=116, left_margin=64, right_margin=24),
         barmode="overlay",
-        legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 11}},
+        legend={"orientation": "h", "y": 1.02, "yanchor": "bottom", "x": 0, "font": {"size": 12}},
         annotations=stage_annotation(initial_temperature, initial_phase, initial_weights),
         updatemenus=controls(0),
         sliders=[
@@ -901,7 +902,7 @@ def _source_note(*children) -> html.P:
 def _contents() -> html.Nav:
     items = [
         ("01", "Bayes theorem", "#bayes-theorem"),
-        ("02", "Bernoulli model", "#coin-experiment"),
+        ("02", "Coin experiment", "#coin-experiment"),
         ("03", "MCMC and SMC", "#computation"),
         ("04", "Bayes factors", "#bayes-factors"),
         ("05", "Thomas Bayes", "#thomas-bayes"),
@@ -949,7 +950,7 @@ def layout() -> html.Div:
             html.Section(
                 [
                     html.Span("01 · Bayes theorem", className="barracuda-section-label"),
-                    html.H2("The update at the heart of Bayesian inference"),
+                    html.H2("Updating uncertainty with Bayes’ theorem"),
                     html.P(
                         "Conditional probability describes how the probability of one event changes after another event is known. "
                         "For events with positive conditioning probabilities, write the same joint event in two ways, then rearrange.",
@@ -1109,7 +1110,7 @@ def layout() -> html.Div:
                             html.Figure(
                                 [
                                     html.H3("a · Prior and exact posterior"),
-                                    dcc.Graph(id="coin-figure", figure=initial_figure, config={"displayModeBar": False, "responsive": True}, className="barracuda-coin-plot", style={"height": "430px"}),
+                                    dcc.Graph(id="coin-figure", figure=initial_figure, config={"displayModeBar": False, "responsive": True}, className="barracuda-coin-plot", style={"height": "460px"}),
                                     html.Figcaption("Each density integrates to one. Shading marks the selected highest-density interval (HDI). The dashed line is the observed proportion h/n, which maximizes the likelihood; the dotted line is the generating θ₀."),
                                 ],
                                 className="barracuda-coin-chart barracuda-bernoulli-figure",
@@ -1117,8 +1118,8 @@ def layout() -> html.Div:
                             html.Figure(
                                 [
                                     html.H3("b · Learning from successive observations"),
-                                    dcc.Graph(id="coin-frequency-figure", figure=initial_frequency, config={"displayModeBar": False, "responsive": True}, className="barracuda-coin-plot", style={"height": "430px"}),
-                                    html.Figcaption("At each n, the solid line is E[θ | y₁,…,yₙ] and the shaded band is a pointwise equal-tailed credible interval with the selected probability. Equal-tailed limits use posterior quantiles and can differ from the HDI in panel a."),
+                                    dcc.Graph(id="coin-frequency-figure", figure=initial_frequency, config={"displayModeBar": False, "responsive": True}, className="barracuda-coin-plot", style={"height": "460px"}),
+                                    html.Figcaption("At n = 0, the distribution is the prior. At each n, the solid line is E[θ | y₁,…,yₙ] and the shaded band is a pointwise equal-tailed credible interval with the selected probability. Equal-tailed limits use posterior quantiles and can differ from the HDI in panel a."),
                                 ],
                                 className="barracuda-coin-chart barracuda-bernoulli-figure",
                             ),
@@ -1146,7 +1147,7 @@ def layout() -> html.Div:
             html.Section(
                 [
                     html.Span("03 · Computation", className="barracuda-section-label"),
-                    html.H2("The model defines the posterior; computation finds it"),
+                    html.H2("Computing the posterior distribution"),
                     html.P(
                         "The coin model has a closed-form posterior because its prior and likelihood are conjugate. For other models, Bayes’ theorem still defines the posterior, but numerical methods are needed to explore it.",
                         className="barracuda-section-lead",
@@ -1242,7 +1243,7 @@ def layout() -> html.Div:
                     ),
                     html.H3("One target, two sampling routes"),
                     html.P(
-                        "Choose a method, press play, or drag the timeline. The large panel shows the joint distribution of μ and σ; the top and right strips show their marginal distributions.",
+                        "Choose a method and use the playback controls or timeline. Each point in the large panel is a pair (μ, σ). The upper and right panels summarise μ and σ separately.",
                         className="barracuda-copy",
                     ),
                     dcc.Tabs(
@@ -1277,15 +1278,17 @@ def layout() -> html.Div:
                                             ]
                                         ),
                                         html.Div(
-                                            dcc.Graph(
+                                            [html.Span("Scroll sideways to view all panels and controls.", className="barracuda-sampler-scroll-hint"), dcc.Graph(
                                                 id="mcmc-animation",
                                                 figure=_mcmc_figure(),
                                                 config={"displayModeBar": False, "responsive": True},
                                                 className="barracuda-sampler-plot",
                                                 style={"height": "650px"},
-                                            ),
+                                            )],
+                                            className="barracuda-sampler-scroll",
+                                            tabIndex=0,
                                             role="group",
-                                            **{"aria-label": "Interactive MCMC animation with a joint posterior sample and aligned marginal distributions for mean and standard deviation"},
+                                            **{"aria-label": "Scrollable interactive MCMC animation with a joint posterior sample and aligned marginal distributions for mean and standard deviation"},
                                         ),
                                     ],
                                     className="barracuda-sampler-workbench",
@@ -1318,15 +1321,17 @@ def layout() -> html.Div:
                                             ]
                                         ),
                                         html.Div(
-                                            dcc.Graph(
+                                            [html.Span("Scroll sideways to view all panels and controls.", className="barracuda-sampler-scroll-hint"), dcc.Graph(
                                                 id="smc-animation",
                                                 figure=_smc_figure(),
                                                 config={"displayModeBar": False, "responsive": True},
                                                 className="barracuda-sampler-plot",
                                                 style={"height": "650px"},
-                                            ),
+                                            )],
+                                            className="barracuda-sampler-scroll",
+                                            tabIndex=0,
                                             role="group",
-                                            **{"aria-label": "Interactive SMC animation with tempered particles, a joint posterior sample and aligned marginal distributions"},
+                                            **{"aria-label": "Scrollable interactive SMC animation with tempered particles, a joint posterior sample and aligned marginal distributions"},
                                         ),
                                     ],
                                     className="barracuda-sampler-workbench",

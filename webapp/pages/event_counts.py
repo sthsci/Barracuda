@@ -69,7 +69,7 @@ def layout() -> html.Div:
             page_header(
                 "Analyse",
                 "Counts without donor labels",
-                "Validate the method against a known synthetic truth, or analyse your own count data without donor labels.",
+                "Assess inference using simulated data with known parameters, or analyse your own counts without donor labels.",
                 badge="Synthetic validation • Real data analysis",
                 crumb="Counts without donor labels",
             ),
@@ -78,7 +78,7 @@ def layout() -> html.Div:
                     html.Span("Start here", className="barracuda-section-label"),
                     html.H2("Which data do you want to use?"),
                     html.P(
-                        "Both options fit the same four donor-ignorant event-count models. Generate synthetic counts from known parameters to check recovery, or provide your own data for up to four experimental conditions.",
+                        "Both options fit the same four event-count models without donor labels. Use synthetic counts to assess parameter recovery, or provide your own data for up to four experimental conditions.",
                         className="barracuda-section-lead",
                     ),
                     dcc.RadioItems(

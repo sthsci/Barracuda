@@ -51,7 +51,7 @@ def layout() -> html.Div:
             hero(
                 "Event counts · Validation",
                 "Synthetic data validation",
-                "Choose known population parameters, generate event counts, then test whether inference recovers those parameters and ranks the generating model.",
+                "Choose known population parameters and generate event counts. Assess parameter recovery and compare model evidence, including support for the generating model.",
                 badge="Ground truth is visible",
             ),
             schematic_figure(
@@ -96,7 +96,7 @@ def layout() -> html.Div:
                         [
                             html.Div(
                                 [
-                                    html.Span("Live model design", className="barracuda-section-label"),
+                                    html.Span("Generating rate distribution", className="barracuda-section-label"),
                                     html.H3("Population distribution of cell-specific event rates λᵢ"),
                                     html.P(
                                         "The distribution includes every cell. In zero-inflated models, probability φ₀ is placed at λᵢ = 0; the remaining cells follow the selected rate model.",
@@ -138,7 +138,7 @@ def layout() -> html.Div:
                                     field(
                                         "Simulation seed (optional)",
                                         dcc.Input(id="synthetic-simulation-seed", type="text", value="", placeholder="Blank = a new dataset"),
-                                        "Set a seed to reproduce exactly the same dataset.",
+                                        "Use the same seed and simulation settings to reproduce a dataset.",
                                     ),
                                 ],
                                 className="barracuda-form-grid two",
@@ -394,7 +394,7 @@ def register_callbacks(app) -> None:
             ],
             className="barracuda-workflow-panel",
         )
-        return table_records(frame), dict(truth), float(observation_time), preview, "barracuda-workflow-panel", False, note("Dataset generated", "The synthetic data passed the validation checks.", tone="teal")
+        return table_records(frame), dict(truth), float(observation_time), preview, "barracuda-workflow-panel", False, note("Dataset generated", "The generated dataset meets the input requirements for inference.", tone="teal")
 
     @app.callback(
         Output("synthetic-results", "children"),

@@ -39,7 +39,7 @@ def app_header(items: Iterable[tuple[str, str, str]], *, workspace_id: str) -> h
                 html.A("Workspace", href="/workspace", id=workspace_id, className="barracuda-workspace-link"),
                 html.Details(
                     [
-                        html.Summary("Menu", **{"aria-label": "Open navigation menu"}),
+                        html.Summary("Menu", **{"aria-label": "Navigation menu"}),
                         html.Nav(
                             [*links("-mobile"), html.A("Workspace", href="/workspace", className="barracuda-nav-link")],
                             **{"aria-label": "Mobile navigation"},

@@ -66,8 +66,8 @@ def test_home_and_header_use_the_approved_visual_assets() -> None:
 
 def test_every_route_has_distinct_content_and_no_streamlit_dependency() -> None:
     expected = {
-        "/": "Identify where variation in killer cell behaviour comes from",
-        "/bayesian-101": "The update at the heart of Bayesian inference",
+        "/": "Compare explanations for variation in killer cell behaviour",
+        "/bayesian-101": "Updating uncertainty with Bayes’ theorem",
         "/notebooks": "Learn and analyse in Google Colab",
         "/python-api": "Use BARRACUDA's simulation, inference, and export functions directly from Python",
         "/event-counts": "What information is present in your table?",

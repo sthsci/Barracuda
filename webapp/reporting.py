@@ -28,9 +28,9 @@ COMMON_PARAMETER_LABELS = {
     "p_zero": "Fraction of nonengaging cells, φ₀",
 }
 PLOTLY_PARAMETER_LABELS = {
-    "mu_lambda": "Mean event rate among<br>engaging cells, μλ",
-    "sigma_lambda": "Continuous cell-to-cell heterogeneity<br>in event rates, σλ",
-    "p_zero": "Fraction of nonengaging cells, φ₀",
+    "mu_lambda": "Mean rate among<br>engaging cells, μλ",
+    "sigma_lambda": "Rate SD among<br>engaging cells, σλ",
+    "p_zero": "Nonengaging fraction, φ₀",
 }
 MATPLOTLIB_PARAMETER_LABELS = {
     "mu_lambda": "Mean event rate among\nengaging cells, μλ",
@@ -55,13 +55,13 @@ MATPLOTLIB_MODEL_LABELS = {
     "dis2p": r"$\mathcal{M}_{\Gamma}$",
     "hetero3": r"$\mathcal{M}_{\mathrm{ZI}\Gamma}$",
 }
-INK = "#25231F"
-PAPER = "#F3EDDF"
-SHEET = "#FBF7ED"
-RULE = "#887B66"
-GRID = "#D6CCBA"
+INK = "#262A33"
+PAPER = "#FFFFFF"
+SHEET = "#FFFFFF"
+RULE = "#87929D"
+GRID = "#E8ECF0"
 TRUTH = "#9A4938"
-SERIF = "Iowan Old Style, Baskerville, Palatino Linotype, Palatino, Georgia, serif"
+SERIF = "Arial, Helvetica, sans-serif"
 BF3_LOG10 = float(np.log10(3.0))
 BF_BAND_COLOURS = {
     "Anecdotal": "#F7F7F7",
@@ -252,6 +252,28 @@ def _evidence_axis_ticks(upper: float) -> tuple[list[float], list[str]]:
     return tick_values, tick_labels
 
 
+def _align_joint_axes(figure: go.Figure, size: int) -> None:
+    """Use one parameter scale across its marginal and joint panels."""
+
+    for row in range(1, size + 1):
+        for column in range(1, row + 1):
+            diagonal = (column - 1) * size + column
+            reference = "x" if diagonal == 1 else f"x{diagonal}"
+            figure.update_xaxes(
+                matches=None if row == column else reference,
+                showticklabels=row == size,
+                row=row,
+                col=column,
+            )
+            if row > column:
+                figure.update_yaxes(
+                    matches=f"x{(row - 1) * size + row}",
+                    showticklabels=column == 1,
+                    row=row,
+                    col=column,
+                )
+
+
 def joint_posterior_figure_from_draws(
     draws: pd.DataFrame,
     model_keys: Sequence[str],
@@ -312,18 +334,20 @@ def joint_posterior_figure_from_draws(
                         go.Histogram(
                             x=values,
                             nbinsx=30,
+                            bingroup=row_parameter,
                             histnorm="probability density",
                             name=MODEL_SPECS[model_key].short_label,
                             legendgroup=model_key,
                             showlegend=show_legend,
-                            opacity=0.20,
+                            opacity=0.42,
                             marker={
                                 "color": colour,
-                                "line": {"color": colour, "width": 2},
+                                "line": {"color": colour, "width": 1},
                             },
                             hovertemplate=(
                                 f"{MODEL_SPECS[model_key].short_label}<br>"
-                                "%{x:.4g}<br>Density %{y:.4g}<extra></extra>"
+                                f"{COMMON_PARAMETER_LABELS[row_parameter]}: %{{x:.4g}}"
+                                "<br>Posterior density: %{y:.4g}<extra></extra>"
                             ),
                         ),
                         row=row_index,
@@ -436,6 +460,7 @@ def joint_posterior_figure_from_draws(
             "y": 1.075,
             "bgcolor": "rgba(0,0,0,0)",
             "font": {"size": 12},
+            "groupclick": "togglegroup",
         },
         hoverlabel={"bgcolor": SHEET, "bordercolor": RULE, "font_family": SERIF},
     )
@@ -459,6 +484,7 @@ def joint_posterior_figure_from_draws(
         zeroline=False,
         automargin=True,
     )
+    _align_joint_axes(figure, size)
     return figure
 
 
@@ -493,12 +519,7 @@ def bayes_factor_figure(
     upper = _evidence_axis_upper(raw_values)
     model_keys = evidence["model_key"].astype(str).tolist()
     best_flags = evidence["is_best"].astype(bool).tolist()
-    labels = [
-        f"{MODEL_SPECS[key].short_label} · Best model"
-        if is_best
-        else MODEL_SPECS[key].short_label
-        for key, is_best in zip(model_keys, best_flags)
-    ]
+    labels = [MODEL_SPECS[key].short_label for key in model_keys]
     colours = [
         INK if bool(best) else MODEL_COLOURS[key]
         for key, best in zip(model_keys, best_flags)
@@ -515,6 +536,7 @@ def bayes_factor_figure(
             ],
             textposition="outside",
             cliponaxis=False,
+            showlegend=False,
             customdata=np.column_stack(
                 [raw_values, evidence["log_evidence"].to_numpy(dtype=float)]
             ),
@@ -530,7 +552,7 @@ def bayes_factor_figure(
             x0=lower,
             x1=band_upper,
             fillcolor=BF_BAND_COLOURS[label],
-            opacity=0.48,
+            opacity=0.18,
             line_width=0,
             layer="below",
         )
@@ -598,6 +620,10 @@ def _matplotlib_joint(
     figure = Figure(figsize=(max(5.5, 3.65 * size), max(5.5, 3.65 * size)))
     axes = figure.subplots(size, size, squeeze=False)
     truths = _truth_values(truth)
+    histogram_bins = {
+        parameter: np.histogram_bin_edges(draws[parameter].dropna(), bins=30)
+        for parameter in params
+    }
 
     for row_index, row_parameter in enumerate(params):
         for column_index, column_parameter in enumerate(params):
@@ -616,7 +642,7 @@ def _matplotlib_joint(
                         continue
                     axis.hist(
                         values,
-                        bins=30,
+                        bins=histogram_bins[row_parameter],
                         density=True,
                         histtype="step",
                         linewidth=1.8,
@@ -708,6 +734,20 @@ def _matplotlib_joint(
                 )
             axis.tick_params(labelsize=9)
 
+    # Match each parameter's marginal and joint scales in the exported matrix.
+    for index in range(size):
+        parameter_axes = [axes[row, index] for row in range(index, size)]
+        limits = [axis.get_xlim() for axis in parameter_axes]
+        limits.extend(axes[index, column].get_ylim() for column in range(index))
+        lower = min(limit[0] for limit in limits)
+        upper = max(limit[1] for limit in limits)
+        for axis in parameter_axes:
+            axis.set_xlim(lower, upper)
+        for column in range(index):
+            axes[index, column].set_ylim(lower, upper)
+        for row in range(index, size - 1):
+            axes[row, index].tick_params(labelbottom=False)
+
     title = _truth_title(truth, params)
     if title:
         figure.suptitle(title, fontsize=15, y=0.985)
@@ -738,12 +778,7 @@ def _matplotlib_bayes_factor(
     upper = _evidence_axis_upper(raw_values)
     keys = evidence["model_key"].astype(str).tolist()
     best_flags = evidence["is_best"].astype(bool).tolist()
-    labels = [
-        f"{MATPLOTLIB_MODEL_LABELS[key]}  ·  Best model"
-        if is_best
-        else MATPLOTLIB_MODEL_LABELS[key]
-        for key, is_best in zip(keys, best_flags)
-    ]
+    labels = [MATPLOTLIB_MODEL_LABELS[key] for key in keys]
     colours = [
         INK if bool(best) else MODEL_COLOURS[key]
         for key, best in zip(keys, best_flags)
@@ -754,7 +789,7 @@ def _matplotlib_bayes_factor(
     for label, range_label, lower, definition_upper in BF_BAND_DEFINITIONS:
         band_upper = upper if definition_upper is None else definition_upper
         colour = BF_BAND_COLOURS[label]
-        axis.axvspan(lower, band_upper, color=colour, alpha=0.48, linewidth=0)
+        axis.axvspan(lower, band_upper, color=colour, alpha=0.18, linewidth=0)
         legend_handles.append(
             Patch(
                 facecolor=colour,
